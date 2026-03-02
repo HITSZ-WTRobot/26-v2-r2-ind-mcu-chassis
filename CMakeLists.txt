@@ -76,7 +76,11 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 # ===================== DEPENDENCIES =====================
 # e.g.
 #add_subdirectory(library/motor_drivers/UserCode)
-add_subdirectory(Modules/BasicComponents/utils)
+add_subdirectory(Modules/BasicComponents)
+add_subdirectory(Modules/Sensors/gyro/HWT101CT)
+add_subdirectory(Modules/Sensors/ops/ActionOPS)
+add_subdirectory(Modules/MotorDrivers)
+add_subdirectory(Modules/ChassisController)
 
 # =======================================================
 
@@ -86,4 +90,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
         # Add user defined libraries
         utils
+        SensorGyro::HWT101CT
+        SensorOPS::ActionOPS
+        MotorDrivers::DJI
+        Chassis::Controller
+        Chassis::Mecanum4
 )
