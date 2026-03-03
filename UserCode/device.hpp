@@ -32,6 +32,14 @@ extern sensors::ops::ActionOPS* sensor_ops;
  */
 extern motors::DJIMotor* motor_wheel[4];
 
+/**
+ * 升降电机
+ * 以使得底盘抬升的方向为正
+ */
+extern motors::DJIMotor* motor_lift_front; // 前抬升
+extern motors::DJIMotor* motor_lift_rear;  // 后抬升
+
 void Device_Init();
 bool Device_isAllConnected();
 void Device_WaitAllConnections();
+void Device_Update_1kHz();

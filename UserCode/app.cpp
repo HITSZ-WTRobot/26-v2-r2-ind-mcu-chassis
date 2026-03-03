@@ -3,16 +3,28 @@
  * @author  syhanjin
  * @date    2026-03-02
  */
+#include "can.h"
 #include "chassis.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
+#include "lift.hpp"
 #include "tim.h"
 
-void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim) {}
+void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
+{
+    lift->update_1kHz();
+
+    Device_Update_1kHz();
+
+    service::Watchdog::EatAll();
+}
 
 void TIM_Callback_1kHz_2(TIM_HandleTypeDef* htim) {}
 
-void TIM_Callback_100Hz(TIM_HandleTypeDef* htim) {}
+void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
+{
+    lift->update_100Hz();
+}
 
 /**
  * @brief Function implementing the initTask thread.
@@ -25,6 +37,11 @@ extern "C" void Init(void* argument)
     Device_Init();
 
     APP_Chassis_BeforeUpdate();
+    APP_Lift_BeforeUpdate();
+
+    // 检查看门狗是否已满
+    if (service::Watchdog::isFull())
+        Error_Handler();
 
     // 启动定时器
     // 实现 1kHz 定时器交替触发，避免总线上同时控制多电机导致需要同时发送超过3条消息的情况
@@ -42,6 +59,10 @@ extern "C" void Init(void* argument)
 
     // 初始化机构
     APP_Chassis_Init();
+    lift->startCalibration();
+
+    while (!lift->isCalibrated())
+        osDelay(1);
 
     // 等待启动
     osDelay(1000);

@@ -10,6 +10,8 @@
 sensors::gyro::HWT101CT* sensor_gyro_yaw;
 sensors::ops::ActionOPS* sensor_ops;
 motors::DJIMotor*        motor_wheel[4];
+motors::DJIMotor*        motor_lift_front; // 前抬升
+motors::DJIMotor*        motor_lift_rear;  // 后抬升
 
 // 定义串口回调
 UartRxSync_DefineCallback(sensor_gyro_yaw);
@@ -85,6 +87,25 @@ static void wheel_motor_init()
         motor_wheel[i] = new DJIMotor(motor_wheel_config[i]);
 }
 
+static void motor_lift_init()
+{
+    using motors::DJIMotor;
+
+    motor_lift_front = new DJIMotor({ .hcan           = &hcan1,
+                                      .type           = DJIMotor::Type::M3508_C620,
+                                      .id1            = 5,
+                                      .auto_zero      = true,
+                                      .reverse        = false,
+                                      .reduction_rate = 1.0f });
+
+    motor_lift_rear = new DJIMotor({ .hcan           = &hcan1,
+                                     .type           = DJIMotor::Type::M3508_C620,
+                                     .id1            = 6,
+                                     .auto_zero      = true,
+                                     .reverse        = false,
+                                     .reduction_rate = 1.0f });
+}
+
 void Device_Init()
 {
     sensor_init();
@@ -92,6 +113,8 @@ void Device_Init()
     can_init();
 
     wheel_motor_init();
+
+    motor_lift_init();
 }
 
 bool Device_isAllConnected()
@@ -108,8 +131,14 @@ bool Device_isAllConnected()
 
     return true;
 }
+
 void Device_WaitAllConnections()
 {
     while (!Device_isAllConnected())
         osDelay(1);
+}
+void Device_Update_1kHz()
+{
+    motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
+    motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
 }
