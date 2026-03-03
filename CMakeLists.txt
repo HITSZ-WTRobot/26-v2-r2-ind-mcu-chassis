@@ -81,6 +81,8 @@ add_subdirectory(Modules/Sensors/gyro/HWT101CT)
 add_subdirectory(Modules/Sensors/ops/ActionOPS)
 add_subdirectory(Modules/MotorDrivers)
 add_subdirectory(Modules/ChassisController)
+add_subdirectory(Modules/VelocityProfile)
+add_subdirectory(Modules/TrajectoryControl)
 
 # =======================================================
 
@@ -95,4 +97,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         MotorDrivers::DJI
         Chassis::Controller
         Chassis::Mecanum4
+        Trajectory::MotorTrajectory
 )
