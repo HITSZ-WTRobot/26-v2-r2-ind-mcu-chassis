@@ -4,53 +4,42 @@
  * @date    2026-03-02
  */
 #include "device.hpp"
-
 #include "can.h"
 
-sensors::gyro::HWT101CT* sensor_gyro_yaw;
-sensors::ops::ActionOPS* sensor_ops;
-motors::DJIMotor*        motor_wheel[4];
-motors::DJIMotor*        motor_lift_front; // 前抬升
-motors::DJIMotor*        motor_lift_rear;  // 后抬升
+#ifndef M_PI
+#    define M_PI 3.14159265358979323846f
+#endif
 
-// 定义串口回调
-UartRxSync_DefineCallback(sensor_gyro_yaw);
-UartRxSync_DefineCallback(sensor_ops);
+namespace Device
+{
 
-static void sensor_init()
+namespace
+{
+void sensor_init()
 {
     using namespace sensors;
 
-    UartRxSync_RegisterCallback(sensor_gyro_yaw, DEVICE_SENSOR_GYRO_YAW_UART);
-    sensor_gyro_yaw = new gyro::HWT101CT(DEVICE_SENSOR_GYRO_YAW_UART);
-
-    UartRxSync_RegisterCallback(sensor_ops, DEVICE_SENSOR_OPS_UART);
-    sensor_ops = new ops::ActionOPS(DEVICE_SENSOR_OPS_UART,
-                                    { .x_offset   = -276.0f,
-                                      .y_offset   = 0.0f,
-                                      .yaw_offset = -90.0f,
-                                      .yaw_car    = &sensor_gyro_yaw->getYaw() });
+    UartRxSync_RegisterCallback(Sensor::gyro_yaw, config::uart::SensorGyroYaw);
+    Sensor::gyro_yaw = new gyro::HWT101CT(config::uart::SensorGyroYaw);
 
     // 开启接收
-    if (!sensor_gyro_yaw->startReceive())
-        Error_Handler();
-    if (!sensor_ops->startReceive())
+    if (!Sensor::gyro_yaw->startReceive())
         Error_Handler();
 }
 
-static void can_init()
+void can_init()
 {
     // CAN 初始化
     motors::DJIMotor::CAN_FilterInit(&hcan1, 0);
     CAN_RegisterCallback(&hcan1, motors::DJIMotor::CANBaseReceiveCallback);
-    motors::DJIMotor::CAN_FilterInit(&hcan2, 14);
-    CAN_RegisterCallback(&hcan2, motors::DJIMotor::CANBaseReceiveCallback);
+    // motors::DJIMotor::CAN_FilterInit(&hcan2, 14);
+    // CAN_RegisterCallback(&hcan2, motors::DJIMotor::CANBaseReceiveCallback);
 
     // 注册 CAN 主回调，并启动 CAN
     HAL_CAN_RegisterCallback(&hcan1, HAL_CAN_RX_FIFO0_MSG_PENDING_CB_ID, CAN_Fifo0ReceiveCallback);
     CAN_Start(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
-    HAL_CAN_RegisterCallback(&hcan2, HAL_CAN_RX_FIFO0_MSG_PENDING_CB_ID, CAN_Fifo0ReceiveCallback);
-    CAN_Start(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
+    // HAL_CAN_RegisterCallback(&hcan2, HAL_CAN_RX_FIFO0_MSG_PENDING_CB_ID,
+    // CAN_Fifo0ReceiveCallback); CAN_Start(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
 constexpr motors::DJIMotor::Config motor_wheel_config[4] = {
@@ -80,33 +69,40 @@ constexpr motors::DJIMotor::Config motor_wheel_config[4] = {
     },
 };
 
-static void wheel_motor_init()
+void wheel_motor_init()
 {
     using namespace motors;
     for (size_t i = 0; i < 4; ++i)
-        motor_wheel[i] = new DJIMotor(motor_wheel_config[i]);
+        Motor::wheel[i] = new DJIMotor(motor_wheel_config[i]);
 }
 
-static void motor_lift_init()
+void motor_lift_init()
 {
-    using motors::DJIMotor;
+    using motors::DJIMotor, motors::DMMotor;
 
-    motor_lift_front = new DJIMotor({ .hcan           = &hcan1,
-                                      .type           = DJIMotor::Type::M3508_C620,
-                                      .id1            = 5,
-                                      .auto_zero      = true,
-                                      .reverse        = false,
-                                      .reduction_rate = 1.0f });
+    Motor::lift_front = new DMMotor({ .hcan        = &hcan1,
+                                      .id0         = 0xA,
+                                      .type        = DMMotor::Type::J4310_2EC,
+                                      .mode        = DMMotor::Mode::MIT,
+                                      .pos_max_rad = 2 * M_PI,
+                                      .vel_max_rad = 21,
+                                      .tor_max     = 11,
+                                      .auto_zero   = true,
+                                      .reverse     = false });
 
-    motor_lift_rear = new DJIMotor({ .hcan           = &hcan1,
-                                     .type           = DJIMotor::Type::M3508_C620,
-                                     .id1            = 6,
-                                     .auto_zero      = true,
-                                     .reverse        = false,
-                                     .reduction_rate = 1.0f });
+    Motor::lift_rear = new DMMotor({ .hcan        = &hcan1,
+                                     .id0         = 0xB,
+                                     .type        = DMMotor::Type::J4310_2EC,
+                                     .mode        = DMMotor::Mode::MIT,
+                                     .pos_max_rad = 2 * M_PI,
+                                     .vel_max_rad = 21,
+                                     .tor_max     = 11,
+                                     .auto_zero   = true,
+                                     .reverse     = false });
 }
+} // namespace
 
-void Device_Init()
+void init()
 {
     sensor_init();
 
@@ -117,28 +113,30 @@ void Device_Init()
     motor_lift_init();
 }
 
-bool Device_isAllConnected()
+bool isAllConnected()
 {
-    if (!sensor_gyro_yaw->isConnected())
-        return false;
-    if (!sensor_ops->isConnected())
+    if (!Sensor::gyro_yaw->isConnected())
         return false;
 
     // motors
-    for (const auto& m : motor_wheel)
+    for (const auto& m : Motor::wheel)
         if (!m->isConnected())
             return false;
 
     return true;
 }
 
-void Device_WaitAllConnections()
+void waitAllConnections()
 {
-    while (!Device_isAllConnected())
+    while (!isAllConnected())
         osDelay(1);
 }
-void Device_Update_1kHz()
+void update_1kHz()
 {
     motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
     motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
+
+    // motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
+    // motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
 }
+} // namespace Device

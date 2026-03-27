@@ -95,7 +95,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         SensorGyro::HWT101CT
         SensorOPS::ActionOPS
         MotorDrivers::DJI
-        Chassis::Controller
-        Chassis::Mecanum4
+        MotorDrivers::DM
+        Chassis::ControllerMaster
+        ChassisLocalization::JustEncoder
         Trajectory::MotorTrajectory
 )

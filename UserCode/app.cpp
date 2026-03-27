@@ -4,17 +4,17 @@
  * @date    2026-03-02
  */
 #include "can.h"
-#include "chassis.hpp"
+#include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
-#include "lift.hpp"
+#include "chassis/LiftSide.hpp"
 #include "tim.h"
 
 void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
-    lift->update_1kHz();
+    Chassis::update_1kHz();
 
-    Device_Update_1kHz();
+    Device::update_1kHz();
 
     service::Watchdog::EatAll();
 }
@@ -23,7 +23,7 @@ void TIM_Callback_1kHz_2(TIM_HandleTypeDef* htim) {}
 
 void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
 {
-    lift->update_100Hz();
+    Chassis::update_100Hz();
 }
 
 /**
@@ -34,10 +34,9 @@ void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
 extern "C" void Init(void* argument)
 {
     /* 初始化代码 */
-    Device_Init();
+    Device::init();
 
-    APP_Chassis_BeforeUpdate();
-    APP_Lift_BeforeUpdate();
+    Chassis::init();
 
     // 检查看门狗是否已满
     if (service::Watchdog::isFull())
@@ -52,16 +51,17 @@ extern "C" void Init(void* argument)
     HAL_TIM_RegisterCallback(&htim13, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM_Callback_100Hz);
 
     // 等待设备连接
-    Device_WaitAllConnections();
+    Device::waitAllConnections();
 
     // 等待更新
     osDelay(2000);
 
     // 初始化机构
-    APP_Chassis_Init();
-    lift->startCalibration();
+    Chassis::enable();
 
-    while (!lift->isCalibrated())
+    Chassis::motion->startCalibration();
+
+    while (!Chassis::motion->isReady())
         osDelay(1);
 
     // 等待启动
