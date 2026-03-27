@@ -26,6 +26,81 @@ void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
     Chassis::update_100Hz();
 }
 
+// 0 stop
+// 1 vel
+// 2 pos
+size_t s_chassis = 0;
+
+// 0 前后协同
+// 1 控制前腿
+// 2 控制后腿
+size_t s_lift      = 0;
+float  z_pos       = Chassis::Config::Lift::Position::Normal;
+float  z_front_pos = z_pos;
+float  z_rear_pos  = z_pos;
+
+Chassis::Config::Limit lift_limit = Chassis::Config::Lift::DefaultLimit;
+
+chassis::Posture  pos;
+chassis::Velocity vel;
+
+void TestTask(void* argument)
+{
+    chassis::Posture  _p  = pos;
+    chassis::Velocity _v  = vel;
+    float             _zp = z_pos, _zfp = z_front_pos, _zrp = z_rear_pos;
+    for (;;)
+    {
+        // chassis controll
+        if (s_chassis == 0)
+        {
+            Chassis::ctrl->stop();
+        }
+        else if (s_chassis == 1)
+        {
+            if (_v.vx != vel.vx || _v.vy != vel.vy || _v.wz != vel.wz)
+            {
+                _v = vel;
+                Chassis::ctrl->setVelocityInBody(_v, false);
+            }
+        }
+        else if (s_chassis == 2)
+        {
+            if (_p.x != pos.x || _p.y != pos.y || _p.yaw != pos.yaw)
+            {
+                _p = pos;
+                Chassis::ctrl->setTargetPostureInWorld(_p);
+            }
+        }
+        if (s_lift == 0)
+        {
+            if (_zp != z_pos)
+            {
+                _zp = z_pos, _zfp = z_pos, _zrp = z_pos;
+                Chassis::motion->liftAllTo(z_pos, lift_limit);
+            }
+        }
+        else if (s_lift == 1)
+        {
+            if (_zfp != z_front_pos)
+            {
+                _zfp = z_front_pos;
+                Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front)
+                        .to(z_front_pos, lift_limit);
+            }
+        }
+        else if (s_lift == 2)
+        {
+            if (_zrp != z_rear_pos)
+            {
+                _zrp = z_rear_pos;
+                Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear)
+                        .to(z_rear_pos, lift_limit);
+            }
+        }
+    }
+}
+
 /**
  * @brief Function implementing the initTask thread.
  * @param argument: Not used
@@ -68,6 +143,13 @@ extern "C" void Init(void* argument)
     osDelay(1000);
 
     // 创建其他 tasks
+    constexpr osThreadAttr_t test_attr{
+        .name       = "test-task",
+        .stack_size = 1024 * 4,
+        .priority   = osPriorityNormal1,
+    };
+
+    osThreadNew(TestTask, nullptr, &test_attr);
 
     /* 初始化完成后退出线程 */
     osThreadExit();
