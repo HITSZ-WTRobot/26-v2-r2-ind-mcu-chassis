@@ -55,6 +55,10 @@ constexpr float MaxSpeed       = 0.418; // unit: m/s
 constexpr float MaxOnloadAccel = 5.5;   // unit: m/s^2
 constexpr float MaxNoloadAccel = 50;    // unit: m/s^2
 
+constexpr Limit DefaultLimit = { .max_spd  = MaxSpeed,
+                                 .max_acc  = MaxOnloadAccel,
+                                 .max_jerk = MaxOnloadAccel * 50 };
+
 constexpr float CalibrationSpeed = 0.2f; // 校准归零速度 m/s
 
 constexpr float    StalledCurrentMax = 0.5f; // 校准时最大扭矩

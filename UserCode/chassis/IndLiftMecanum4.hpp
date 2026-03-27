@@ -68,6 +68,15 @@ public:
 
     Lift::LiftSide& lift(const LiftType type) { return lift_[static_cast<size_t>(type)]; }
 
+    float liftAllTo(const float pos)
+    {
+        return std::max(lift(LiftType::Front).to(pos), lift(LiftType::Rear).to(pos));
+    }
+    float liftAllTo(const float pos, const Config::Limit& limit)
+    {
+        return std::max(lift(LiftType::Front).to(pos, limit), lift(LiftType::Rear).to(pos, limit));
+    }
+
 protected:
     void applyVelocity(const chassis::Velocity& velocity) override;
 

@@ -24,10 +24,15 @@ constexpr float toMotorSpeed(const float m)
     return m / GearRadius / M_PI * 180.0f;
 }
 
+constexpr Limit toMotorLimit(const Limit& limit)
+{
+    return { .max_spd  = toMotorSpeed(limit.max_spd),
+             .max_acc  = toMotorSpeed(limit.max_acc),
+             .max_jerk = toMotorSpeed(limit.max_jerk) };
+}
+
 // 4310 最大速度 1200deg/s
-constexpr Limit max_motor_limit = { .max_spd  = toMotorSpeed(MaxSpeed),
-                                    .max_acc  = toMotorSpeed(MaxOnloadAccel),
-                                    .max_jerk = toMotorSpeed(MaxOnloadAccel * 50) };
+constexpr Limit max_motor_limit = toMotorLimit(DefaultLimit);
 
 static_assert(max_motor_limit.max_spd <= 1200);
 
@@ -53,6 +58,11 @@ LiftSide::LiftSide(motors::IMotor* motor) :
 {
 }
 
+/**
+ * 抬升到
+ * @param position 目标位置，零点为辅助轮接地，往上为正
+ * @return 用时，规划失败为 -1
+ */
 float LiftSide::to(const float position)
 {
     if (!traj_.setTarget(toMotorAngle(position)))
@@ -60,9 +70,15 @@ float LiftSide::to(const float position)
     return traj_.getTotalTime();
 }
 
+/**
+ * 抬升到
+ * @param position 目标位置，零点为辅助轮接地，往上为正
+ * @param limit 限制，单位 m/s^x
+ * @return 用时，规划失败为 -1
+ */
 float LiftSide::to(const float position, const Limit& limit)
 {
-    if (!traj_.setTarget(toMotorAngle(position), limit))
+    if (!traj_.setTarget(toMotorAngle(position), toMotorLimit(limit)))
         return -1;
     return traj_.getTotalTime();
 }
