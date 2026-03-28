@@ -54,7 +54,8 @@ static constexpr float toPosition(const float motor_angle)
 }
 
 LiftSide::LiftSide(motors::IMotor* motor) :
-    ctrl_(motor, { PIDCfg }), traj_(&ctrl_, max_motor_limit, PDErrorCfg)
+    ctrl_(motor, { PIDCfg, controllers::ControlMode::ExternalPID }),
+    traj_(&ctrl_, max_motor_limit, PDErrorCfg)
 {
 }
 
