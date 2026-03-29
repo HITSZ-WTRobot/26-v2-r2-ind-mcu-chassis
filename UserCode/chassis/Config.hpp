@@ -24,12 +24,11 @@ using Limit = velocity_profile::SCurveProfile::Config;
  */
 namespace Lift
 {
-constexpr PIDMotor::Config PIDCfg = {
-    // TODO: 需要调试达妙电机 MIT 模式 + 外部速度环的参数
-    .Kp             = 45.0f,
-    .Ki             = 0.15f,
-    .Kd             = 0.00f,
-    .abs_output_max = 11.0f // 4310 最大扭矩 11Nm
+constexpr PIDMotor::Config PIDCfg{
+    .Kp             = 0.05f,
+    .Ki             = 0.0015f,
+    .Kd             = 0.0f,
+    .abs_output_max = 11,
 };
 
 constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 3, .abs_output_max = 10 };

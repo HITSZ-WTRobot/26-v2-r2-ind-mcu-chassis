@@ -83,20 +83,20 @@ void motor_lift_init()
     Motor::lift_front = new DMMotor({ .hcan        = &hcan1,
                                       .id0         = 0xA,
                                       .type        = DMMotor::Type::J4310_2EC,
-                                      .mode        = DMMotor::Mode::MIT,
-                                      .pos_max_rad = 2 * M_PI,
-                                      .vel_max_rad = 21,
-                                      .tor_max     = 11,
+                                      .mode        = DMMotor::Mode::MIT, // MIT 退化为力矩控制
+                                      .pos_max_rad = 2 * M_PI,           // 6.283185f
+                                      .vel_max_rad = 25,
+                                      .tor_max     = 12,
                                       .auto_zero   = true,
                                       .reverse     = false });
 
     Motor::lift_rear = new DMMotor({ .hcan        = &hcan1,
                                      .id0         = 0xB,
                                      .type        = DMMotor::Type::J4310_2EC,
-                                     .mode        = DMMotor::Mode::MIT,
-                                     .pos_max_rad = 2 * M_PI,
-                                     .vel_max_rad = 21,
-                                     .tor_max     = 11,
+                                     .mode        = DMMotor::Mode::MIT, // MIT 退化为力矩控制
+                                     .pos_max_rad = 2 * M_PI,           // 6.283185f
+                                     .vel_max_rad = 25,
+                                     .tor_max     = 12,
                                      .auto_zero   = true,
                                      .reverse     = false });
 }
