@@ -70,9 +70,9 @@ namespace Position
 {
 using Lift::LiftMin;
 
-constexpr float Normal = 0.02f;     // 行进默认保持高度 unit m
-constexpr float UpStep = 0.22f;     // 比台阶略高 unit m
-constexpr float UpR1   = LiftMaxMM; // 比 R1 的台阶高，在最后阶段 unit m
+constexpr float Normal = 0.02f;   // 行进默认保持高度 unit m
+constexpr float UpStep = 0.22f;   // 比台阶略高 unit m
+constexpr float UpR1   = LiftMax; // 比 R1 的台阶高，在最后阶段 unit m
 } // namespace Position
 } // namespace Lift
 
