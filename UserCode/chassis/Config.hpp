@@ -25,13 +25,13 @@ using Limit = velocity_profile::SCurveProfile::Config;
 namespace Lift
 {
 constexpr PIDMotor::Config PIDCfg{
-    .Kp             = 0.05f,
-    .Ki             = 0.0015f,
+    .Kp             = 0.09f,
+    .Ki             = 0.001f,
     .Kd             = 0.0f,
     .abs_output_max = 11,
 };
 
-constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 3, .abs_output_max = 10 };
+constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 3, .abs_output_max = 60 };
 
 /**
  * 辅助轮接地时离下限位距离 1.9mm
