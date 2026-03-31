@@ -27,7 +27,7 @@ public:
 
     bool enable() { return traj_.enable(); }
 
-    [[nodiscard]] bool enabled() const { return traj_.enabled(); }
+    [[nodiscard]] bool enabled() const { return ctrl_.enabled(); }
 
     void disable() { traj_.disable(); }
 

@@ -51,7 +51,7 @@ void TestTask(void* argument)
     float             _zp = z_pos, _zfp = z_front_pos, _zrp = z_rear_pos;
     for (;;)
     {
-        // chassis controll
+        // chassis control
         if (s_chassis == 0)
         {
             Chassis::ctrl->stop();
