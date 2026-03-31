@@ -32,6 +32,8 @@ void can_init()
     // CAN 初始化
     motors::DJIMotor::CAN_FilterInit(&hcan1, 0);
     CAN_RegisterCallback(&hcan1, motors::DJIMotor::CANBaseReceiveCallback);
+    motors::DMMotor::CAN_FilterInit(&hcan1, 1, 0x01);
+    CAN_RegisterCallback(&hcan1, motors::DMMotor::CANBaseReceiveCallback);
     // motors::DJIMotor::CAN_FilterInit(&hcan2, 14);
     // CAN_RegisterCallback(&hcan2, motors::DJIMotor::CANBaseReceiveCallback);
 
@@ -127,6 +129,12 @@ bool isAllConnected()
         if (!m->isConnected())
             return false;
 
+    // lifts
+    if (!Motor::lift_front->isConnected())
+        return false;
+    if (!Motor::lift_rear->isConnected())
+        return false;
+
     return true;
 }
 
@@ -140,7 +148,10 @@ void update_1kHz()
     motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
     motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
 
-    // motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
-    // motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
+    motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
+    motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
+
+    Motor::lift_front->ping();
+    Motor::lift_rear->ping();
 }
 } // namespace Device
