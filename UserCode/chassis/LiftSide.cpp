@@ -92,7 +92,7 @@ float LiftSide::getPosition() const
 void LiftSide::startCalibration()
 {
     traj_.disable(); // 释放 SCurve 所有权
-    ctrl_.getPID().setOutputMax(StalledCurrentMax);
+    ctrl_.getPID().setOutputMax(StalledTorqueMax);
     ctrl_.setRef(CalibrationRpm);
     ctrl_.enable(); // 单独控制速度
     calib_state_   = CalibState::Downing;
@@ -103,8 +103,8 @@ void LiftSide::update_1kHz()
 {
     if (calib_state_ == CalibState::Downing)
     {
-        if (fabsf(StalledCurrentMax - ctrl_.getPID().getOutput()) < 10 &&
-            fabsf(ctrl_.getMotor()->getVelocity()) < 0.1f * CalibrationRpm)
+        if (fabsf(ctrl_.getPID().getOutput()) >= StalledTorqueMin &&
+            fabsf(ctrl_.getMotor()->getVelocity()) <= StalledSpeedMax)
             stalled_ticks_++;
         else
             stalled_ticks_ = 0;
@@ -113,15 +113,20 @@ void LiftSide::update_1kHz()
             ctrl_.getMotor()->resetAngle(); // 重置当前电机角度
             ctrl_.setRef(0);                // 停止
             traj_.enable();                 // traj 接管速度环
-            traj_.setTarget(toMotorAngle(0));
+            to(Position::Normal);           // 抬升到正常运行高度
             ctrl_.getPID().setOutputMax(PIDCfg.abs_output_max);
             calib_state_ = CalibState::Rising;
         }
+        // 手动接管控制器，此处由控制器自己更新
+        ctrl_.update();
     }
-    else if (calib_state_ == CalibState::Rising && traj_.isFinished())
-        calib_state_ = CalibState::Done;
-
-    traj_.controllerUpdate();
+    else
+    {
+        if (calib_state_ == CalibState::Rising && traj_.isFinished())
+            calib_state_ = CalibState::Done;
+        // 由曲线来更新控制器
+        traj_.controllerUpdate();
+    }
 }
 
 } // namespace Lift
