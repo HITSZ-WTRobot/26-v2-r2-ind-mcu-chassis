@@ -103,7 +103,7 @@ void motor_lift_init()
             .vel_max_rad = 25,
             .tor_max     = 12,
             .auto_zero   = true,
-            .reverse     = false,
+            .reverse     = true,
     });
 }
 } // namespace

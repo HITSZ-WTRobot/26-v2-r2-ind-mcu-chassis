@@ -50,15 +50,18 @@ constexpr float LiftMin    = LiftMinMM * 1e-3f;
 constexpr float LiftOffset = LiftOffsetMM * 1e-3f;
 constexpr float GearRadius = GearRadiusMM * 1e-3f;
 
+// TODO: 将回程差纳入考虑
+
 constexpr float MaxSpeed       = 0.418; // unit: m/s
-constexpr float MaxOnloadAccel = 5.5;   // unit: m/s^2
-constexpr float MaxNoloadAccel = 50;    // unit: m/s^2
+constexpr float MaxOnloadAccel = 1.0;   // unit: m/s^2， 对车先好一点
+// constexpr float MaxOnloadAccel = 5.5;   // unit: m/s^2
+constexpr float MaxNoloadAccel = 50; // unit: m/s^2
 
 constexpr Limit DefaultLimit = { .max_spd  = MaxSpeed,
                                  .max_acc  = MaxOnloadAccel,
                                  .max_jerk = MaxOnloadAccel * 50 };
 
-constexpr float CalibrationSpeed = 0.02f; // 校准归零速度 m/s
+constexpr float CalibrationSpeed = 0.02f; // 校准归零速度 m/s, 该速度无问题，无需增大
 
 constexpr float    StalledTorqueMax = 1.5f;                    // 校准时最大扭矩
 constexpr float    StalledTorqueMin = 0.95 * StalledTorqueMax; // 堵转时最小扭矩
