@@ -49,16 +49,23 @@ public:
 
     [[nodiscard]] bool isReady() const override
     {
-        for (auto& l : lift_)
-            if (!l.isCalibrated())
+        if constexpr (Config::useFrontLift)
+            if (!lift_[0].isCalibrated())
+                return false;
+
+        if constexpr (Config::useRearLift)
+            if (!lift_[1].isCalibrated())
                 return false;
         return true;
     }
 
     void startCalibration()
     {
-        for (auto& l : lift_)
-            l.startCalibration();
+        if constexpr (Config::useFrontLift)
+            lift(LiftType::Front).startCalibration();
+
+        if constexpr (Config::useRearLift)
+            lift(LiftType::Rear).startCalibration();
     }
 
     void setLiftGrounding(const LiftType type, const bool value)

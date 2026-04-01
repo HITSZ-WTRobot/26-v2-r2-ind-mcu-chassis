@@ -19,6 +19,10 @@ namespace Chassis::Config
 {
 using Limit = velocity_profile::SCurveProfile::Config;
 
+// test code
+constexpr bool useFrontLift = true;
+constexpr bool useRearLift  = false;
+
 /**
  * 抬升配置
  */

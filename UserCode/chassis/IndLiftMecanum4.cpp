@@ -64,28 +64,23 @@ bool IndLiftMecanum4::enable()
 {
     bool enabled = true;
 
-    for (auto& w : wheel_)
-        enabled &= w.enable();
-    for (auto& l : lift_)
-        enabled &= l.enable();
+    if constexpr (Config::useFrontLift)
+        enabled &= lift(LiftType::Front).enable();
 
-    if (!enabled)
-    {
-        for (auto& w : wheel_)
-            w.disable();
-        for (auto& l : lift_)
-            l.disable();
-    }
+    if constexpr (Config::useRearLift)
+        enabled &= lift(LiftType::Rear).enable();
+
     enabled_ = enabled;
     return enabled;
 }
 
 void IndLiftMecanum4::disable()
 {
-    for (auto& w : wheel_)
-        w.disable();
-    for (auto& l : lift_)
-        l.disable();
+    if constexpr (Config::useFrontLift)
+        lift(LiftType::Front).disable();
+
+    if constexpr (Config::useRearLift)
+        lift(LiftType::Rear).disable();
     enabled_ = false;
 }
 
@@ -94,25 +89,30 @@ void IndLiftMecanum4::update_1kHz()
     if (!enabled())
         return;
 
-    for (auto& wheel : wheel_)
-        wheel.update();
-
     ++prescaler_;
     if (prescaler_ == 2)
     {
         prescaler_ = 0;
-        for (auto& l : lift_)
-            l.update_500Hz();
-    }
+        if constexpr (Config::useFrontLift)
+            lift(LiftType::Front).update_500Hz();
 
-    for (auto& l : lift_)
-        l.update_1kHz();
+        if constexpr (Config::useRearLift)
+            lift(LiftType::Rear).update_500Hz();
+    }
+    if constexpr (Config::useFrontLift)
+        lift(LiftType::Front).update_1kHz();
+
+    if constexpr (Config::useRearLift)
+        lift(LiftType::Rear).update_1kHz();
 }
 
 void IndLiftMecanum4::update_100Hz()
 {
-    for (auto& l : lift_)
-        l.update_100Hz();
+    if constexpr (Config::useFrontLift)
+        lift(LiftType::Front).update_100Hz();
+
+    if constexpr (Config::useRearLift)
+        lift(LiftType::Rear).update_100Hz();
 }
 
 chassis::Velocity IndLiftMecanum4::forwardGetVelocity()
