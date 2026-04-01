@@ -10,6 +10,57 @@
 #include "chassis/LiftSide.hpp"
 #include "tim.h"
 
+// 0 前后协同
+// 1 控制前腿
+// 2 控制后腿
+size_t s_lift      = 0;
+float  z_pos       = Chassis::Config::Lift::Position::Normal;
+float  z_front_pos = z_pos;
+float  z_rear_pos  = z_pos;
+
+Chassis::Config::Limit lift_limit = Chassis::Config::Lift::DefaultLimit;
+
+[[noreturn]] void TestTask(void* argument)
+{
+    float _zp = z_pos, _zfp = z_front_pos, _zrp = z_rear_pos;
+    for (;;)
+    {
+        if (s_lift == 0 && Chassis::Config::useFrontLift && Chassis::Config::useRearLift)
+        {
+            if (_zp != z_pos)
+            {
+                _zp = z_pos, _zfp = z_pos, _zrp = z_pos;
+                Chassis::motion->liftAllTo(z_pos, lift_limit);
+            }
+        }
+        else if (s_lift == 1 && Chassis::Config::useFrontLift)
+        {
+            if (_zfp != z_front_pos)
+            {
+                _zfp = z_front_pos;
+                Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front)
+                        .to(z_front_pos, lift_limit);
+            }
+        }
+        else if (s_lift == 2 && Chassis::Config::useRearLift)
+        {
+            if (_zrp != z_rear_pos)
+            {
+                _zrp = z_rear_pos;
+                Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear)
+                        .to(z_rear_pos, lift_limit);
+            }
+        }
+        else if (s_lift == 3)
+        {
+            if constexpr (Chassis::Config::useFrontLift)
+                Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front).stop();
+            if constexpr (Chassis::Config::useRearLift)
+                Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear).stop();
+        }
+    }
+}
+
 void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
     Chassis::update_1kHz();
@@ -69,6 +120,13 @@ extern "C" void Init(void* argument)
     osDelay(1000);
 
     // 创建其他 tasks
+    constexpr osThreadAttr_t test_attr{
+        .name       = "test-task",
+        .stack_size = 1024 * 4,
+        .priority   = osPriorityNormal1,
+    };
+
+    osThreadNew(TestTask, nullptr, &test_attr);
 
     /* 初始化完成后退出线程 */
     osThreadExit();
