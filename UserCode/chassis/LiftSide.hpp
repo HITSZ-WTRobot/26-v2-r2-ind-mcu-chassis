@@ -23,6 +23,12 @@ public:
 
     [[nodiscard]] bool isFinished() const { return traj_.isFinished(); }
 
+    void waitFinished() const
+    {
+        while (!isFinished())
+            osDelay(1);
+    }
+
     [[nodiscard]] float getPosition() const;
 
     bool enable() { return traj_.enable(); }

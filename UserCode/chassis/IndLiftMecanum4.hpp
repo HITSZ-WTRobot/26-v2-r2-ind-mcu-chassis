@@ -77,6 +77,20 @@ public:
         return std::max(lift(LiftType::Front).to(pos, limit), lift(LiftType::Rear).to(pos, limit));
     }
 
+    [[nodiscard]] bool isLiftAllFinished()
+    {
+        for (auto& l : lift_)
+            if (!l.isFinished())
+                return false;
+        return true;
+    }
+
+    void waitLiftAllFinished()
+    {
+        while (!isLiftAllFinished())
+            osDelay(1);
+    }
+
 protected:
     void applyVelocity(const chassis::Velocity& velocity) override;
 
