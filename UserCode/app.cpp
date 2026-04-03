@@ -60,6 +60,8 @@ extern "C" void Init(void* argument)
     // 初始化机构
     Chassis::enable();
 
+    osDelay(1000);
+
     Chassis::motion->startCalibration();
 
     while (!Chassis::motion->isReady())

@@ -34,14 +34,16 @@ void can_init()
     CAN_RegisterCallback(&hcan1, motors::DJIMotor::CANBaseReceiveCallback);
     motors::DMMotor::CAN_FilterInit(&hcan1, 1, 0x01);
     CAN_RegisterCallback(&hcan1, motors::DMMotor::CANBaseReceiveCallback);
-    // motors::DJIMotor::CAN_FilterInit(&hcan2, 14);
-    // CAN_RegisterCallback(&hcan2, motors::DJIMotor::CANBaseReceiveCallback);
+    motors::DJIMotor::CAN_FilterInit(&hcan2, 14);
+    CAN_RegisterCallback(&hcan2, motors::DJIMotor::CANBaseReceiveCallback);
+    motors::DMMotor::CAN_FilterInit(&hcan2, 15, 0x01);
+    CAN_RegisterCallback(&hcan2, motors::DMMotor::CANBaseReceiveCallback);
 
     // 注册 CAN 主回调，并启动 CAN
-    HAL_CAN_RegisterCallback(&hcan1, HAL_CAN_RX_FIFO0_MSG_PENDING_CB_ID, CAN_Fifo0ReceiveCallback);
+    CAN_InitMainCallback(&hcan1);
     CAN_Start(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
-    // HAL_CAN_RegisterCallback(&hcan2, HAL_CAN_RX_FIFO0_MSG_PENDING_CB_ID,
-    // CAN_Fifo0ReceiveCallback); CAN_Start(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
+    CAN_InitMainCallback(&hcan2);
+    CAN_Start(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
 constexpr motors::DJIMotor::Config motor_wheel_config[4] = {
@@ -58,13 +60,13 @@ constexpr motors::DJIMotor::Config motor_wheel_config[4] = {
             .reverse = true,
     },
     {
-            .hcan    = &hcan1,
+            .hcan    = &hcan2,
             .type    = motors::DJIMotor::Type::M3508_C620,
             .id1     = 3,
             .reverse = true,
     },
     {
-            .hcan    = &hcan1,
+            .hcan    = &hcan2,
             .type    = motors::DJIMotor::Type::M3508_C620,
             .id1     = 4,
             .reverse = false,
@@ -82,8 +84,8 @@ void motor_lift_init()
 {
     using motors::DJIMotor, motors::DMMotor;
 
-    Motor::lift_front = new DMMotor({
-            .hcan        = &hcan1,
+    Motor::lift_rear = new DMMotor({
+            .hcan        = &hcan2,
             .id0         = 0xA,
             .type        = DMMotor::Type::J4310_2EC,
             .mode        = DMMotor::Mode::MIT, // MIT 退化为力矩控制
@@ -94,7 +96,7 @@ void motor_lift_init()
             .reverse     = true,
     });
 
-    Motor::lift_rear = new DMMotor({
+    Motor::lift_front = new DMMotor({
             .hcan        = &hcan1,
             .id0         = 0xB,
             .type        = DMMotor::Type::J4310_2EC,
@@ -146,10 +148,10 @@ void waitAllConnections()
 void update_1kHz()
 {
     motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
-    motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
+    // motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
 
     motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
-    motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
+    // motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
 
     Motor::lift_front->ping();
     Motor::lift_rear->ping();
