@@ -99,6 +99,41 @@ constexpr float wheelDistanceY = 406.78f; // 左右轮距 unit mm
 } // namespace Motion
 
 /**
+ * 底盘在 X-Y 方向上的位置信息
+ */
+namespace ChassisInfo
+{
+constexpr float AuxiliaryWheelRadiusMM = 10.0f; // 辅助轮半径
+
+// 以下位置为在车体参考系下各轮子位置
+constexpr float AuxWheelFrontXMM    = 380.0f;  // 前辅助轮中心相对于车体中心
+constexpr float AuxWheelRearXMM     = -380.0f; // 后辅助轮中心相对于车体中心
+constexpr float AuxWheelMidFrontXMM = 150.0f;  // 中间前侧辅助轮中心相对于车体中心
+constexpr float AuxWheelMidRearXMM  = -150.0f; // 中间后侧辅助轮中心相对于车体中心
+
+// 换算后用于使用
+
+constexpr float AuxiliaryWheelRadius = 1e-3f * AuxiliaryWheelRadiusMM; // 辅助轮半径
+
+constexpr float AuxWheelFrontX    = 1e-3f * AuxWheelFrontXMM;    // 前辅助轮中心相对于车体中心
+constexpr float AuxWheelRearX     = 1e-3f * AuxWheelRearXMM;     // 后辅助轮中心相对于车体中心
+constexpr float AuxWheelMidFrontX = 1e-3f * AuxWheelMidFrontXMM; // 中间前侧辅助轮中心相对于车体中心
+constexpr float AuxWheelMidRearX  = 1e-3f * AuxWheelMidRearXMM;  // 中间后侧辅助轮中心相对于车体中心
+
+constexpr float WheelFrontX = Motion::wheelDistanceX * 0.5f;
+constexpr float WheelRearX  = -WheelFrontX;
+
+constexpr float WheelFrontEdgeFront = WheelFrontX + Motion::wheelRadius; // 前主动轮前边缘
+constexpr float WheelRearEdgeFront  = WheelRearX + Motion::wheelRadius;  // 后主动轮前边缘
+constexpr float WheelFrontEdgeRear  = WheelFrontX - Motion::wheelRadius; // 前主动轮后边缘
+constexpr float WheelRearEdgeRear   = WheelRearX - Motion::wheelRadius;  // 后主动轮后边缘
+
+constexpr float ChassisFrontEdge = AuxWheelFrontX + AuxiliaryWheelRadius; // 车体前边缘
+constexpr float ChassisRearEdge  = AuxWheelRearX - AuxiliaryWheelRadius;  // 车体后边缘
+
+} // namespace ChassisInfo
+
+/**
  * 控制器参数
  */
 namespace Control
@@ -110,8 +145,11 @@ constexpr chassis::controller::Master::Config masterCfg = {
         .wz = { .Kp = 30, .Kd = 4.0f, .abs_output_max = 25.0f },
     },
     .limit = {
-        .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
-        .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
+        // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
+        // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
+        // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
+        .x = { .max_spd = 0.3f, .max_acc = 0.6f, .max_jerk = 20.0f },
+        .y   = { .max_spd = 0.3f, .max_acc = 0.6f, .max_jerk = 20.0f },
         .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
     }
 };
