@@ -7,39 +7,46 @@
 #include "ActionOPS.hpp"
 #include "HWT101CT.hpp"
 #include "dji.hpp"
+#include "dm.hpp"
 #include "usart.h"
 
+namespace config::uart
+{
+constexpr auto SensorGyroYaw = &huart2;
+}
+
+namespace Device
+{
 // 传感器声明
+namespace Sensor
+{
+
 /**
  * 陀螺仪
  * HWT101CT， UART2
  */
-extern sensors::gyro::HWT101CT* sensor_gyro_yaw;
-#define DEVICE_SENSOR_GYRO_YAW_UART (&huart2)
-
-/**
- * 码盘
- * Action-OPS, UART6
- */
-extern sensors::ops::ActionOPS* sensor_ops;
-#define DEVICE_SENSOR_OPS_UART (&huart5)
+inline sensors::gyro::HWT101CT* gyro_yaw{};
+} // namespace Sensor
 
 // 电机声明
-
+namespace Motor
+{
 /**
  * 底盘使用的轮子
  * 大疆电机 3508, CAN1 ID: 1 ~ 4
  */
-extern motors::DJIMotor* motor_wheel[4];
+inline motors::DJIMotor* wheel[4]{};
 
 /**
  * 升降电机
  * 以使得底盘抬升的方向为正
  */
-extern motors::DJIMotor* motor_lift_front; // 前抬升
-extern motors::DJIMotor* motor_lift_rear;  // 后抬升
+inline motors::DMMotor* lift_front{}; // 前抬升
+inline motors::DMMotor* lift_rear{};  // 后抬升
+} // namespace Motor
 
-void Device_Init();
-bool Device_isAllConnected();
-void Device_WaitAllConnections();
-void Device_Update_1kHz();
+void init();
+bool isAllConnected();
+void waitAllConnections();
+void update_1kHz();
+} // namespace Device
