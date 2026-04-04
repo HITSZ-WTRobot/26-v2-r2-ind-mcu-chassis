@@ -7,8 +7,8 @@
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
-#include "chassis/LiftSide.hpp"
 #include "tim.h"
+#include "chassis/actions/step.hpp"
 
 void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
@@ -24,6 +24,22 @@ void TIM_Callback_1kHz_2(TIM_HandleTypeDef* htim) {}
 void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
 {
     Chassis::update_100Hz();
+}
+
+void AutoTask(void* argument)
+{
+    constexpr float distance2step = 0.375f; // 前端离台阶的距离 m
+
+    auto& upstep = Action::UpStep::inst();
+
+    upstep.start(distance2step, 0.2, Action::UpStep::Direction::Front, false);
+
+    upstep.waitForFinish();
+
+    for (;;)
+    {
+        osDelay(1000);
+    }
 }
 
 /**
@@ -71,6 +87,12 @@ extern "C" void Init(void* argument)
     osDelay(1000);
 
     // 创建其他 tasks
+    constexpr osThreadAttr_t autoTaskAttr{
+        .name       = "auto-task",
+        .stack_size = 1024 * 4,
+        .priority   = osPriorityNormal,
+    };
+    osThreadNew(AutoTask, nullptr, &autoTaskAttr);
 
     /* 初始化完成后退出线程 */
     osThreadExit();
