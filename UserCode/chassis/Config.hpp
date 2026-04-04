@@ -120,13 +120,14 @@ constexpr float AuxWheelRearX     = 1e-3f * AuxWheelRearXMM;     // 后辅助轮
 constexpr float AuxWheelMidFrontX = 1e-3f * AuxWheelMidFrontXMM; // 中间前侧辅助轮中心相对于车体中心
 constexpr float AuxWheelMidRearX  = 1e-3f * AuxWheelMidRearXMM;  // 中间后侧辅助轮中心相对于车体中心
 
-constexpr float WheelFrontX = Motion::wheelDistanceX * 0.5f;
+constexpr float WheelFrontX = Motion::wheelDistanceX * 0.5f * 1e-3f;
 constexpr float WheelRearX  = -WheelFrontX;
+constexpr float WheelRadius = Motion::wheelRadius * 1e-3f;
 
-constexpr float WheelFrontEdgeFront = WheelFrontX + Motion::wheelRadius; // 前主动轮前边缘
-constexpr float WheelRearEdgeFront  = WheelRearX + Motion::wheelRadius;  // 后主动轮前边缘
-constexpr float WheelFrontEdgeRear  = WheelFrontX - Motion::wheelRadius; // 前主动轮后边缘
-constexpr float WheelRearEdgeRear   = WheelRearX - Motion::wheelRadius;  // 后主动轮后边缘
+constexpr float WheelFrontEdgeFront = WheelFrontX + WheelRadius; // 前主动轮前边缘
+constexpr float WheelRearEdgeFront  = WheelRearX + WheelRadius;  // 后主动轮前边缘
+constexpr float WheelFrontEdgeRear  = WheelFrontX - WheelRadius; // 前主动轮后边缘
+constexpr float WheelRearEdgeRear   = WheelRearX - WheelRadius;  // 后主动轮后边缘
 
 constexpr float ChassisFrontEdge = AuxWheelFrontX + AuxiliaryWheelRadius; // 车体前边缘
 constexpr float ChassisRearEdge  = AuxWheelRearX - AuxiliaryWheelRadius;  // 车体后边缘
