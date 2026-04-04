@@ -53,7 +53,7 @@ public:
                lift_rear_state_ == LiftState::Done;
     }
 
-    [[nodiscard]] bool isRunning() const { return isFinished() || isIdle(); }
+    [[nodiscard]] bool isRunning() const { return !isFinished() && !isIdle(); }
 
     /**
      * 等待执行完成
