@@ -19,12 +19,12 @@ void sensor_init()
 {
     using namespace sensors;
 
-    UartRxSync_RegisterCallback(Sensor::gyro_yaw, config::uart::SensorGyroYaw);
-    Sensor::gyro_yaw = new gyro::HWT101CT(config::uart::SensorGyroYaw);
-
-    // 开启接收
-    if (!Sensor::gyro_yaw->startReceive())
-        Error_Handler();
+    // UartRxSync_RegisterCallback(Sensor::gyro_yaw, config::uart::SensorGyroYaw);
+    // Sensor::gyro_yaw = new gyro::HWT101CT(config::uart::SensorGyroYaw);
+    //
+    // // 开启接收
+    // if (!Sensor::gyro_yaw->startReceive())
+    //     Error_Handler();
 }
 
 void can_init()
@@ -112,7 +112,7 @@ void motor_lift_init()
 
 void init()
 {
-    sensor_init();
+    // sensor_init();
 
     can_init();
 
@@ -123,8 +123,8 @@ void init()
 
 bool isAllConnected()
 {
-    if (!Sensor::gyro_yaw->isConnected())
-        return false;
+    // if (!Sensor::gyro_yaw->isConnected())
+    //     return false;
 
     // motors
     for (const auto& m : Motor::wheel)
