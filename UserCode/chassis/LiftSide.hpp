@@ -44,9 +44,15 @@ public:
     void update_500Hz() { traj_.errorUpdate(); }
     void update_100Hz() { traj_.profileUpdate(0.01); }
 
+    [[nodiscard]] bool isGrounding() const { return grounding_; }
+
+    void setGrounding(const bool grounding) { grounding_ = grounding; }
+
 private:
     controllers::MotorVelController ctrl_;
     trajectory::MotorTrajectory<1>  traj_;
+
+    bool grounding_ = true;
 
     // 堵转检测来复位
     enum class CalibState

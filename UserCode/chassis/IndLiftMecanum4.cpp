@@ -121,7 +121,7 @@ chassis::Velocity IndLiftMecanum4::forwardGetVelocity()
 
     float factor = 1.0f;
 
-    if (isLiftGrounding(LiftType::Front))
+    if (lift(LiftType::Front).isGrounding())
     {
         factor *= 0.5f;
         vel.vx += wheel(WheelType::FrontRight).getMotor()->getVelocity() +
@@ -131,7 +131,7 @@ chassis::Velocity IndLiftMecanum4::forwardGetVelocity()
         vel.wz += wheel(WheelType::FrontRight).getMotor()->getVelocity() -
                   wheel(WheelType::FrontLeft).getMotor()->getVelocity();
     }
-    if (isLiftGrounding(LiftType::Rear))
+    if (lift(LiftType::Rear).isGrounding())
     {
         factor *= 0.5f;
         vel.vx += wheel(WheelType::RearRight).getMotor()->getVelocity() +

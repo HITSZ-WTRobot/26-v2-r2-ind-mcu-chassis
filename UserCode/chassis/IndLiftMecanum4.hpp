@@ -61,17 +61,13 @@ public:
             l.startCalibration();
     }
 
-    void setLiftGrounding(const LiftType type, const bool value)
-    {
-        lift_grounding[static_cast<size_t>(type)] = value;
-    }
-
     Lift::LiftSide& lift(const LiftType type) { return lift_[static_cast<size_t>(type)]; }
 
     float liftAllTo(const float pos)
     {
         return std::max(lift(LiftType::Front).to(pos), lift(LiftType::Rear).to(pos));
     }
+
     float liftAllTo(const float pos, const Config::Limit& limit)
     {
         return std::max(lift(LiftType::Front).to(pos, limit), lift(LiftType::Rear).to(pos, limit));
@@ -108,16 +104,10 @@ private:
     {
         return wheel_[static_cast<size_t>(type)];
     }
-    [[nodiscard]] bool isLiftGrounding(const LiftType type) const
-    {
-        return lift_grounding[static_cast<size_t>(type)];
-    }
 
     controllers::MotorVelController wheel_[WheelNum];
 
     Lift::LiftSide lift_[LiftNum];
-
-    bool lift_grounding[LiftNum] = { true, true };
 };
 
 } // namespace Chassis
