@@ -5,13 +5,14 @@
  * @brief 与台阶相关的动作集合
  */
 #pragma once
+#include "traits.hpp"
 #include "chassis/LiftSide.hpp"
 #include "chassis/chassis.hpp"
 
 namespace Action
 {
 
-class UpStep
+class UpStep : traits::NoCopy, traits::NoDelete
 {
 public:
     UpStep();
