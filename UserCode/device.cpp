@@ -51,25 +51,25 @@ constexpr motors::DJIMotor::Config motor_wheel_config[4] = {
             .hcan    = &hcan1,
             .type    = motors::DJIMotor::Type::M3508_C620,
             .id1     = 1,
-            .reverse = false,
+            .reverse = true,
     },
     {
             .hcan    = &hcan1,
             .type    = motors::DJIMotor::Type::M3508_C620,
             .id1     = 2,
-            .reverse = true,
+            .reverse = false,
     },
     {
             .hcan    = &hcan2,
             .type    = motors::DJIMotor::Type::M3508_C620,
             .id1     = 3,
-            .reverse = true,
+            .reverse = false,
     },
     {
             .hcan    = &hcan2,
             .type    = motors::DJIMotor::Type::M3508_C620,
             .id1     = 4,
-            .reverse = false,
+            .reverse = true,
     },
 };
 
