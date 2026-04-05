@@ -1,8 +1,8 @@
 /**
- * @file    step.hpp
+ * @file    UpStep.hpp
  * @author  syhanjin
  * @date    2026-04-03
- * @brief 与台阶相关的动作集合
+ * @brief   上台阶动作
  */
 #pragma once
 #include "traits.hpp"
@@ -21,13 +21,13 @@ public:
 
     enum class Direction
     {
-        Front,
-        Rear
+        Forward,
+        Backward
     };
 
     void start(float     startDistance2Step,
                float     endDistance2Step,
-               Direction dir      = Direction::Front,
+               Direction dir      = Direction::Forward,
                bool      willTake = false);
 
     void resume();
@@ -109,7 +109,7 @@ private:
 
     bool will_take_ = false;
 
-    Direction direction_ = Direction::Front;
+    Direction direction_ = Direction::Forward;
 
     float startDistance2Step_ = 0;
     float endDistance2Step_   = 0;

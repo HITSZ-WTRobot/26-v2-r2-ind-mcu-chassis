@@ -1,9 +1,9 @@
 /**
- * @file    step.cpp
+ * @file    UpStep.cpp
  * @author  syhanjin
  * @date    2026-04-03
  */
-#include "step.hpp"
+#include "UpStep.hpp"
 #include "chassis/chassis.hpp"
 
 namespace Action
@@ -34,6 +34,8 @@ constexpr Chassis::Config::Limit 收腿速度{ Chassis::Config::Lift::MaxSpeed,
 constexpr Chassis::Config::Limit 放腿速度{ Chassis::Config::Lift::MaxSpeed,
                                            Chassis::Config::Lift::MaxOnloadAccel,
                                            Chassis::Config::Lift::MaxOnloadAccel * 50 };
+
+using chassis::controller::Master;
 } // namespace
 
 UpStep::UpStep()
@@ -69,13 +71,13 @@ void UpStep::start(const float     startDistance2Step,
 
     will_take_          = willTake;
     direction_          = dir;
-    x_sign_             = dir == Direction::Front ? 1 : -1;
+    x_sign_             = dir == Direction::Forward ? 1 : -1;
     startDistance2Step_ = startDistance2Step;
     endDistance2Step_   = endDistance2Step;
 
     start_pos_ = Chassis::loc->postureInWorld();
 
-    if (dir == Direction::Front)
+    if (dir == Direction::Forward)
     {
         front_ = &Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front);
         rear_  = &Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear);
@@ -116,7 +118,9 @@ void UpStep::update()
             // TODO: 不同阶段底盘的速度限制应当不同
             // TODO: 如果 will_take_ = false, 则该目标值设置应当带末速度
             Chassis::ctrl->setTargetPostureInWorld(
-                    relativePosture(startDistance2Step_ + 前边缘到前轮前边缘 - SafeDistance));
+                    relativePosture(startDistance2Step_ + 前边缘到前轮前边缘 - SafeDistance),
+                    Master::TrajectoryLinkMode::PreviousCurve);
+
             chassis_state_ = ChassisState::B前进将前辅助轮悬于台阶上方_等待前轮收起;
 
             if (will_take_)
@@ -127,7 +131,9 @@ void UpStep::update()
         if (lift_front_state_ == LiftState::D等待放下)
         {
             Chassis::ctrl->setTargetPostureInWorld(
-                    relativePosture(startDistance2Step_ + 前边缘到后轮前边缘 - SafeDistance));
+                    relativePosture(startDistance2Step_ + 前边缘到后轮前边缘 - SafeDistance),
+                    Master::TrajectoryLinkMode::PreviousCurve);
+
             chassis_state_ = ChassisState::C前进将中辅助轮悬于台阶上方_等待前轮放下_等待后轮收起;
         }
         break;
@@ -135,7 +141,9 @@ void UpStep::update()
         if (lift_front_state_ == LiftState::Done && lift_rear_state_ == LiftState::D等待放下)
         {
             Chassis::ctrl->setTargetPostureInWorld(
-                    relativePosture(startDistance2Step_ + endDistance2Step_ + ChassisDistanceX));
+                    relativePosture(startDistance2Step_ + endDistance2Step_ + ChassisDistanceX),
+                    Master::TrajectoryLinkMode::PreviousCurve);
+
             chassis_state_ = ChassisState::D前进使底盘完全登上台阶;
         }
         break;
