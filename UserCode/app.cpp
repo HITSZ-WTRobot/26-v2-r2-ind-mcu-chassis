@@ -30,9 +30,9 @@ void AutoTask(void* argument)
 {
     constexpr float distance2step = 0.375f; // 前端离台阶的距离 m
 
-    auto& upstep = Action::UpStep::inst();
+    auto& upstep = Action::Step::inst();
 
-    upstep.start(distance2step, 0.2, Action::UpStep::Direction::Front, false);
+    upstep.start(distance2step, 0.2, Action::Step::Direction::Front, false);
 
     upstep.waitForFinish();
 

@@ -12,12 +12,12 @@
 namespace Action
 {
 
-class UpStep : traits::NoCopy, traits::NoDelete
+class Step : traits::NoCopy, traits::NoDelete
 {
 public:
-    UpStep();
+    Step();
 
-    static UpStep& inst();
+    static Step& inst();
 
     enum class Direction
     {
@@ -25,14 +25,22 @@ public:
         Rear
     };
 
+    enum class Stairs
+    {
+        Up,
+        Down,
+        Down_No_Rst
+    };
+
     void start(float     startDistance2Step,
                float     endDistance2Step,
                Direction dir      = Direction::Front,
-               bool      willTake = false);
+               bool      willTake = false,
+               Stairs    stairs   = Stairs::Up);
 
     void resume();
 
-    static void TaskEntry(void* self) { static_cast<UpStep*>(self)->loop(); }
+    static void TaskEntry(void* self) { static_cast<Step*>(self)->loop(); }
 
     [[noreturn]] void loop();
 
@@ -86,10 +94,17 @@ private:
     {
         Idle,
 
+        // 上台阶状态
         A等待底盘到达台阶高度_同时往台阶位移,
         B前进将前辅助轮悬于台阶上方_等待前轮收起,
         C前进将中辅助轮悬于台阶上方_等待前轮放下_等待后轮收起,
         D前进使底盘完全登上台阶,
+
+        // 下台阶状态
+        E前进使中前辅助轮到达台阶边缘_等待前轮放下,
+        F前进使后辅助轮到达台阶边缘_等待后轮放下,
+        G前进使底盘完全走下台阶_放下底盘,
+        H前进使底盘完全走下台阶,
 
         Done
     };
@@ -98,11 +113,19 @@ private:
     {
         Idle,
 
+        // 上台阶状态
         A抬升ing,
         B等待收起,
         C收起ing,
         D等待放下,
         E放下ing,
+
+        // 下台阶状态
+        F等待放下,
+        G放下ing,
+        H等待回收到正常位置,
+        I回收ing,
+        J取消回收,
 
         Done
     };
@@ -110,9 +133,10 @@ private:
     bool will_take_ = false;
 
     Direction direction_ = Direction::Front;
+    Stairs    stairs_    = Stairs::Up;
 
-    float startDistance2Step_ = 0;
-    float endDistance2Step_   = 0;
+    float startDistance2Step_ = 0.0f;
+    float endDistance2Step_   = 0.0f;
 
     float x_sign_ = 1.0f;
 
