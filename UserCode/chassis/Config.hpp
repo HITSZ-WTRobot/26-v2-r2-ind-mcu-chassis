@@ -89,8 +89,8 @@ constexpr float UpR1   = LiftMax; // 比 R1 的台阶高，在最后阶段 unit 
 namespace Motion
 {
 constexpr PIDMotor::Config MotorWheelVelPIDCfg = { //
-    .Kp             = 45.0f,
-    .Ki             = 0.15f,
+    .Kp             = 500.0f,
+    .Ki             = 5.0f,
     .Kd             = 0.00f,
     .abs_output_max = 8000.0f
 };
@@ -145,9 +145,9 @@ namespace Control
 {
 constexpr chassis::controller::Master::Config masterCfg = {
     .posture_error_pd_cfg = {
-        .vx = { .Kp = 5, .Kd = 3.0f, .abs_output_max = 2.0f },
-        .vy = { .Kp = 5, .Kd = 3.0f, .abs_output_max = 2.0f },
-        .wz = { .Kp = 30, .Kd = 4.0f, .abs_output_max = 500.0f },
+        .vx = { .Kp = 0.3, .Kd = 0.2f, .abs_output_max = 0.2f },
+        .vy = { .Kp = 0.3, .Kd = 0.2f, .abs_output_max = 0.2f },
+        .wz = { .Kp = 0.3, .Kd = 0.2f, .abs_output_max = 45.0f },
     },
     .limit = {
         // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
