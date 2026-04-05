@@ -57,9 +57,11 @@ constexpr float MaxOnloadAccel = 1.0;   // unit: m/s^2， 对车先好一点
 // constexpr float MaxOnloadAccel = 5.5;   // unit: m/s^2
 constexpr float MaxNoloadAccel = 50; // unit: m/s^2
 
-constexpr Limit DefaultLimit = { .max_spd  = MaxSpeed,
-                                 .max_acc  = MaxOnloadAccel,
-                                 .max_jerk = MaxOnloadAccel * 50 };
+constexpr Limit OnloadLimit{ MaxSpeed, MaxOnloadAccel, MaxOnloadAccel * 50 };
+
+constexpr Limit NoloadLimit{ MaxSpeed, MaxNoloadAccel, MaxNoloadAccel * 50 };
+
+constexpr Limit DefaultLimit = OnloadLimit;
 
 constexpr float CalibrationSpeed = 0.02f; // 校准归零速度 m/s, 该速度无问题，无需增大
 
@@ -143,16 +145,16 @@ namespace Control
 {
 constexpr chassis::controller::Master::Config masterCfg = {
     .posture_error_pd_cfg = {
-        .vx = { .Kp = 5, .Kd = 3.0f, .abs_output_max = 0.1f },
-        .vy = { .Kp = 5, .Kd = 3.0f, .abs_output_max = 0.1f },
-        .wz = { .Kp = 30, .Kd = 4.0f, .abs_output_max = 25.0f },
+        .vx = { .Kp = 5, .Kd = 3.0f, .abs_output_max = 2.0f },
+        .vy = { .Kp = 5, .Kd = 3.0f, .abs_output_max = 2.0f },
+        .wz = { .Kp = 30, .Kd = 4.0f, .abs_output_max = 500.0f },
     },
     .limit = {
         // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
         // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
         // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
-        .x = { .max_spd = 0.3f, .max_acc = 0.6f, .max_jerk = 20.0f },
-        .y   = { .max_spd = 0.3f, .max_acc = 0.6f, .max_jerk = 20.0f },
+        .x = { .max_spd = 0.5f, .max_acc = 0.6f, .max_jerk = 20.0f },
+        .y   = { .max_spd = 0.5f, .max_acc = 0.6f, .max_jerk = 20.0f },
         .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
     }
 };
