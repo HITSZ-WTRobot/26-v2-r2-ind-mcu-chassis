@@ -8,7 +8,7 @@
 #include "cmsis_os2.h"
 #include "device.hpp"
 #include "tim.h"
-#include "chassis/actions/step.hpp"
+#include "chassis/actions/Step.hpp"
 
 void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
@@ -28,13 +28,65 @@ void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
 
 void AutoTask(void* argument)
 {
-    constexpr float distance2step = 0.375f; // 前端离台阶的距离 m
+    auto& step    = Action::Step::inst();
+    auto& chassis = *Chassis::ctrl;
 
-    auto& upstep = Action::UpStep::inst();
+    step.up(0.25, 0.2, Action::Step::Direction::Forward);
+    step.waitForFinish();
 
-    upstep.start(distance2step, 0.2, Action::UpStep::Direction::Front, false);
+    step.up(0.23, 0.2, Action::Step::Direction::Forward);
+    step.waitForFinish();
 
-    upstep.waitForFinish();
+    chassis.setTargetPostureInBody({ 0, 0, 90 });
+    chassis.waitTrajectoryFinish();
+
+    for (;;)
+    {
+        chassis.setTargetPostureInBody({ -0.3, 0, 0 });
+        chassis.waitTrajectoryFinish();
+
+        step.down(0.4, 0.2, Action::Step::Direction::Forward);
+        step.waitForFinish();
+
+        chassis.setTargetPostureInBody({ 0, 0, -90 });
+        chassis.waitTrajectoryFinish();
+
+        step.up(0.23, 0.2, Action::Step::Direction::Forward);
+        step.waitForFinish();
+
+        step.down(0.2, 0.2, Action::Step::Direction::Forward);
+        step.waitForFinish();
+
+        chassis.setTargetPostureInBody({ 0, 0, 90 });
+        chassis.waitTrajectoryFinish();
+
+        step.up(0.23, 0.2, Action::Step::Direction::Backward);
+        step.waitForFinish();
+
+        step.down(0.2, 0.2, Action::Step::Direction::Backward);
+        step.waitForFinish();
+
+        chassis.setTargetPostureInBody({ 0.25, 0, 0 });
+        chassis.waitTrajectoryFinish();
+
+        chassis.setTargetPostureInBody({ -0.2, 0, 0 });
+        chassis.waitTrajectoryFinish();
+
+        chassis.setTargetPostureInBody({ 0, 0, 90 });
+        chassis.waitTrajectoryFinish();
+
+        step.up(0.23, 0.2, Action::Step::Direction::Forward);
+        step.waitForFinish();
+
+        step.up(0.23, 0.2, Action::Step::Direction::Forward);
+        step.waitForFinish();
+
+        chassis.setTargetPostureInBody({ 0, 0, -90 });
+        chassis.waitTrajectoryFinish();
+
+        step.down(0.2, 0.2, Action::Step::Direction::Forward);
+        step.waitForFinish();
+    }
 
     for (;;)
     {
