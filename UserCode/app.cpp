@@ -8,7 +8,7 @@
 #include "cmsis_os2.h"
 #include "device.hpp"
 #include "tim.h"
-#include "chassis/actions/step.hpp"
+#include "chassis/actions/Step.hpp"
 
 void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
@@ -30,11 +30,11 @@ void AutoTask(void* argument)
 {
     constexpr float distance2step = 0.375f; // 前端离台阶的距离 m
 
-    auto& upstep = Action::UpStep::inst();
+    auto& step = Action::Step::inst();
 
-    upstep.start(distance2step, 0.2, Action::UpStep::Direction::Front, false);
+    step.up(distance2step, 0.2, Action::Step::Direction::Forward, false);
 
-    upstep.waitForFinish();
+    step.waitForFinish();
 
     for (;;)
     {
