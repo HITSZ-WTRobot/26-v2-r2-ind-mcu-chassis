@@ -53,7 +53,7 @@ constexpr float GearRadius = GearRadiusMM * 1e-3f;
 // TODO: 将回程差纳入考虑
 
 constexpr float MaxSpeed       = 0.418; // unit: m/s
-constexpr float MaxOnloadAccel = 1.0;   // unit: m/s^2， 对车先好一点
+constexpr float MaxOnloadAccel = 3.0;   // unit: m/s^2， 对车先好一点
 // constexpr float MaxOnloadAccel = 5.5;   // unit: m/s^2
 constexpr float MaxNoloadAccel = 50; // unit: m/s^2
 
@@ -77,7 +77,7 @@ namespace Position
 {
 using Lift::LiftMin;
 
-constexpr float Normal = 0.02f;   // 行进默认保持高度 unit m
+constexpr float Normal = 0.010f;  // 行进默认保持高度 unit m
 constexpr float UpStep = 0.22f;   // 比台阶略高 unit m
 constexpr float UpR1   = LiftMax; // 比 R1 的台阶高，在最后阶段 unit m
 } // namespace Position
@@ -153,9 +153,9 @@ constexpr chassis::controller::Master::Config masterCfg = {
         // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
         // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
         // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
-        .x = { .max_spd = 0.5f, .max_acc = 0.6f, .max_jerk = 20.0f },
-        .y   = { .max_spd = 0.5f, .max_acc = 0.6f, .max_jerk = 20.0f },
-        .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
+        .x = { .max_spd = 8.0f, .max_acc = 1.5f, .max_jerk = 80.0f },
+        .y   = { .max_spd = 8.0f, .max_acc = 1.5f, .max_jerk = 80.0f },
+        .yaw = { .max_spd = 1080, .max_acc = 360, .max_jerk = 1080 }
     }
 };
 
