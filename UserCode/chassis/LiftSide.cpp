@@ -66,7 +66,7 @@ LiftSide::LiftSide(motors::IMotor* motor) :
  */
 float LiftSide::to(const float position)
 {
-    if (!traj_.setTarget(toMotorAngle(position)))
+    if (!traj_.setTarget(toMotorAngle(position), trajectory::LinkMode::PreviousCurve))
         return -1;
     return traj_.getTotalTime();
 }
@@ -79,7 +79,9 @@ float LiftSide::to(const float position)
  */
 float LiftSide::to(const float position, const Limit& limit)
 {
-    if (!traj_.setTarget(toMotorAngle(position), toMotorLimit(limit)))
+    if (!traj_.setTarget(toMotorAngle(position),
+                         trajectory::LinkMode::PreviousCurve,
+                         toMotorLimit(limit)))
         return -1;
     return traj_.getTotalTime();
 }
