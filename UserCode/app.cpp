@@ -5,10 +5,12 @@
  */
 #include "can.h"
 #include "chassis/chassis.hpp"
+#include "chassis/actions/Step.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
+#include "protocol.hpp"
+#include "system.hpp"
 #include "tim.h"
-#include "chassis/actions/Step.hpp"
 
 void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
@@ -54,6 +56,8 @@ extern "C" void Init(void* argument)
 
     Chassis::init();
 
+    Protocol::init();
+
     // 检查看门狗是否已满
     if (service::Watchdog::isFull())
         Error_Handler();
@@ -73,8 +77,9 @@ extern "C" void Init(void* argument)
     // 等待更新
     osDelay(2000);
 
-    // 初始化机构
-    Chassis::enable();
+    // 先完成底盘校准
+    if (!Chassis::motion->enable())
+        Error_Handler();
 
     osDelay(1000);
 
@@ -82,6 +87,14 @@ extern "C" void Init(void* argument)
 
     while (!Chassis::motion->isReady())
         osDelay(1);
+
+    // TODO: 向上位机返回校准结果
+
+    while (!System::Init::inited())
+        osDelay(1);
+
+    // 初始化控制器
+    Chassis::enable();
 
     // 等待启动
     osDelay(1000);

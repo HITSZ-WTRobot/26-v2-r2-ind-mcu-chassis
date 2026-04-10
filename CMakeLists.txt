@@ -93,11 +93,14 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         # Add user defined libraries
         traits
         utils
+        protocol::UartRxSync
+        libs::RingBuffer
+        libs::CRC
         SensorGyro::HWT101CT
         SensorOPS::ActionOPS
         MotorDrivers::DJI
         MotorDrivers::DM
         Chassis::ControllerMaster
-        ChassisLocalization::JustEncoder
+        ChassisLocalization::EKF
         Trajectory::MotorTrajectory
 )

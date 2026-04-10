@@ -13,6 +13,7 @@
 namespace config::uart
 {
 constexpr auto SensorGyroYaw = &huart2;
+constexpr auto UpperHost     = &huart3;
 }
 
 namespace Device

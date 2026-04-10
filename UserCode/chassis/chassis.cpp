@@ -4,59 +4,87 @@
  * @date    2026-03-02
  */
 #include "chassis.hpp"
-#include "system.hpp"
-#include "device.hpp"
-#include "JustEncoder.hpp"
 #include "Config.hpp"
+#include "LocEKF.hpp"
+#include "device.hpp"
+#include "system.hpp"
 
 namespace Chassis
 {
+namespace
+{
+constexpr float sq(const float value)
+{
+    return value * value;
+}
+
+chassis::loc::LocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
+{
+    const float init_gyro_yaw = Device::Sensor::gyro_yaw->getYaw();
+
+    return {
+        .x_init = { .x          = init_posture.x,
+                    .y          = init_posture.y,
+                    .yaw        = init_gyro_yaw,
+                    .yaw_offset = init_posture.yaw - init_gyro_yaw },
+        .covP   = { .xy = sq(0.1f), .yaw = sq(0.1f), .yaw_offset = sq(10.0f) },
+        .noiseQ = { .xy = sq(0.05f), .yaw = sq(0.5f), .yaw_offset = sq(0.01f) },
+        .noiseR = {
+            .gyro  = { .yaw = sq(0.1f) },
+            .lidar = { .xy = sq(0.01f), .yaw = sq(0.5f) },
+        },
+    };
+}
+} // namespace
+
 
 void update_100Hz()
 {
     motion->update_100Hz();
-    ctrl->profileUpdate(0.01);
+
+    if (ctrl != nullptr)
+        ctrl->profileUpdate(0.01f);
 }
 
 void update_1kHz()
 {
     static uint32_t prescaler_500Hz = 0;
 
-    loc->update(0.001);
-    prescaler_500Hz++;
-    if (prescaler_500Hz >= 2)
+    if (loc != nullptr)
+        loc->update();
+
+    if (ctrl != nullptr)
     {
-        ctrl->errorUpdate();
-        prescaler_500Hz = 0;
+        prescaler_500Hz++;
+        if (prescaler_500Hz >= 2)
+        {
+            ctrl->errorUpdate();
+            prescaler_500Hz = 0;
+        }
+        ctrl->controllerUpdate();
     }
-    ctrl->controllerUpdate();
 
     motion->update_1kHz();
 }
 
 void init()
 {
-    using controllers::MotorVelController;
-
     motion = new IndLiftMecanum4();
+}
 
-    loc = new chassis::loc::JustEncoder(*motion);
+void initLocCtrl(const chassis::Posture& init_posture)
+{
+    if (loc != nullptr || ctrl != nullptr)
+        return;
 
-    // slave mode
-    // ctrl = new ChassisController(*motion,
-    //                              *loc,
-    //                              { {
-    //                                      .vx = { .Kp = 5, .Kd = 3.0f, .abs_output_max = 0.1f },
-    //                                      .vy = { .Kp = 5, .Kd = 3.0f, .abs_output_max = 0.1f },
-    //                                      .wz = { .Kp = 30, .Kd = 4.0f, .abs_output_max = 25.0f },
-    //                              } });
-
+    loc = new chassis::loc::LocEKF(
+            *motion, make_loc_ekf_config(init_posture), *Device::Sensor::gyro_yaw, 1);
     ctrl = new ChassisController(*motion, *loc, Config::Control::masterCfg);
 }
 
 void enable()
 {
-    if (!ctrl->enable())
+    if (ctrl == nullptr || !ctrl->enable())
         Error_Handler();
 }
 
@@ -65,5 +93,5 @@ void enable()
 // 系统初始化钩子
 void System::Init::initPostureReceive()
 {
-    // nothing to do.
+    Chassis::initLocCtrl(posture);
 }
