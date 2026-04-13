@@ -5,6 +5,7 @@
  */
 #include "device.hpp"
 #include "can.h"
+#include "cmsis_os2.h"
 
 #ifndef M_PI
 #    define M_PI 3.14159265358979323846f

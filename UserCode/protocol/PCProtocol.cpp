@@ -75,10 +75,10 @@ void PCProtocol::cmdHandler(Frame& frame)
         break;
     case 0x21: // 雷达定位点
     {
-        constexpr auto to_pos =
-                [](const int16_t value) { return static_cast<float>(value) / 2000.0f; };
-        constexpr auto to_angle =
-                [](const int16_t value) { return static_cast<float>(value) / 100.0f; };
+        constexpr auto to_pos = [](const int16_t value)
+        { return static_cast<float>(value) / 2000.0f; };
+        constexpr auto to_angle = [](const int16_t value)
+        { return static_cast<float>(value) / 100.0f; };
 
         const auto& data = frame.data;
 
@@ -93,9 +93,10 @@ void PCProtocol::cmdHandler(Frame& frame)
 
         debug_.lidar.last_received_posture_timestamp = lidar_self_time;
         debug_.lidar.last_received_timestamp         = HAL_GetTick();
-        debug_.lidar.last_received_delay =
-                static_cast<int32_t>(debug_.lidar.last_received_timestamp) -
-                static_cast<int32_t>(lidar_self_time);
+
+        debug_.lidar.last_received_delay = static_cast<int32_t>(
+                                                   debug_.lidar.last_received_timestamp) -
+                                           static_cast<int32_t>(lidar_self_time);
 
         if (Chassis::motion == nullptr || !Chassis::motion->isReady())
             return;
@@ -145,6 +146,8 @@ void init()
 {
     if (pc_rx != nullptr)
         return;
+
+    assert(config::uart::UpperHost->Init.BaudRate == 230400);
 
     pc_rx = new PCProtocol(config::uart::UpperHost);
     UartRxSync_RegisterCallback(pc_rx, config::uart::UpperHost);

@@ -4,7 +4,6 @@
  * @date    2026-03-02
  */
 #pragma once
-#include "ActionOPS.hpp"
 #include "HWT101CT.hpp"
 #include "dji.hpp"
 #include "dm.hpp"
@@ -14,7 +13,7 @@ namespace config::uart
 {
 constexpr auto SensorGyroYaw = &huart2;
 constexpr auto UpperHost     = &huart3;
-}
+} // namespace config::uart
 
 namespace Device
 {

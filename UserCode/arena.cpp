@@ -8,7 +8,7 @@
 
 // 1. 定义一个足够大的静态分配器（例如 64KB）
 // 放在静态区 (.bss)
-static StaticArena<5 * 1024> g_boot_arena;
+static StaticArena<72 * 1024> g_boot_arena;
 
 // 2. 覆盖全局 operator new
 void* operator new(const std::size_t size)

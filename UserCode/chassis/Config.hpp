@@ -65,7 +65,7 @@ constexpr Limit DefaultLimit = OnloadLimit;
 
 constexpr float CalibrationSpeed = 0.02f; // 校准归零速度 m/s, 该速度无问题，无需增大
 
-constexpr float    StalledTorqueMax = 1.5f;                    // 校准时最大扭矩
+constexpr float    StalledTorqueMax = 2.2f;                    // 校准时最大扭矩
 constexpr float    StalledTorqueMin = 0.95 * StalledTorqueMax; // 堵转时最小扭矩
 constexpr float    StalledSpeedMax  = 0.1f * CalibrationSpeed; // 堵转时最大速度
 constexpr uint32_t StalledTicks     = 500;                     // 堵转最小保持时间 (ms)
