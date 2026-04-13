@@ -1,0 +1,22 @@
+format_version = 1
+
+[project]
+name = "26-v2-r2-ind-mcu-chassis"
+ioc_file = "26-v2-r2-ind-mcu-chassis.ioc"
+
+[dependencies]
+packages = [
+    "Chassis::ControllerMaster",
+    "ChassisLocalization::EKF",
+    "MotorDrivers::Controller",
+    "MotorDrivers::DJI",
+    "MotorDrivers::DM",
+    "SensorGyro::HWT101CT",
+    "Trajectory::MotorTrajectory",
+    "libs::CRC",
+    "libs::RingBuffer",
+    "protocol::UartRxSync",
+    "services::Watchdog",
+    "traits",
+    "utils",
+]

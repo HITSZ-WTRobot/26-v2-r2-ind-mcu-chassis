@@ -72,35 +72,13 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
-# Add dependence from library
-# ===================== DEPENDENCIES =====================
-# e.g.
-#add_subdirectory(library/motor_drivers/UserCode)
-add_subdirectory(Modules/BasicComponents)
-add_subdirectory(Modules/Sensors/gyro/HWT101CT)
-add_subdirectory(Modules/Sensors/ops/ActionOPS)
-add_subdirectory(Modules/MotorDrivers)
-add_subdirectory(Modules/ChassisController)
-add_subdirectory(Modules/VelocityProfile)
-add_subdirectory(Modules/TrajectoryControl)
+include(cmake/wtr_modules.cmake)
 
-# =======================================================
+wtr_link_packages(${CMAKE_PROJECT_NAME})
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
         stm32cubemx
 
         # Add user defined libraries
-        traits
-        utils
-        protocol::UartRxSync
-        libs::RingBuffer
-        libs::CRC
-        SensorGyro::HWT101CT
-        SensorOPS::ActionOPS
-        MotorDrivers::DJI
-        MotorDrivers::DM
-        Chassis::ControllerMaster
-        ChassisLocalization::EKF
-        Trajectory::MotorTrajectory
 )
