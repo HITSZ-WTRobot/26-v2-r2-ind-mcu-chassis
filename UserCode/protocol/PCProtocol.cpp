@@ -9,6 +9,7 @@
 #include "cmsis_os2.h"
 #include "device.hpp"
 #include "system.hpp"
+#include "chassis/actions/Step.hpp"
 
 #include <cstring>
 
@@ -46,7 +47,7 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
             [&](Frame& frame)
             {
                 frame.rx_timestamp = HAL_GetTick();
-                frame.cmd          = data[0];
+                frame.cmd          = static_cast<PCCommand>(data[0]);
                 frame.tx_timestamp = read_u32(&data[13]);
                 frame.crc16        = crc_in_data;
                 std::memcpy(frame.data.data(), data + 1, frame.data.size());
@@ -62,26 +63,24 @@ void PCProtocol::cmdHandler(Frame& frame)
     if (msg_cnt_ < 50)
         return;
 
+    constexpr auto to_pos = [](const int16_t value) { return static_cast<float>(value) / 2000.0f; };
+    constexpr auto to_vel = [](const int16_t value) { return static_cast<float>(value) / 2000.0f; };
+    constexpr auto to_angle = [](const int16_t v) { return static_cast<float>(v) / 100.0f; };
+
+    const auto& data = frame.data;
+
     switch (frame.cmd)
     {
-    case 0x01: // ping / 对时保活
+    case PCCommand::Ping:
         break;
-    case 0x10: // 停止底盘
-    case 0x11: // 重设坐标系
+    case PCCommand::StopChassis:
         if (Chassis::ctrl != nullptr)
             Chassis::ctrl->stop();
         break;
-    case 0x12: // push 底盘轨迹点
+    case PCCommand::SlavePushChassisTrajectory:
         break;
-    case 0x21: // 雷达定位点
+    case PCCommand::LidarPosture:
     {
-        constexpr auto to_pos = [](const int16_t value)
-        { return static_cast<float>(value) / 2000.0f; };
-        constexpr auto to_angle = [](const int16_t value)
-        { return static_cast<float>(value) / 100.0f; };
-
-        const auto& data = frame.data;
-
         const chassis::Posture pos = { .x   = to_pos(read_i16(&data[0])),
                                        .y   = to_pos(read_i16(&data[2])),
                                        .yaw = to_angle(read_i16(&data[4])) };
@@ -114,6 +113,47 @@ void PCProtocol::cmdHandler(Frame& frame)
 
         if (Chassis::loc != nullptr)
             Chassis::loc->updateLidar(pos, lidar_self_time);
+        break;
+    }
+    case PCCommand::StepUp:
+    {
+        const float             startDistance = to_pos(read_i16(&data[0]));
+        const float             endDistance   = to_pos(read_i16(&data[2]));
+        const uint16_t          dir           = read_u16(&data[4]);
+        const bool              willTake      = static_cast<bool>(read_u16(&data[6]));
+        Action::Step::Direction direction;
+        if (dir == 0)
+            direction = Action::Step::Direction::Forward;
+        else if (dir == 1)
+            direction = Action::Step::Direction::Backward;
+        else
+            break;
+        Action::Step::inst().up(startDistance, endDistance, direction, willTake);
+        break;
+    }
+    case PCCommand::StepUpResume:
+    {
+        auto& step = Action::Step::inst();
+        if (step.isWaitingTake())
+        {
+            step.resume_up();
+        }
+        break;
+    }
+    case PCCommand::StepDown:
+    {
+        const float             startDistance = to_pos(read_i16(&data[0]));
+        const float             endDistance   = to_pos(read_i16(&data[2]));
+        const uint16_t          dir           = read_u16(&data[4]);
+        const bool              shouldReset   = static_cast<bool>(read_u16(&data[6]));
+        Action::Step::Direction direction;
+        if (dir == 0)
+            direction = Action::Step::Direction::Forward;
+        else if (dir == 1)
+            direction = Action::Step::Direction::Backward;
+        else
+            break;
+        Action::Step::inst().down(startDistance, endDistance, direction, shouldReset);
         break;
     }
     default:

@@ -131,6 +131,7 @@ private:
 
     Direction direction_ = Direction::Forward;
 
+    // 统一表示车体中心到台阶的距离。
     float startDistance2Step_ = 0;
     float endDistance2Step_   = 0;
 

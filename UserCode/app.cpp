@@ -28,22 +28,6 @@ void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
     Chassis::update_100Hz();
 }
 
-void AutoTask(void* argument)
-{
-    constexpr float distance2step = 0.375f; // 前端离台阶的距离 m
-
-    auto& step = Action::Step::inst();
-
-    step.up(distance2step, 0.2, Action::Step::Direction::Forward, false);
-
-    step.waitForFinish();
-
-    for (;;)
-    {
-        osDelay(1000);
-    }
-}
-
 /**
  * @brief Function implementing the initTask thread.
  * @param argument: Not used
@@ -100,12 +84,11 @@ extern "C" void Init(void* argument)
     osDelay(1000);
 
     // 创建其他 tasks
-    constexpr osThreadAttr_t autoTaskAttr{
-        .name       = "auto-task",
-        .stack_size = 1024 * 4,
-        .priority   = osPriorityNormal,
-    };
-    osThreadNew(AutoTask, nullptr, &autoTaskAttr);
+    // constexpr osThreadAttr_t autoTaskAttr{
+    //     .name       = "auto-task",
+    //     .stack_size = 1024 * 4,
+    //     .priority   = osPriorityNormal,
+    // };
 
     /* 初始化完成后退出线程 */
     osThreadExit();

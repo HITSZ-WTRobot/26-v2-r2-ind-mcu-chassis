@@ -105,35 +105,27 @@ constexpr float wheelDistanceY = 406.78f; // 左右轮距 unit mm
  */
 namespace ChassisInfo
 {
-constexpr float AuxiliaryWheelRadiusMM = 20.0f; // 辅助轮半径
-
-// 以下位置为在车体参考系下各轮子位置
-constexpr float AuxWheelFrontXMM    = 380.0f;  // 前辅助轮中心相对于车体中心
-constexpr float AuxWheelRearXMM     = -380.0f; // 后辅助轮中心相对于车体中心
-constexpr float AuxWheelMidFrontXMM = 80.0f;   // 中间前侧辅助轮中心相对于车体中心
-constexpr float AuxWheelMidRearXMM  = -80.0f;  // 中间后侧辅助轮中心相对于车体中心
+constexpr float AuxiliaryWheelRadiusMM  = 20.0f;  // 辅助轮半径
+constexpr float AuxOuterWheelDistanceMM = 760.0f; // 外侧两个辅助轮中心距
+constexpr float AuxInnerWheelDistanceMM = 160.0f; // 内侧两个辅助轮中心距
+constexpr float ChassisDistanceXMM      = 800.0f; // 车体长度
 
 // 换算后用于使用
+constexpr float AuxWheelRadius = 1e-3f * AuxiliaryWheelRadiusMM; // 辅助轮半径
 
-constexpr float AuxiliaryWheelRadius = 1e-3f * AuxiliaryWheelRadiusMM; // 辅助轮半径
+// 外侧辅助轮中心相对于车体中心
+constexpr float AbsAuxOuterWheelX = AuxOuterWheelDistanceMM * 0.5f * 1e-3f;
+// 内侧辅助轮中心相对于车体中心
+constexpr float AbsAuxInnerWheelX = AuxInnerWheelDistanceMM * 0.5f * 1e-3f;
 
-constexpr float AuxWheelFrontX    = 1e-3f * AuxWheelFrontXMM;    // 前辅助轮中心相对于车体中心
-constexpr float AuxWheelRearX     = 1e-3f * AuxWheelRearXMM;     // 后辅助轮中心相对于车体中心
-constexpr float AuxWheelMidFrontX = 1e-3f * AuxWheelMidFrontXMM; // 中间前侧辅助轮中心相对于车体中心
-constexpr float AuxWheelMidRearX  = 1e-3f * AuxWheelMidRearXMM;  // 中间后侧辅助轮中心相对于车体中心
+constexpr float AbsWheelX   = Motion::wheelDistanceX * 0.5f * 1e-3f; // 主动轮距中心的距离
+constexpr float WheelRadius = Motion::wheelRadius * 1e-3f;           // 主动轮半径
 
-constexpr float WheelFrontX = Motion::wheelDistanceX * 0.5f * 1e-3f;
-constexpr float WheelRearX  = -WheelFrontX;
-constexpr float WheelRadius = Motion::wheelRadius * 1e-3f;
+constexpr float AbsWheelOuterEdgeX = AbsWheelX + WheelRadius; // 主动轮外边缘位置
+constexpr float AbsWheelInnerEdgeX = AbsWheelX - WheelRadius; // 主动轮内边缘位置
 
-constexpr float WheelFrontEdgeFront = WheelFrontX + WheelRadius; // 前主动轮前边缘
-constexpr float WheelRearEdgeFront  = WheelRearX + WheelRadius;  // 后主动轮前边缘
-constexpr float WheelFrontEdgeRear  = WheelFrontX - WheelRadius; // 前主动轮后边缘
-constexpr float WheelRearEdgeRear   = WheelRearX - WheelRadius;  // 后主动轮后边缘
-
-constexpr float ChassisFrontEdge = AuxWheelFrontX + AuxiliaryWheelRadius; // 车体前边缘
-constexpr float ChassisRearEdge  = AuxWheelRearX - AuxiliaryWheelRadius;  // 车体后边缘
-constexpr float ChassisDistanceX = ChassisFrontEdge - ChassisRearEdge;
+constexpr float ChassisDistanceX     = ChassisDistanceXMM * 1e-3f;
+constexpr float HalfChassisDistanceX = ChassisDistanceX / 2.0f;
 
 constexpr float SafeDistance = 0.01; // 1cm 安全距离（底盘方向）
 } // namespace ChassisInfo
