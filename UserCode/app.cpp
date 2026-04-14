@@ -8,6 +8,7 @@
 #include "chassis/actions/Step.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
+#include "grip.hpp"
 #include "protocol.hpp"
 #include "system.hpp"
 #include "tim.h"
@@ -17,6 +18,8 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
     Chassis::update_1kHz();
 
     Device::update_1kHz();
+
+    Gripping::update_1kHz();
 
     service::Watchdog::EatAll();
 }
@@ -41,6 +44,8 @@ extern "C" void Init(void* argument)
     Chassis::init();
 
     Protocol::init();
+
+    Gripping::init();
 
     // 检查看门狗是否已满
     if (service::Watchdog::isFull())
@@ -68,6 +73,7 @@ extern "C" void Init(void* argument)
     osDelay(1000);
 
     Chassis::motion->startCalibration();
+    Gripping::grip->locked_all_init();  // 电机堵转到限位处进行初始化
 
     while (!Chassis::motion->isReady())
         osDelay(1);
@@ -79,6 +85,7 @@ extern "C" void Init(void* argument)
 
     // 初始化控制器
     Chassis::enable();
+    Gripping::enable();
 
     // 等待启动
     osDelay(1000);
