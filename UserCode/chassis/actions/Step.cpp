@@ -16,19 +16,6 @@ constexpr uint32_t FlagResume = 1 << 1;
 using namespace Chassis::Config::ChassisInfo;
 using namespace Chassis::Config::Lift;
 
-constexpr float 前边缘到前轮前边缘 = ChassisFrontEdge - WheelFrontEdgeFront;
-constexpr float 前边缘到后轮前边缘 = ChassisFrontEdge - WheelRearEdgeFront;
-constexpr float 前边缘到前轮后边缘 = ChassisFrontEdge - WheelFrontEdgeRear;
-constexpr float 前边缘到后轮后边缘 = ChassisFrontEdge - WheelRearEdgeRear;
-
-constexpr float 前边缘到前辅助轮后边缘 = 2 * AuxiliaryWheelRadius;
-constexpr float 前边缘到后辅助轮前边缘 = ChassisFrontEdge - AuxWheelRearX - AuxiliaryWheelRadius;
-
-constexpr float 前边缘到中前辅助轮前边缘 = ChassisFrontEdge - AuxWheelMidFrontX -
-                                           AuxiliaryWheelRadius;
-constexpr float 前边缘到中后辅助轮后边缘 = ChassisFrontEdge - AuxWheelMidRearX +
-                                           AuxiliaryWheelRadius;
-
 constexpr Chassis::Config::Limit 放腿速度{ MaxSpeed, MaxOnloadAccel, MaxOnloadAccel * 50 };
 
 using chassis::controller::Master;
@@ -74,8 +61,8 @@ void Step::prepare(const float     startDistance2Step,
 
 /**
  * 上台阶
- * @param startDistance2Step 开始时车体前边缘距离台阶的距离 unit: m
- * @param endDistance2Step 结束时车体边缘距离台阶距离 unit: m
+ * @param startDistance2Step 开始时车体中心距离台阶的距离 unit: m
+ * @param endDistance2Step 结束时车体中心距离台阶的距离 unit: m
  * @param dir 上台阶方向
  * @param willTake 中间是否会停下来取卷轴
  *
@@ -97,16 +84,19 @@ void Step::up(const float     startDistance2Step,
 
     front_->to(Position::UpStep, OnloadLimit);
     rear_->to(Position::UpStep, OnloadLimit);
-    Chassis::ctrl->setTargetPostureInWorld(relativePosture(startDistance2Step_ - SafeDistance));
+
+    // 第一个坐标点为 车体前边缘贴着台阶
+    Chassis::ctrl->setTargetPostureInWorld(
+            relativePosture(startDistance2Step_ - HalfChassisDistanceX - SafeDistance));
 
     osThreadFlagsClear(FlagResume);
     osThreadFlagsSet(task_, FlagStart);
 }
 /**
  * 下台阶
- * @param startDistance2Step 开始时车体前边缘距离台阶的距离 unit: m
- * @param endDistance2Step 结束时车体边缘距离台阶距离 unit: m
- * @param dir 上台阶方向
+ * @param startDistance2Step 开始时车体中心距离台阶的距离 unit: m
+ * @param endDistance2Step 结束时车体中心距离台阶的距离 unit: m
+ * @param dir 下台阶方向
  * @param shouldReset 最后是否复位底盘高度
  *
  */
@@ -125,8 +115,9 @@ void Step::down(const float     startDistance2Step,
     front_state_   = LiftState::Down1_等待放下;
     rear_state_    = LiftState::Down1_等待放下;
 
+    // 第一个坐标点为中间外侧辅助轮到达台阶边缘
     Chassis::ctrl->setTargetPostureInWorld(
-            relativePosture(startDistance2Step_ + 前边缘到中前辅助轮前边缘 - 3 * SafeDistance));
+            relativePosture(startDistance2Step_ - AbsAuxInnerWheelX - 3 * SafeDistance));
 
     osThreadFlagsSet(task_, FlagStart);
 }
@@ -152,7 +143,8 @@ void Step::update()
             // TODO: 不同阶段底盘的速度限制应当不同
             // TODO: 如果 will_take_ = false, 则该目标值设置应当带末速度
             Chassis::ctrl->setTargetPostureInWorld(
-                    relativePosture(startDistance2Step_ + 前边缘到前轮前边缘 - SafeDistance),
+                    // 使前主动轮外边缘贴着台阶
+                    relativePosture(startDistance2Step_ - AbsWheelOuterEdgeX - SafeDistance),
                     Master::TrajectoryLinkMode::PreviousCurve);
 
             chassis_state_ = ChassisState::Up2_前进将前辅助轮悬于台阶上方_等待前轮收起;
@@ -165,7 +157,8 @@ void Step::update()
         if (front_state_ == LiftState::Up4_等待放下)
         {
             Chassis::ctrl->setTargetPostureInWorld(
-                    relativePosture(startDistance2Step_ + 前边缘到后轮前边缘 - SafeDistance),
+                    // 使后主动轮内边缘贴着台阶
+                    relativePosture(startDistance2Step_ + AbsWheelInnerEdgeX - SafeDistance),
                     Master::TrajectoryLinkMode::PreviousCurve);
 
             chassis_state_ = ChassisState::Up3_前进将中辅助轮悬于台阶上方_等待前轮放下_等待后轮收起;
@@ -174,9 +167,9 @@ void Step::update()
     case ChassisState::Up3_前进将中辅助轮悬于台阶上方_等待前轮放下_等待后轮收起:
         if (front_state_ == LiftState::Done && rear_state_ == LiftState::Up4_等待放下)
         {
-            Chassis::ctrl->setTargetPostureInWorld(
-                    relativePosture(startDistance2Step_ + endDistance2Step_ + ChassisDistanceX),
-                    Master::TrajectoryLinkMode::PreviousCurve);
+            Chassis::ctrl->setTargetPostureInWorld(relativePosture(startDistance2Step_ +
+                                                                   endDistance2Step_),
+                                                   Master::TrajectoryLinkMode::PreviousCurve);
 
             chassis_state_ = ChassisState::Up4_前进使底盘完全登上台阶;
         }
@@ -190,9 +183,8 @@ void Step::update()
     case ChassisState::Down1_前进使中前辅助轮到达台阶边缘_等待前轮放下:
         if (front_state_ == LiftState::Down3_等待回收到正常位置)
         {
-            Chassis::ctrl->setTargetPostureInWorld( //
-                    relativePosture(startDistance2Step_ + 前边缘到后辅助轮前边缘 -
-                                    3 * SafeDistance),
+            Chassis::ctrl->setTargetPostureInWorld( // 外侧（后）辅助轮到达台阶边缘
+                    relativePosture(startDistance2Step_ + AbsAuxOuterWheelX - 3 * SafeDistance),
                     Master::TrajectoryLinkMode::PreviousCurve);
 
             chassis_state_ = ChassisState::Down2_前进使后辅助轮到达台阶边缘_等待后轮放下;
@@ -201,9 +193,9 @@ void Step::update()
     case ChassisState::Down2_前进使后辅助轮到达台阶边缘_等待后轮放下:
         if (rear_state_ == LiftState::Down3_等待回收到正常位置)
         {
-            Chassis::ctrl->setTargetPostureInWorld(
-                    relativePosture(startDistance2Step_ + endDistance2Step_ + ChassisDistanceX),
-                    Master::TrajectoryLinkMode::PreviousCurve);
+            Chassis::ctrl->setTargetPostureInWorld(relativePosture(startDistance2Step_ +
+                                                                   endDistance2Step_),
+                                                   Master::TrajectoryLinkMode::PreviousCurve);
 
             chassis_state_ = ChassisState::Down3_前进使底盘完全走下台阶;
         }
@@ -232,7 +224,8 @@ void Step::update()
         if (will_take_)
             break;
         // TODO: 这里不应该这样扩大安全距离
-        if (currentRelativeX() > startDistance2Step_ + 前边缘到前辅助轮后边缘 + 3 * SafeDistance)
+        if (currentRelativeX() >
+            startDistance2Step_ - AbsAuxOuterWheelX + AuxWheelRadius + 3 * SafeDistance)
         {
             front_->to(LiftMin, NoloadLimit);
             front_->setGrounding(false); // 离地
@@ -245,7 +238,7 @@ void Step::update()
         break;
     case LiftState::Up4_等待放下:
         // 前轮已经完全登上
-        if (currentRelativeX() > startDistance2Step_ + 前边缘到前轮后边缘 + 3 * SafeDistance)
+        if (currentRelativeX() > startDistance2Step_ - AbsWheelInnerEdgeX + 3 * SafeDistance)
         {
             front_->to(Position::Normal, 放腿速度);
             front_state_ = LiftState::Up5_放下ing;
@@ -259,12 +252,12 @@ void Step::update()
         }
         break;
     case LiftState::Down1_等待放下:
-        if (currentRelativeX() > startDistance2Step_ + 前边缘到前轮前边缘)
+        if (currentRelativeX() > startDistance2Step_ - AbsWheelOuterEdgeX)
         {
             // 离地判定
             front_->setGrounding(false);
         }
-        if (currentRelativeX() > startDistance2Step_ + 前边缘到前轮后边缘 + SafeDistance)
+        if (currentRelativeX() > startDistance2Step_ - AbsWheelInnerEdgeX + SafeDistance)
         {
             front_->to(Position::UpStep, NoloadLimit);
             front_state_ = LiftState::Down2_放下ing;
@@ -280,7 +273,7 @@ void Step::update()
     case LiftState::Down3_等待回收到正常位置:
         if (should_reset_)
         {
-            if (currentRelativeX() > startDistance2Step_ + ChassisDistanceX + SafeDistance)
+            if (currentRelativeX() > startDistance2Step_ + HalfChassisDistanceX + SafeDistance)
             {
                 front_->to(Position::Normal, OnloadLimit);
                 front_state_ = LiftState::Down4_回收ing;
@@ -318,7 +311,8 @@ void Step::update()
         if (will_take_)
             break;
         // 中后辅助轮已登上台阶
-        if (currentRelativeX() > startDistance2Step_ + 前边缘到中后辅助轮后边缘 + 3 * SafeDistance)
+        if (currentRelativeX() >
+            startDistance2Step_ + AbsAuxInnerWheelX + AuxWheelRadius + 3 * SafeDistance)
         {
             rear_->to(LiftMin, NoloadLimit);
             rear_->setGrounding(false);
@@ -331,7 +325,7 @@ void Step::update()
         break;
     case LiftState::Up4_等待放下:
         // 后轮已经完全登上
-        if (currentRelativeX() > startDistance2Step_ + 前边缘到后轮后边缘 + 3 * SafeDistance)
+        if (currentRelativeX() > startDistance2Step_ + AbsWheelOuterEdgeX + 3 * SafeDistance)
         {
             rear_->to(Position::Normal, 放腿速度);
             rear_state_ = LiftState::Up5_放下ing;
@@ -345,12 +339,12 @@ void Step::update()
         }
         break;
     case LiftState::Down1_等待放下:
-        if (currentRelativeX() > startDistance2Step_ + 前边缘到后轮前边缘)
+        if (currentRelativeX() > startDistance2Step_ + AbsWheelInnerEdgeX)
         {
             // 离地判定
             rear_->setGrounding(false);
         }
-        if (currentRelativeX() > startDistance2Step_ + 前边缘到后轮后边缘 + SafeDistance)
+        if (currentRelativeX() > startDistance2Step_ + AbsWheelOuterEdgeX + SafeDistance)
         {
             rear_->to(Position::UpStep, NoloadLimit);
             rear_state_ = LiftState::Down2_放下ing;
@@ -366,7 +360,7 @@ void Step::update()
     case LiftState::Down3_等待回收到正常位置:
         if (should_reset_)
         {
-            if (currentRelativeX() > startDistance2Step_ + ChassisDistanceX + SafeDistance)
+            if (currentRelativeX() > startDistance2Step_ + HalfChassisDistanceX + SafeDistance)
             {
                 rear_->to(Position::Normal, OnloadLimit);
                 rear_state_ = LiftState::Down4_回收ing;
