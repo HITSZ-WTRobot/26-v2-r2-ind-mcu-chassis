@@ -73,6 +73,7 @@ extern "C" void Init(void* argument)
     osDelay(1000);
 
     Chassis::motion->startCalibration();
+    
     Gripping::grip->locked_all_init();  // 电机堵转到限位处进行初始化
 
     while (!Chassis::motion->isReady())

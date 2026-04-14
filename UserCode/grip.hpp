@@ -54,6 +54,7 @@ public:
 private:
     osThreadId_t task_;
     GripState grip_state_ = GripState::NOSTART;
+    
 };
 
 }

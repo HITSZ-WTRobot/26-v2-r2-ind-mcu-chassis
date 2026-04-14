@@ -223,7 +223,7 @@ void Grip::locked_set_initPosition(motors::DJIMotor* motor, controllers::MotorVe
     locked_vel_controller->disable();        // 禁止用于堵转检测的速度控制器输出
 }
 // 任务函数
-void m_grip_test_Task(void *argument)
+void Grip::m_grip_test_Task(void *argument)
 {
 
     for(;;)
