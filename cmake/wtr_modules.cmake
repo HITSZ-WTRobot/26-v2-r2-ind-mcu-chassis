@@ -15,6 +15,13 @@ set(WTR_MANAGED_REPOSITORIES
 )
 
 set(WTR_MANAGED_PACKAGE_DIRS
+    Modules/BasicComponents/bsp/gpio_driver
+    Modules/BasicComponents/libs/utils/crc
+    Modules/BasicComponents/libs/utils/ring_buffer
+    Modules/BasicComponents/services/watchdog
+    Modules/BasicComponents/protocol/UartRxSync
+    Modules/BasicComponents/libs/traits
+    Modules/BasicComponents/utils
     Modules/BasicComponents/libs/control/mit_pd
     Modules/MotorDrivers/core
     Modules/BasicComponents/libs/control/pid_motor
@@ -23,24 +30,18 @@ set(WTR_MANAGED_PACKAGE_DIRS
     Modules/VelocityProfile/Core
     Modules/VelocityProfile/SCurve
     Modules/ChassisController/Controller/Master
-    Modules/BasicComponents/services/watchdog
-    Modules/BasicComponents/protocol/UartRxSync
-    Modules/BasicComponents/utils
     Modules/Sensors/gyro/HWT101CT
     Modules/BasicComponents/libs/math/LinearAlgebra
     Modules/BasicComponents/libs/math/EKF
     Modules/BasicComponents/libs/utils/deque
     Modules/BasicComponents/libs/concurrency
     Modules/ChassisController/Localization/EKF
-    Modules/BasicComponents/libs/utils/ring_buffer
     Modules/BasicComponents/bsp/can_driver
     Modules/MotorDrivers/motors/DJI
     Modules/BasicComponents/libs/utils/fixed_map
     Modules/MotorDrivers/motors/DM
     Modules/BasicComponents/libs/control/pid_pd
     Modules/TrajectoryControl/MotorTrajectory
-    Modules/BasicComponents/libs/utils/crc
-    Modules/BasicComponents/libs/traits
 )
 
 foreach(_wtr_package_dir IN LISTS WTR_MANAGED_PACKAGE_DIRS)
@@ -55,6 +56,13 @@ foreach(_wtr_package_dir IN LISTS WTR_MANAGED_PACKAGE_DIRS)
 endforeach()
 
 set(WTR_DIRECT_PACKAGE_TARGETS
+    bsp::GPIO_Driver
+    libs::CRC
+    libs::RingBuffer
+    protocol::UartRxSync
+    services::Watchdog
+    traits
+    utils
     Chassis::ControllerMaster
     ChassisLocalization::EKF
     MotorDrivers::Controller
@@ -62,15 +70,16 @@ set(WTR_DIRECT_PACKAGE_TARGETS
     MotorDrivers::DM
     SensorGyro::HWT101CT
     Trajectory::MotorTrajectory
-    libs::CRC
-    libs::RingBuffer
-    protocol::UartRxSync
-    services::Watchdog
-    traits
-    utils
 )
 
 set(WTR_RESOLVED_PACKAGE_TARGETS
+    bsp::GPIO_Driver
+    libs::CRC
+    libs::RingBuffer
+    services::Watchdog
+    protocol::UartRxSync
+    traits
+    utils
     libs::MIT_PD
     MotorDrivers::Core
     libs::PIDMotor
@@ -79,26 +88,20 @@ set(WTR_RESOLVED_PACKAGE_TARGETS
     VelocityProfile::Core
     VelocityProfile::SCurve
     Chassis::ControllerMaster
-    services::Watchdog
-    protocol::UartRxSync
-    utils
     SensorGyro::HWT101CT
     Math::LinearAlgebra
     Math::EKF
     libs::Deque
     libs::Concurrency
     ChassisLocalization::EKF
-    libs::RingBuffer
     bsp::CANDriver
     MotorDrivers::DJI
     libs::FixedMap
     MotorDrivers::DM
     libs::PID_PD
     Trajectory::MotorTrajectory
-    libs::CRC
-    traits
-    FreeRTOS
     stm32cubemx
+    FreeRTOS
 )
 
 add_library(wtr_project_dependencies INTERFACE)

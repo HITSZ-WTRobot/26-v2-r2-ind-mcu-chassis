@@ -13,6 +13,7 @@ packages = [
     "MotorDrivers::DM",
     "SensorGyro::HWT101CT",
     "Trajectory::MotorTrajectory",
+    "bsp::GPIO_Driver",
     "libs::CRC",
     "libs::RingBuffer",
     "protocol::UartRxSync",
