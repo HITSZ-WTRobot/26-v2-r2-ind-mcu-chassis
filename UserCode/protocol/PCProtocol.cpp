@@ -97,65 +97,33 @@ void PCProtocol::cmdHandler(Frame& frame)
                                                    debug_.lidar.last_received_timestamp) -
                                            static_cast<int32_t>(lidar_self_time);
 
-        if (Chassis::motion == nullptr || !Chassis::motion->isReady())
-            return;
-
-        if (!System::Init::postureReceived)
-        {
-            if (Device::Sensor::gyro_yaw == nullptr || !Device::Sensor::gyro_yaw->isConnected())
-                return;
-
-            System::Init::posture         = pos;
-            System::Init::postureReceived = true;
-            System::Init::initPostureReceive();
-            return;
-        }
-
-        if (Chassis::loc != nullptr)
-            Chassis::loc->updateLidar(pos, lidar_self_time);
+        // if (Chassis::motion == nullptr || !Chassis::motion->isReady())
+        //     return;
+        //
+        // if (!System::Init::postureReceived)
+        // {
+        //     if (Device::Sensor::gyro_yaw == nullptr || !Device::Sensor::gyro_yaw->isConnected())
+        //         return;
+        //
+        //     System::Init::posture         = pos;
+        //     System::Init::postureReceived = true;
+        //     System::Init::initPostureReceive();
+        //     return;
+        // }
+        //
+        // if (Chassis::loc != nullptr)
+        //     Chassis::loc->updateLidar(pos, lidar_self_time);
         break;
     }
     case PCCommand::StepUp:
-    {
-        const float             startDistance = to_pos(read_i16(&data[0]));
-        const float             endDistance   = to_pos(read_i16(&data[2]));
-        const uint16_t          dir           = read_u16(&data[4]);
-        const bool              willTake      = static_cast<bool>(read_u16(&data[6]));
-        Action::Step::Direction direction;
-        if (dir == 0)
-            direction = Action::Step::Direction::Forward;
-        else if (dir == 1)
-            direction = Action::Step::Direction::Backward;
-        else
-            break;
-        Action::Step::inst().up(startDistance, endDistance, direction, willTake);
+        // lift test mode: disable step-up action
         break;
-    }
     case PCCommand::StepUpResume:
-    {
-        auto& step = Action::Step::inst();
-        if (step.isWaitingTake())
-        {
-            step.resume_up();
-        }
+        // lift test mode: disable step-up resume action
         break;
-    }
     case PCCommand::StepDown:
-    {
-        const float             startDistance = to_pos(read_i16(&data[0]));
-        const float             endDistance   = to_pos(read_i16(&data[2]));
-        const uint16_t          dir           = read_u16(&data[4]);
-        const bool              shouldReset   = static_cast<bool>(read_u16(&data[6]));
-        Action::Step::Direction direction;
-        if (dir == 0)
-            direction = Action::Step::Direction::Forward;
-        else if (dir == 1)
-            direction = Action::Step::Direction::Backward;
-        else
-            break;
-        Action::Step::inst().down(startDistance, endDistance, direction, shouldReset);
+        // lift test mode: disable step-down action
         break;
-    }
     default:
         break;
     }

@@ -130,21 +130,21 @@ void motor_grip_init()
 
 void init()
 {
-    sensor_init();
+    // sensor_init();
 
     can_init();
 
     wheel_motor_init();
 
-    motor_lift_init();
+    // motor_lift_init();
 
     motor_grip_init();
 }
 
 bool isAllConnected()
 {
-    if (!Sensor::gyro_yaw->isConnected())
-        return false;
+    // if (!Sensor::gyro_yaw->isConnected())
+    //     return false;
 
     // motors
     for (const auto& m : Motor::wheel)
@@ -152,10 +152,10 @@ bool isAllConnected()
             return false;
 
     // lifts
-    if (!Motor::lift_front->isConnected())
-        return false;
-    if (!Motor::lift_rear->isConnected())
-        return false;
+    // if (!Motor::lift_front->isConnected())
+    //     return false;
+    // if (!Motor::lift_rear->isConnected())
+    //     return false;
 
     if (!Motor::grip_arm->isConnected())
         return false;
@@ -178,7 +178,7 @@ void update_1kHz()
     motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
     // motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
 
-    Motor::lift_front->ping();
-    Motor::lift_rear->ping();
+    // Motor::lift_front->ping();
+    // Motor::lift_rear->ping();
 }
 } // namespace Device

@@ -57,7 +57,7 @@ extern "C" void Init(void* argument)
 
     Chassis::init();
 
-    Protocol::init();
+    // Protocol::init();
 
     Grip::init();
 
@@ -95,8 +95,12 @@ extern "C" void Init(void* argument)
 
     // TODO: 向上位机返回校准结果
 
-    while (!System::Init::inited())
-        osDelay(1);
+    System::Init::posture         = {};
+    System::Init::postureReceived = true;
+    System::Init::initPostureReceive();
+
+    // while (!System::Init::inited())
+    //     osDelay(1);
 
     // 初始化控制器
     Chassis::enable();

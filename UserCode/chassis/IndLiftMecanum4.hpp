@@ -49,16 +49,16 @@ public:
 
     [[nodiscard]] bool isReady() const override
     {
-        for (auto& l : lift_)
-            if (!l.isCalibrated())
-                return false;
+        // for (auto& l : lift_)
+        //     if (!l.isCalibrated())
+        //         return false;
         return true;
     }
 
     void startCalibration()
     {
-        for (auto& l : lift_)
-            l.startCalibration();
+        // for (auto& l : lift_)
+        //     l.startCalibration();
     }
 
     Lift::LiftSide& lift(const LiftType type) { return lift_[static_cast<size_t>(type)]; }

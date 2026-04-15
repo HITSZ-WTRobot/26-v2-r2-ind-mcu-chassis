@@ -5,14 +5,14 @@
  */
 #pragma once
 #include "IndLiftMecanum4.hpp"
-#include "LocEKF.hpp"
+#include "JustEncoder.hpp"
 #include "Master.hpp"
 
 namespace Chassis
 {
 
 using ChassisController = chassis::controller::Master;
-using ChassisLoc        = chassis::loc::LocEKF;
+using ChassisLoc        = chassis::loc::JustEncoder;
 using ChassisMotion     = IndLiftMecanum4;
 
 inline ChassisLoc*        loc{};

@@ -66,15 +66,15 @@ bool IndLiftMecanum4::enable()
 
     for (auto& w : wheel_)
         enabled &= w.enable();
-    for (auto& l : lift_)
-        enabled &= l.enable();
+    // for (auto& l : lift_)
+    //     enabled &= l.enable();
 
     if (!enabled)
     {
         for (auto& w : wheel_)
             w.disable();
-        for (auto& l : lift_)
-            l.disable();
+        // for (auto& l : lift_)
+        //     l.disable();
     }
     enabled_ = enabled;
     return enabled;
@@ -84,8 +84,8 @@ void IndLiftMecanum4::disable()
 {
     for (auto& w : wheel_)
         w.disable();
-    for (auto& l : lift_)
-        l.disable();
+    // for (auto& l : lift_)
+    //     l.disable();
     enabled_ = false;
 }
 
@@ -97,50 +97,66 @@ void IndLiftMecanum4::update_1kHz()
     for (auto& wheel : wheel_)
         wheel.update();
 
-    ++prescaler_;
-    if (prescaler_ == 2)
-    {
-        prescaler_ = 0;
-        for (auto& l : lift_)
-            l.update_500Hz();
-    }
-
-    for (auto& l : lift_)
-        l.update_1kHz();
+    // ++prescaler_;
+    // if (prescaler_ == 2)
+    // {
+    //     prescaler_ = 0;
+    //     for (auto& l : lift_)
+    //         l.update_500Hz();
+    // }
+    //
+    // for (auto& l : lift_)
+    //     l.update_1kHz();
 }
 
 void IndLiftMecanum4::update_100Hz()
 {
-    for (auto& l : lift_)
-        l.update_100Hz();
+    // for (auto& l : lift_)
+    //     l.update_100Hz();
 }
 
 chassis::Velocity IndLiftMecanum4::forwardGetVelocity()
 {
     chassis::Velocity vel{};
 
-    float factor = 1.0f;
+    constexpr float factor = 0.25f;
 
-    if (lift(LiftType::Front).isGrounding())
-    {
-        factor *= 0.5f;
-        vel.vx += wheel(WheelType::FrontRight).getMotor()->getVelocity() +
-                  wheel(WheelType::FrontLeft).getMotor()->getVelocity();
-        vel.vy += wheel(WheelType::FrontRight).getMotor()->getVelocity() -
-                  wheel(WheelType::FrontLeft).getMotor()->getVelocity();
-        vel.wz += wheel(WheelType::FrontRight).getMotor()->getVelocity() -
-                  wheel(WheelType::FrontLeft).getMotor()->getVelocity();
-    }
-    if (lift(LiftType::Rear).isGrounding())
-    {
-        factor *= 0.5f;
-        vel.vx += wheel(WheelType::RearRight).getMotor()->getVelocity() +
-                  wheel(WheelType::RearLeft).getMotor()->getVelocity();
-        vel.vy += -wheel(WheelType::RearRight).getMotor()->getVelocity() +
-                  wheel(WheelType::RearLeft).getMotor()->getVelocity();
-        vel.wz += wheel(WheelType::RearRight).getMotor()->getVelocity() -
-                  wheel(WheelType::RearLeft).getMotor()->getVelocity();
-    }
+    // float factor = 1.0f;
+    //
+    // if (lift(LiftType::Front).isGrounding())
+    // {
+    //     factor *= 0.5f;
+    //     vel.vx += wheel(WheelType::FrontRight).getMotor()->getVelocity() +
+    //               wheel(WheelType::FrontLeft).getMotor()->getVelocity();
+    //     vel.vy += wheel(WheelType::FrontRight).getMotor()->getVelocity() -
+    //               wheel(WheelType::FrontLeft).getMotor()->getVelocity();
+    //     vel.wz += wheel(WheelType::FrontRight).getMotor()->getVelocity() -
+    //               wheel(WheelType::FrontLeft).getMotor()->getVelocity();
+    // }
+    // if (lift(LiftType::Rear).isGrounding())
+    // {
+    //     factor *= 0.5f;
+    //     vel.vx += wheel(WheelType::RearRight).getMotor()->getVelocity() +
+    //               wheel(WheelType::RearLeft).getMotor()->getVelocity();
+    //     vel.vy += -wheel(WheelType::RearRight).getMotor()->getVelocity() +
+    //               wheel(WheelType::RearLeft).getMotor()->getVelocity();
+    //     vel.wz += wheel(WheelType::RearRight).getMotor()->getVelocity() -
+    //               wheel(WheelType::RearLeft).getMotor()->getVelocity();
+    // }
+
+    vel.vx += wheel(WheelType::FrontRight).getMotor()->getVelocity() +
+              wheel(WheelType::FrontLeft).getMotor()->getVelocity() +
+              wheel(WheelType::RearRight).getMotor()->getVelocity() +
+              wheel(WheelType::RearLeft).getMotor()->getVelocity();
+    vel.vy += wheel(WheelType::FrontRight).getMotor()->getVelocity() -
+              wheel(WheelType::FrontLeft).getMotor()->getVelocity() -
+              wheel(WheelType::RearRight).getMotor()->getVelocity() +
+              wheel(WheelType::RearLeft).getMotor()->getVelocity();
+    vel.wz += wheel(WheelType::FrontRight).getMotor()->getVelocity() -
+              wheel(WheelType::FrontLeft).getMotor()->getVelocity() +
+              wheel(WheelType::RearRight).getMotor()->getVelocity() -
+              wheel(WheelType::RearLeft).getMotor()->getVelocity();
+
     vel.vx = rpm2rps(wheel_radius_ * vel.vx) * factor;
     vel.vy = rpm2rps(wheel_radius_ * vel.vy) * factor;
     vel.wz = rpm2dps(wheel_radius_ / k_omega_ * vel.wz) * factor;

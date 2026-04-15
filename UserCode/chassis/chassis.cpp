@@ -5,36 +5,34 @@
  */
 #include "chassis.hpp"
 #include "Config.hpp"
-#include "LocEKF.hpp"
-#include "device.hpp"
 #include "system.hpp"
 
 namespace Chassis
 {
 namespace
 {
-constexpr float sq(const float value)
-{
-    return value * value;
-}
-
-chassis::loc::LocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
-{
-    const float init_gyro_yaw = Device::Sensor::gyro_yaw->getYaw();
-
-    return {
-        .x_init = { .x          = init_posture.x,
-                    .y          = init_posture.y,
-                    .yaw        = init_gyro_yaw,
-                    .yaw_offset = init_posture.yaw - init_gyro_yaw },
-        .covP   = { .xy = sq(0.1f), .yaw = sq(0.1f), .yaw_offset = sq(10.0f) },
-        .noiseQ = { .xy = sq(0.05f), .yaw = sq(0.5f), .yaw_offset = sq(0.01f) },
-        .noiseR = {
-            .gyro  = { .yaw = sq(0.1f) },
-            .lidar = { .xy = sq(0.01f), .yaw = sq(0.5f) },
-        },
-    };
-}
+// constexpr float sq(const float value)
+// {
+//     return value * value;
+// }
+//
+// chassis::loc::LocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
+// {
+//     const float init_gyro_yaw = Device::Sensor::gyro_yaw->getYaw();
+//
+//     return {
+//         .x_init = { .x          = init_posture.x,
+//                     .y          = init_posture.y,
+//                     .yaw        = init_gyro_yaw,
+//                     .yaw_offset = init_posture.yaw - init_gyro_yaw },
+//         .covP   = { .xy = sq(0.1f), .yaw = sq(0.1f), .yaw_offset = sq(10.0f) },
+//         .noiseQ = { .xy = sq(0.05f), .yaw = sq(0.5f), .yaw_offset = sq(0.01f) },
+//         .noiseR = {
+//             .gyro  = { .yaw = sq(0.1f) },
+//             .lidar = { .xy = sq(0.01f), .yaw = sq(0.5f) },
+//         },
+//     };
+// }
 } // namespace
 
 
@@ -51,7 +49,7 @@ void update_1kHz()
     static uint32_t prescaler_500Hz = 0;
 
     if (loc != nullptr)
-        loc->update();
+        loc->update(0.001f);
 
     if (ctrl != nullptr)
     {
@@ -77,8 +75,9 @@ void initLocCtrl(const chassis::Posture& init_posture)
     if (loc != nullptr || ctrl != nullptr)
         return;
 
-    loc = new chassis::loc::LocEKF(
-            *motion, make_loc_ekf_config(init_posture), *Device::Sensor::gyro_yaw, 1);
+    (void)init_posture;
+
+    loc = new chassis::loc::JustEncoder(*motion);
     ctrl = new ChassisController(*motion, *loc, Config::Control::masterCfg);
 }
 
