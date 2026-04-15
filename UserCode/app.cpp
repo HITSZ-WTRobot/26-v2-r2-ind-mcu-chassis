@@ -8,15 +8,29 @@
 #include "chassis/actions/Step.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
+#include "grip/grip.hpp"
 #include "protocol.hpp"
 #include "system.hpp"
 #include "tim.h"
 
 void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
+    static uint32_t grip_prescaler_500Hz = 0;
+
     Chassis::update_1kHz();
 
     Device::update_1kHz();
+
+    if (Grip::grip != nullptr)
+    {
+        grip_prescaler_500Hz++;
+        if (grip_prescaler_500Hz >= 2)
+        {
+            Grip::grip->update_500Hz();
+            grip_prescaler_500Hz = 0;
+        }
+        Grip::grip->update_1kHz();
+    }
 
     service::Watchdog::EatAll();
 }
@@ -26,6 +40,9 @@ void TIM_Callback_1kHz_2(TIM_HandleTypeDef* htim) {}
 void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
 {
     Chassis::update_100Hz();
+
+    if (Grip::grip != nullptr)
+        Grip::grip->update_100Hz();
 }
 
 /**
@@ -41,6 +58,8 @@ extern "C" void Init(void* argument)
     Chassis::init();
 
     Protocol::init();
+
+    Grip::init();
 
     // 检查看门狗是否已满
     if (service::Watchdog::isFull())
@@ -68,8 +87,10 @@ extern "C" void Init(void* argument)
     osDelay(1000);
 
     Chassis::motion->startCalibration();
+    
+    Grip::grip->startCalibration(); // 电机堵转到限位处进行初始化
 
-    while (!Chassis::motion->isReady())
+    while (!Chassis::motion->isReady() || !Grip::grip->isCalibrated())
         osDelay(1);
 
     // TODO: 向上位机返回校准结果
@@ -79,6 +100,8 @@ extern "C" void Init(void* argument)
 
     // 初始化控制器
     Chassis::enable();
+    if (!Grip::grip->enable())
+        Error_Handler();
 
     // 等待启动
     osDelay(1000);
