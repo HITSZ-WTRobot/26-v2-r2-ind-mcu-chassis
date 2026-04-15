@@ -109,6 +109,23 @@ void motor_lift_init()
             .reverse     = true,
     });
 }
+
+void motor_grip_init()
+{
+    constexpr motors::DJIMotor::Config ArmCfg{
+        .hcan = &hcan1,
+        .type = motors::DJIMotor::Type::M3508_C620,
+        .id1  = 3,
+    };
+
+    constexpr motors::DJIMotor::Config TurnCfg{
+        .hcan = &hcan1,
+        .type = motors::DJIMotor::Type::M2006_C610,
+        .id1  = 4,
+    };
+    Motor::grip_arm  = new motors::DJIMotor(ArmCfg);
+    Motor::grip_turn = new motors::DJIMotor(TurnCfg);
+}
 } // namespace
 
 void init()
@@ -120,6 +137,8 @@ void init()
     wheel_motor_init();
 
     motor_lift_init();
+
+    motor_grip_init();
 }
 
 bool isAllConnected()
@@ -136,6 +155,11 @@ bool isAllConnected()
     if (!Motor::lift_front->isConnected())
         return false;
     if (!Motor::lift_rear->isConnected())
+        return false;
+
+    if (!Motor::grip_arm->isConnected())
+        return false;
+    if (!Motor::grip_turn->isConnected())
         return false;
 
     return true;

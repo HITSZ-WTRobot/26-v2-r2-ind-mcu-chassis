@@ -43,6 +43,12 @@ inline motors::DJIMotor* wheel[4]{};
  */
 inline motors::DMMotor* lift_front{}; // 前抬升
 inline motors::DMMotor* lift_rear{};  // 后抬升
+
+/**
+ * 矛头电机
+ */
+inline motors::DJIMotor* grip_arm{};
+inline motors::DJIMotor* grip_turn{};
 } // namespace Motor
 
 void init();
