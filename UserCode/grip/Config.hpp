@@ -17,7 +17,7 @@ namespace Grip::Config
 namespace Position
 {
 constexpr float ArmNowork = 130.0f;
-constexpr float ArmReady  = 54.0f;
+constexpr float ArmReady  = 68.0f;
 constexpr float ArmOut    = 100.0f;
 
 constexpr float TurnGrip    = 235.0f;
@@ -28,7 +28,7 @@ namespace Motor
 {
 /// 大臂速度环参数
 constexpr controllers::MotorVelController::Config ArmVelControllerCfg{
-    .pid = { .Kp = 370.0f, .Ki = 30.0f, .Kd = 0.0f, .abs_output_max = 12000.0f },
+    .pid = { .Kp = 370.0f, .Ki = 5.0f, .Kd = 0.0f, .abs_output_max = 12000.0f },
 };
 
 /// 转向电机速度环参数
@@ -41,10 +41,10 @@ constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
 namespace Calibration
 {
 constexpr float ArmLockCurrent  = 2000.0f;
-constexpr float TurnLockCurrent = 500.0f;
+constexpr float TurnLockCurrent = 2000.0f;
 
 constexpr float    deadAngle   = 0.1f;
-constexpr uint32_t lockedTicks = 100;
+constexpr uint32_t lockedTicks = 1000;
 
 constexpr float ArmCalibVel  = -30.0f;
 constexpr float TurnCalibVel = -30.0f;
