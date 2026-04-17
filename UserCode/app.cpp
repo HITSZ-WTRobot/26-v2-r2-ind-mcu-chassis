@@ -84,10 +84,13 @@ extern "C" void Init(void* argument)
     if (!Chassis::motion->enable())
         Error_Handler();
 
+    if (!Grip::grip->enable())
+        Error_Handler();
+
     osDelay(1000);
 
     Chassis::motion->startCalibration();
-    
+
     Grip::grip->startCalibration(); // 电机堵转到限位处进行初始化
 
     while (!Chassis::motion->isReady() || !Grip::grip->isCalibrated())
@@ -106,6 +109,44 @@ extern "C" void Init(void* argument)
     Chassis::enable();
     if (!Grip::grip->enable())
         Error_Handler();
+
+    Grip::grip->toNoworkPose();
+    Grip::grip->waitForFinish();
+
+    osDelay(1000);
+
+    Chassis::ctrl->setTargetPostureInWorld({ -2.0f, 0.0f, 0.0f });
+    Chassis::ctrl->waitTrajectoryFinish();
+
+    osDelay(500);
+
+    Chassis::ctrl->setTargetPostureInWorld({ -2.0f, -1.2f, 0.0f });
+    Chassis::ctrl->waitTrajectoryFinish();
+
+    osDelay(500);
+
+    Chassis::ctrl->setTargetPostureInWorld({ -2.0f, -1.2f, -180.0f });
+    Chassis::ctrl->waitTrajectoryFinish();
+    osDelay(500);
+
+    Chassis::ctrl->setTargetPostureInWorld({ 0.0f, 0.0f, 0.0f },
+                                           { .x   = { 0.5, 0.6, 30 },
+                                             .y   = { 0.5, 0.6, 30 },
+                                             .yaw = { 45, 60, 360 } });
+    Chassis::ctrl->waitTrajectoryFinish();
+    //
+    // Grip::grip->toReadyPose();
+    // Grip::grip->waitForFinish();
+    //
+    // osDelay(1000);
+    //
+    // Chassis::ctrl->setTargetPostureInWorld({ -0.20, 0, 0 });
+    // Chassis::ctrl->waitTrajectoryFinish();
+    //
+    // Grip::grip->toGripOutPose();
+    // Grip::grip->waitForFinish();
+    //
+    // osDelay(1000);
 
     // 等待启动
     osDelay(1000);
