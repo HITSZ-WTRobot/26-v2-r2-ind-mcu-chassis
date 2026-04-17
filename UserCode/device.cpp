@@ -113,15 +113,15 @@ void motor_lift_init()
 void motor_grip_init()
 {
     constexpr motors::DJIMotor::Config ArmCfg{
-        .hcan = &hcan1,
+        .hcan = &hcan2,
         .type = motors::DJIMotor::Type::M3508_C620,
-        .id1  = 3,
+        .id1  = 1,
     };
 
     constexpr motors::DJIMotor::Config TurnCfg{
-        .hcan = &hcan1,
+        .hcan = &hcan2,
         .type = motors::DJIMotor::Type::M2006_C610,
-        .id1  = 4,
+        .id1  = 2,
     };
     Motor::grip_arm  = new motors::DJIMotor(ArmCfg);
     Motor::grip_turn = new motors::DJIMotor(TurnCfg);
