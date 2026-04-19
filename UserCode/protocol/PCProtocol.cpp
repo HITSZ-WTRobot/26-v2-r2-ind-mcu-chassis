@@ -8,8 +8,9 @@
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
-#include "system.hpp"
 #include "chassis/actions/Step.hpp"
+#include "project_parts.hpp"
+#include "system.hpp"
 
 #include <cstring>
 
@@ -64,7 +65,6 @@ void PCProtocol::cmdHandler(Frame& frame)
         return;
 
     constexpr auto to_pos = [](const int16_t value) { return static_cast<float>(value) / 2000.0f; };
-    constexpr auto to_vel = [](const int16_t value) { return static_cast<float>(value) / 2000.0f; };
     constexpr auto to_angle = [](const int16_t v) { return static_cast<float>(v) / 100.0f; };
 
     const auto& data = frame.data;
@@ -74,13 +74,23 @@ void PCProtocol::cmdHandler(Frame& frame)
     case PCCommand::Ping:
         break;
     case PCCommand::StopChassis:
-        if (Chassis::ctrl != nullptr)
-            Chassis::ctrl->stop();
+        // StopChassis 属于“上位机控制命令”范畴；
+        // 当该能力关闭时，协议层收到该帧也会直接忽略。
+        if constexpr (ProjectParts::EnablePcControl)
+        {
+            if (Chassis::ctrl != nullptr)
+                Chassis::ctrl->stop();
+        }
         break;
     case PCCommand::SlavePushChassisTrajectory:
         break;
     case PCCommand::LidarPosture:
     {
+        // LidarPosture 只在“上位机定位包”能力启用时才参与处理。
+        // 否则当前工程使用本地定位，不消费外部位姿观测。
+        if constexpr (!ProjectParts::EnablePcLocalization)
+            break;
+
         const chassis::Posture pos = { .x   = to_pos(read_i16(&data[0])),
                                        .y   = to_pos(read_i16(&data[2])),
                                        .yaw = to_angle(read_i16(&data[4])) };
@@ -100,6 +110,10 @@ void PCProtocol::cmdHandler(Frame& frame)
         if (Chassis::motion == nullptr || !Chassis::motion->isReady())
             return;
 
+        // 第一帧外部位姿的职责是“定义系统初值”：
+        // - 记录 posture
+        // - 触发 `System::Init::initPostureReceive()`
+        // - 完成 Loc / Controller 的延迟构造
         if (!System::Init::postureReceived)
         {
             if (Device::Sensor::gyro_yaw == nullptr || !Device::Sensor::gyro_yaw->isConnected())
@@ -111,12 +125,15 @@ void PCProtocol::cmdHandler(Frame& frame)
             return;
         }
 
-        if (Chassis::loc != nullptr)
-            Chassis::loc->updateLidar(pos, lidar_self_time);
+        Chassis::updateLidar(pos, lidar_self_time);
         break;
     }
     case PCCommand::StepUp:
     {
+        // 台阶动作不是单一协议能力，而是“控制命令 + 底盘 + 升降”的组合能力。
+        if constexpr (!ProjectParts::EnableStepAction)
+            break;
+
         const float             startDistance = to_pos(read_i16(&data[0]));
         const float             endDistance   = to_pos(read_i16(&data[2]));
         const uint16_t          dir           = read_u16(&data[4]);
@@ -133,6 +150,10 @@ void PCProtocol::cmdHandler(Frame& frame)
     }
     case PCCommand::StepUpResume:
     {
+        // 与 StepUp 相同，只有完整动作链启用时才处理恢复命令。
+        if constexpr (!ProjectParts::EnableStepAction)
+            break;
+
         auto& step = Action::Step::inst();
         if (step.isWaitingTake())
         {
@@ -142,6 +163,10 @@ void PCProtocol::cmdHandler(Frame& frame)
     }
     case PCCommand::StepDown:
     {
+        // 与 StepUp 相同，只有完整动作链启用时才处理下台阶命令。
+        if constexpr (!ProjectParts::EnableStepAction)
+            break;
+
         const float             startDistance = to_pos(read_i16(&data[0]));
         const float             endDistance   = to_pos(read_i16(&data[2]));
         const uint16_t          dir           = read_u16(&data[4]);
@@ -184,6 +209,10 @@ constexpr osThreadAttr_t processor_attr{
 
 void init()
 {
+    // 若完全不需要上位机协议，则不创建串口接收对象和处理线程。
+    if constexpr (!ProjectParts::EnableUpperHostProtocol)
+        return;
+
     if (pc_rx != nullptr)
         return;
 

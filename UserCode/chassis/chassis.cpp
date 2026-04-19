@@ -7,6 +7,7 @@
 #include "Config.hpp"
 #include "LocEKF.hpp"
 #include "device.hpp"
+#include "project_parts.hpp"
 #include "system.hpp"
 
 namespace Chassis
@@ -35,12 +36,16 @@ chassis::loc::LocEKF::Config make_loc_ekf_config(const chassis::Posture& init_po
         },
     };
 }
+[[nodiscard]] chassis::Posture default_init_posture()
+{
+    return { .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
+}
 } // namespace
-
 
 void update_100Hz()
 {
-    motion->update_100Hz();
+    if (motion != nullptr)
+        motion->update_100Hz();
 
     if (ctrl != nullptr)
         ctrl->profileUpdate(0.01f);
@@ -50,8 +55,10 @@ void update_1kHz()
 {
     static uint32_t prescaler_500Hz = 0;
 
-    if (loc != nullptr)
-        loc->update();
+    if (loc_ekf != nullptr)
+        loc_ekf->update();
+    else if (loc_encoder != nullptr)
+        loc_encoder->update(0.001f);
 
     if (ctrl != nullptr)
     {
@@ -64,26 +71,80 @@ void update_1kHz()
         ctrl->controllerUpdate();
     }
 
-    motion->update_1kHz();
+    if (motion != nullptr)
+        motion->update_1kHz();
 }
 
 void init()
 {
+    // 当前工程把“底盘轮组”和“升降机构”都挂在同一个 Motion 对象下。
+    // 因此只要这两部分有任意一项启用，就需要创建 Motion。
+    if constexpr (!ProjectParts::EnableChassisMotion)
+        return;
+
     motion = new IndLiftMecanum4();
 }
 
 void initLocCtrl(const chassis::Posture& init_posture)
 {
+    // 没有四轮底盘时，不需要 Loc / Controller。
+    if constexpr (!ProjectParts::EnableWheelChassis)
+        return;
+
     if (loc != nullptr || ctrl != nullptr)
         return;
 
-    loc = new chassis::loc::LocEKF(
-            *motion, make_loc_ekf_config(init_posture), *Device::Sensor::gyro_yaw, 1);
+    if (motion == nullptr)
+        return;
+
+    // 有陀螺仪时走 EKF；没有陀螺仪时退化为 JustEncoder。
+    if constexpr (ProjectParts::EnableEkfLocalization)
+    {
+        if (Device::Sensor::gyro_yaw == nullptr)
+            return;
+
+        loc_ekf = new chassis::loc::LocEKF(
+                *motion, make_loc_ekf_config(init_posture), *Device::Sensor::gyro_yaw, 1);
+        loc = loc_ekf;
+    }
+    else if constexpr (ProjectParts::EnableJustEncoderLocalization)
+    {
+        loc_encoder = new chassis::loc::JustEncoder(*motion);
+        loc         = loc_encoder;
+    }
+
+    if (loc == nullptr)
+        return;
+
     ctrl = new ChassisController(*motion, *loc, Config::Control::masterCfg);
+}
+
+void initStandaloneLocCtrl()
+{
+    // 没有底盘时，不存在独立底盘定位初始化。
+    if constexpr (!ProjectParts::EnableWheelChassis)
+        return;
+
+    // 启用了上位机定位包时，必须等 `System::Init::initPostureReceive()`
+    // 拿到首帧外部位姿后再构造 EKF，这里不能抢先初始化。
+    if constexpr (ProjectParts::NeedUpperHostInitPosture)
+        return;
+
+    initLocCtrl(default_init_posture());
+}
+
+void updateLidar(const chassis::Posture& posture, const uint32_t ticks)
+{
+    if (loc_ekf != nullptr)
+        loc_ekf->updateLidar(posture, ticks);
 }
 
 void enable()
 {
+    // 没有四轮底盘时，不存在底盘控制器使能动作。
+    if constexpr (!ProjectParts::EnableWheelChassis)
+        return;
+
     if (ctrl == nullptr || !ctrl->enable())
         Error_Handler();
 }

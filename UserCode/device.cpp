@@ -6,6 +6,7 @@
 #include "device.hpp"
 #include "can.h"
 #include "cmsis_os2.h"
+#include "project_parts.hpp"
 
 #ifndef M_PI
 #    define M_PI 3.14159265358979323846f
@@ -16,8 +17,16 @@ namespace Device
 
 namespace
 {
+[[nodiscard]] constexpr bool has_can_devices()
+{
+    return ProjectParts::EnableWheelChassis || ProjectParts::EnableLift || ProjectParts::EnableGrip;
+}
+
 void sensor_init()
 {
+    if constexpr (!ProjectParts::EnableGyro)
+        return;
+
     using namespace sensors;
 
     UartRxSync_RegisterCallback(Sensor::gyro_yaw, config::uart::SensorGyroYaw);
@@ -30,6 +39,9 @@ void sensor_init()
 
 void can_init()
 {
+    if constexpr (!has_can_devices())
+        return;
+
     // CAN 初始化
     motors::DJIMotor::CAN_FilterInit(&hcan1, 0);
     CAN_RegisterCallback(&hcan1, motors::DJIMotor::CANBaseReceiveCallback);
@@ -76,6 +88,9 @@ constexpr motors::DJIMotor::Config motor_wheel_config[4] = {
 
 void wheel_motor_init()
 {
+    if constexpr (!ProjectParts::EnableWheelChassis)
+        return;
+
     using namespace motors;
     for (size_t i = 0; i < 4; ++i)
         Motor::wheel[i] = new DJIMotor(motor_wheel_config[i]);
@@ -83,6 +98,9 @@ void wheel_motor_init()
 
 void motor_lift_init()
 {
+    if constexpr (!ProjectParts::EnableLift)
+        return;
+
     using motors::DJIMotor, motors::DMMotor;
 
     Motor::lift_rear = new DMMotor({
@@ -112,6 +130,9 @@ void motor_lift_init()
 
 void motor_grip_init()
 {
+    if constexpr (!ProjectParts::EnableGrip)
+        return;
+
     constexpr motors::DJIMotor::Config ArmCfg{
         .hcan = &hcan2,
         .type = motors::DJIMotor::Type::M3508_C620,
@@ -125,6 +146,17 @@ void motor_grip_init()
     };
     Motor::grip_arm  = new motors::DJIMotor(ArmCfg);
     Motor::grip_turn = new motors::DJIMotor(TurnCfg);
+}
+
+[[nodiscard]] bool has_dji_motor_on_can1()
+{
+    return Motor::wheel[0] != nullptr || Motor::wheel[1] != nullptr;
+}
+
+[[nodiscard]] bool has_dji_motor_on_can2()
+{
+    return Motor::wheel[2] != nullptr || Motor::wheel[3] != nullptr || Motor::grip_arm != nullptr ||
+           Motor::grip_turn != nullptr;
 }
 } // namespace
 
@@ -143,24 +175,34 @@ void init()
 
 bool isAllConnected()
 {
-    if (!Sensor::gyro_yaw->isConnected())
-        return false;
-
-    // motors
-    for (const auto& m : Motor::wheel)
-        if (!m->isConnected())
+    if constexpr (ProjectParts::EnableGyro)
+    {
+        if (Sensor::gyro_yaw == nullptr || !Sensor::gyro_yaw->isConnected())
             return false;
+    }
 
-    // lifts
-    if (!Motor::lift_front->isConnected())
-        return false;
-    if (!Motor::lift_rear->isConnected())
-        return false;
+    if constexpr (ProjectParts::EnableWheelChassis)
+    {
+        for (const auto& m : Motor::wheel)
+            if (m == nullptr || !m->isConnected())
+                return false;
+    }
 
-    if (!Motor::grip_arm->isConnected())
-        return false;
-    if (!Motor::grip_turn->isConnected())
-        return false;
+    if constexpr (ProjectParts::EnableLift)
+    {
+        if (Motor::lift_front == nullptr || !Motor::lift_front->isConnected())
+            return false;
+        if (Motor::lift_rear == nullptr || !Motor::lift_rear->isConnected())
+            return false;
+    }
+
+    if constexpr (ProjectParts::EnableGrip)
+    {
+        if (Motor::grip_arm == nullptr || !Motor::grip_arm->isConnected())
+            return false;
+        if (Motor::grip_turn == nullptr || !Motor::grip_turn->isConnected())
+            return false;
+    }
 
     return true;
 }
@@ -172,13 +214,24 @@ void waitAllConnections()
 }
 void update_1kHz()
 {
-    motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
-    // motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
+    if (has_dji_motor_on_can1())
+    {
+        motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
+        // motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
+    }
 
-    motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
-    // motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
+    if (has_dji_motor_on_can2())
+    {
+        motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
+        // motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
+    }
 
-    Motor::lift_front->ping();
-    Motor::lift_rear->ping();
+    if constexpr (ProjectParts::EnableLift)
+    {
+        if (Motor::lift_front != nullptr)
+            Motor::lift_front->ping();
+        if (Motor::lift_rear != nullptr)
+            Motor::lift_rear->ping();
+    }
 }
 } // namespace Device

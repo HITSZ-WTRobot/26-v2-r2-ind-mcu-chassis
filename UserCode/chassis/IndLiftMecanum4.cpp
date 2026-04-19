@@ -64,17 +64,21 @@ bool IndLiftMecanum4::enable()
 {
     bool enabled = true;
 
-    for (auto& w : wheel_)
-        enabled &= w.enable();
-    for (auto& l : lift_)
-        enabled &= l.enable();
+    if constexpr (ProjectParts::EnableWheelChassis)
+        for (auto& w : wheel_)
+            enabled &= w.enable();
+    if constexpr (ProjectParts::EnableLift)
+        for (auto& l : lift_)
+            enabled &= l.enable();
 
     if (!enabled)
     {
-        for (auto& w : wheel_)
-            w.disable();
-        for (auto& l : lift_)
-            l.disable();
+        if constexpr (ProjectParts::EnableWheelChassis)
+            for (auto& w : wheel_)
+                w.disable();
+        if constexpr (ProjectParts::EnableLift)
+            for (auto& l : lift_)
+                l.disable();
     }
     enabled_ = enabled;
     return enabled;
@@ -82,10 +86,12 @@ bool IndLiftMecanum4::enable()
 
 void IndLiftMecanum4::disable()
 {
-    for (auto& w : wheel_)
-        w.disable();
-    for (auto& l : lift_)
-        l.disable();
+    if constexpr (ProjectParts::EnableWheelChassis)
+        for (auto& w : wheel_)
+            w.disable();
+    if constexpr (ProjectParts::EnableLift)
+        for (auto& l : lift_)
+            l.disable();
     enabled_ = false;
 }
 
@@ -94,30 +100,61 @@ void IndLiftMecanum4::update_1kHz()
     if (!enabled())
         return;
 
-    for (auto& wheel : wheel_)
-        wheel.update();
+    if constexpr (ProjectParts::EnableWheelChassis)
+        for (auto& wheel : wheel_)
+            wheel.update();
 
-    ++prescaler_;
-    if (prescaler_ == 2)
+    if constexpr (ProjectParts::EnableLift)
     {
-        prescaler_ = 0;
-        for (auto& l : lift_)
-            l.update_500Hz();
-    }
+        ++prescaler_;
+        if (prescaler_ == 2)
+        {
+            prescaler_ = 0;
+            for (auto& l : lift_)
+                l.update_500Hz();
+        }
 
-    for (auto& l : lift_)
-        l.update_1kHz();
+        for (auto& l : lift_)
+            l.update_1kHz();
+    }
 }
 
 void IndLiftMecanum4::update_100Hz()
 {
-    for (auto& l : lift_)
-        l.update_100Hz();
+    if constexpr (ProjectParts::EnableLift)
+        for (auto& l : lift_)
+            l.update_100Hz();
 }
 
 chassis::Velocity IndLiftMecanum4::forwardGetVelocity()
 {
     chassis::Velocity vel{};
+
+    if constexpr (!ProjectParts::EnableWheelChassis)
+        return vel;
+
+    if constexpr (!ProjectParts::EnableLift)
+    {
+        vel.vx = wheel(WheelType::FrontRight).getMotor()->getVelocity() +
+                 wheel(WheelType::FrontLeft).getMotor()->getVelocity() +
+                 wheel(WheelType::RearRight).getMotor()->getVelocity() +
+                 wheel(WheelType::RearLeft).getMotor()->getVelocity();
+        vel.vy = wheel(WheelType::FrontRight).getMotor()->getVelocity() -
+                 wheel(WheelType::FrontLeft).getMotor()->getVelocity() -
+                 wheel(WheelType::RearRight).getMotor()->getVelocity() +
+                 wheel(WheelType::RearLeft).getMotor()->getVelocity();
+        vel.wz = wheel(WheelType::FrontRight).getMotor()->getVelocity() -
+                 wheel(WheelType::FrontLeft).getMotor()->getVelocity() +
+                 wheel(WheelType::RearRight).getMotor()->getVelocity() -
+                 wheel(WheelType::RearLeft).getMotor()->getVelocity();
+
+        constexpr float factor = 0.25f;
+
+        vel.vx = rpm2rps(wheel_radius_ * vel.vx) * factor;
+        vel.vy = rpm2rps(wheel_radius_ * vel.vy) * factor;
+        vel.wz = rpm2dps(wheel_radius_ / k_omega_ * vel.wz) * factor;
+        return vel;
+    }
 
     float factor = 1.0f;
 
@@ -153,6 +190,9 @@ chassis::Velocity IndLiftMecanum4::forwardGetVelocity()
  */
 void IndLiftMecanum4::applyVelocity(const chassis::Velocity& velocity)
 {
+    if constexpr (!ProjectParts::EnableWheelChassis)
+        return;
+
     const auto& [vx, vy, wz] = velocity;
     /** Mecanum4 O 型运动学解算
      * w_fr = (+ vx + vy + (w + h) * ω) / r

@@ -9,6 +9,7 @@
 #include "cmsis_os2.h"
 #include "device.hpp"
 #include "grip/grip.hpp"
+#include "project_parts.hpp"
 #include "protocol.hpp"
 #include "system.hpp"
 #include "tim.h"
@@ -59,7 +60,8 @@ extern "C" void Init(void* argument)
 
     Protocol::init();
 
-    Grip::init();
+    if constexpr (ProjectParts::EnableGrip)
+        Grip::init();
 
     // 检查看门狗是否已满
     if (service::Watchdog::isFull())
@@ -80,28 +82,61 @@ extern "C" void Init(void* argument)
     // 等待更新
     osDelay(2000);
 
-    // 先完成底盘校准
-    if (!Chassis::motion->enable())
-        Error_Handler();
+    // Motion 非空表示当前调试形态包含“底盘轮组”或“升降机构”至少一个。
+    if (Chassis::motion != nullptr)
+    {
+        if (!Chassis::motion->enable())
+            Error_Handler();
 
-    osDelay(1000);
+        osDelay(1000);
 
-    Chassis::motion->startCalibration();
-    
-    Grip::grip->startCalibration(); // 电机堵转到限位处进行初始化
+        // 只有升降机构开启时，才需要执行底盘下部抬升校准。
+        if constexpr (ProjectParts::EnableLift)
+            Chassis::motion->startCalibration();
+    }
 
-    while (!Chassis::motion->isReady() || !Grip::grip->isCalibrated())
+    // grip 完全独立于底盘 / 升降，可单独校准。
+    if constexpr (ProjectParts::EnableGrip)
+    {
+        if (Grip::grip != nullptr)
+            Grip::grip->startCalibration(); // 电机堵转到限位处进行初始化
+    }
+
+    while (true)
+    {
+        // “底盘 ready”在当前工程里等价为：若启用了升降，则两个 LiftSide 已校准完成；
+        // 若未启用升降，则不阻塞启动流程。
+        const bool chassis_ready =
+                !ProjectParts::EnableLift || (Chassis::motion != nullptr && Chassis::motion->isReady());
+        // grip 未启用时不阻塞；启用时必须等待其归零完成。
+        const bool grip_ready =
+                !ProjectParts::EnableGrip || (Grip::grip != nullptr && Grip::grip->isCalibrated());
+
+        if (chassis_ready && grip_ready)
+            break;
+
         osDelay(1);
+    }
 
     // TODO: 向上位机返回校准结果
 
+    // 若当前不依赖上位机首帧位姿，则在这里直接构造 Loc / Controller：
+    // - 无陀螺仪：构造 JustEncoder
+    // - 有陀螺仪但无上位机定位包：构造本地下位机 EKF
+    Chassis::initStandaloneLocCtrl();
+
+    // 若当前启用了上位机定位包，则会在此等待首帧位姿；
+    // 否则 `System::Init::inited()` 立即返回 true。
     while (!System::Init::inited())
         osDelay(1);
 
-    // 初始化控制器
+    // 仅在底盘轮组启用时，才真正使能底盘控制器。
     Chassis::enable();
-    if (!Grip::grip->enable())
-        Error_Handler();
+    if constexpr (ProjectParts::EnableGrip)
+    {
+        if (Grip::grip == nullptr || !Grip::grip->enable())
+            Error_Handler();
+    }
 
     // 等待启动
     osDelay(1000);

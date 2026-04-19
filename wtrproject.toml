@@ -8,6 +8,7 @@ ioc_file = "26-v2-r2-ind-mcu-chassis.ioc"
 packages = [
     "Chassis::ControllerMaster",
     "ChassisLocalization::EKF",
+    "ChassisLocalization::JustEncoder",
     "MotorDrivers::Controller",
     "MotorDrivers::DJI",
     "MotorDrivers::DM",

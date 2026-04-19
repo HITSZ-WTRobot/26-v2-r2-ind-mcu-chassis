@@ -32,6 +32,7 @@ set(WTR_MANAGED_PACKAGE_DIRS
     Modules/BasicComponents/libs/utils/deque
     Modules/BasicComponents/libs/concurrency
     Modules/ChassisController/Localization/EKF
+    Modules/ChassisController/Localization/JustEncoder
     Modules/BasicComponents/libs/utils/ring_buffer
     Modules/BasicComponents/bsp/can_driver
     Modules/MotorDrivers/motors/DJI
@@ -59,6 +60,7 @@ endforeach()
 set(WTR_DIRECT_PACKAGE_TARGETS
     Chassis::ControllerMaster
     ChassisLocalization::EKF
+    ChassisLocalization::JustEncoder
     MotorDrivers::Controller
     MotorDrivers::DJI
     MotorDrivers::DM
@@ -92,6 +94,7 @@ set(WTR_RESOLVED_PACKAGE_TARGETS
     libs::Deque
     libs::Concurrency
     ChassisLocalization::EKF
+    ChassisLocalization::JustEncoder
     libs::RingBuffer
     bsp::CANDriver
     MotorDrivers::DJI
