@@ -15,13 +15,15 @@ namespace Grip
 Grip::Grip() :
     arm_vel_controller_(Device::Motor::grip_arm, Config::Motor::ArmVelControllerCfg),
     turn_vel_controller_(Device::Motor::grip_turn, Config::Motor::TurnVelControllerCfg),
-    arm_trajectory_(&arm_vel_controller_, Config::Trajectory::ArmCfg, Config::Trajectory::ArmPDCfg),
-    turn_trajectory_(&turn_vel_controller_,
-                     Config::Trajectory::TurnCfg,
-                     Config::Trajectory::TurnPDCfg),
-    claw_{ GRIP_OUT_GPIO_Port, GRIP_OUT_Pin }, //
-    calib_arm_(&arm_vel_controller_, &arm_trajectory_, Config::Calibration::ArmCalibCfg),
-    calib_turn_(&turn_vel_controller_, &turn_trajectory_, Config::Calibration::TurnCalibCfg)
+    arm_trajectory_(trajectory::MotorTrajectory<1>(&arm_vel_controller_,
+                                                   Config::Trajectory::ArmCfg,
+                                                   Config::Trajectory::ArmPDCfg),
+                    Config::Calibration::ArmCalibCfg),
+    turn_trajectory_(trajectory::MotorTrajectory<1>(&turn_vel_controller_,
+                                                    Config::Trajectory::TurnCfg,
+                                                    Config::Trajectory::TurnPDCfg),
+                     Config::Calibration::TurnCalibCfg),
+    claw_{ GRIP_OUT_GPIO_Port, GRIP_OUT_Pin }
 {
     openClaw();
 }
@@ -36,6 +38,9 @@ void init()
 
 bool Grip::enable()
 {
+    if (!isCalibrated())
+        return false;
+
     bool ok = true;
     ok &= arm_trajectory_.enable();
     ok &= turn_trajectory_.enable();
@@ -56,8 +61,6 @@ void Grip::disable()
 
 void Grip::update_1kHz()
 {
-    calib_arm_.update_1kHz();
-    calib_turn_.update_1kHz();
     arm_trajectory_.controllerUpdate();
     turn_trajectory_.controllerUpdate();
 }
@@ -76,10 +79,8 @@ void Grip::update_100Hz()
 
 void Grip::startCalibration()
 {
-    if (!enabled())
-        return;
-    calib_arm_.startCalibration();
-    calib_turn_.startCalibration();
+    arm_trajectory_.startCalibration();
+    turn_trajectory_.startCalibration();
 }
 
 bool Grip::toNoworkPose()
