@@ -7,7 +7,6 @@
 #include "Config.hpp"
 #include "cmsis_os2.h"
 #include "gpio_driver.h"
-#include "motor_trajectory.hpp"
 #include "motor_vel_controller.hpp"
 #include "traits.hpp"
 
@@ -32,7 +31,7 @@ public:
 
     [[nodiscard]] bool isCalibrated() const
     {
-        return calib_arm_.isCalibrated() && calib_turn_.isCalibrated();
+        return arm_trajectory_.isCalibrated() && turn_trajectory_.isCalibrated();
     }
 
     bool toNoworkPose();
@@ -52,12 +51,10 @@ private:
     controllers::MotorVelController arm_vel_controller_;
     controllers::MotorVelController turn_vel_controller_;
 
-    trajectory::MotorTrajectory<1> arm_trajectory_;
-    trajectory::MotorTrajectory<1> turn_trajectory_;
+    trajectory::HomingMotorTrajectory<1> arm_trajectory_;
+    trajectory::HomingMotorTrajectory<1> turn_trajectory_;
 
     GPIO_t claw_{};
-
-    MotorTrajCalibration calib_arm_, calib_turn_;
 };
 
 inline Grip* grip{};

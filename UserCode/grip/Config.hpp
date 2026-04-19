@@ -6,10 +6,10 @@
 
 #include "can.h"
 #include "dji.hpp"
+#include "homing_motor_trajectory.hpp"
 #include "motor_vel_controller.hpp"
 #include "pid_pd.hpp"
 #include "s_curve.hpp"
-#include "temp_module/motor_traj_calib.hpp"
 
 namespace Grip::Config
 {
@@ -49,16 +49,18 @@ constexpr uint32_t lockedTicks = 1000;
 constexpr float ArmCalibVel  = -30.0f;
 constexpr float TurnCalibVel = -30.0f;
 
-constexpr MotorTrajCalibration::CalibrationConfig ArmCalibCfg = { //
+constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig ArmCalibCfg = { //
     .speed       = ArmCalibVel,
     .max_current = ArmLockCurrent,
     .min_ticks   = lockedTicks,
+    .offset      = 0.0f,
     .dead_angle  = deadAngle
 };
-constexpr MotorTrajCalibration::CalibrationConfig TurnCalibCfg = { //
+constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg = { //
     .speed       = TurnCalibVel,
     .max_current = TurnLockCurrent,
     .min_ticks   = lockedTicks,
+    .offset      = 0.0f,
     .dead_angle  = deadAngle
 };
 
