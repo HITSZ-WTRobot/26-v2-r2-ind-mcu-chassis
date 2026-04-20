@@ -22,6 +22,52 @@ namespace
     return ProjectParts::EnableWheelChassis || ProjectParts::EnableLift || ProjectParts::EnableGrip;
 }
 
+template <typename T> [[nodiscard]] bool is_connected(const T* device)
+{
+    return device != nullptr && device->isConnected();
+}
+
+[[nodiscard]] constexpr uint16_t connection_mask(const ConnectionBit bit)
+{
+    return static_cast<uint16_t>(1U << static_cast<uint8_t>(bit));
+}
+
+void set_connection_bit(uint16_t& table, const ConnectionBit bit, const bool connected)
+{
+    if (connected)
+        table |= connection_mask(bit);
+}
+
+[[nodiscard]] constexpr uint16_t required_connection_mask()
+{
+    uint16_t mask = 0;
+
+    if constexpr (ProjectParts::EnableWheelChassis)
+    {
+        mask |= connection_mask(ConnectionBit::Wheel0);
+        mask |= connection_mask(ConnectionBit::Wheel1);
+        mask |= connection_mask(ConnectionBit::Wheel2);
+        mask |= connection_mask(ConnectionBit::Wheel3);
+    }
+
+    if constexpr (ProjectParts::EnableLift)
+    {
+        mask |= connection_mask(ConnectionBit::LiftFront);
+        mask |= connection_mask(ConnectionBit::LiftRear);
+    }
+
+    if constexpr (ProjectParts::EnableGrip)
+    {
+        mask |= connection_mask(ConnectionBit::GripArm);
+        mask |= connection_mask(ConnectionBit::GripTurn);
+    }
+
+    if constexpr (ProjectParts::EnableGyro)
+        mask |= connection_mask(ConnectionBit::GyroYaw);
+
+    return mask;
+}
+
 void sensor_init()
 {
     if constexpr (!ProjectParts::EnableGyro)
@@ -173,38 +219,43 @@ void init()
     motor_grip_init();
 }
 
-bool isAllConnected()
+void updateConnectionTable()
 {
-    if constexpr (ProjectParts::EnableGyro)
-    {
-        if (Sensor::gyro_yaw == nullptr || !Sensor::gyro_yaw->isConnected())
-            return false;
-    }
+    uint16_t table = 0;
 
     if constexpr (ProjectParts::EnableWheelChassis)
     {
-        for (const auto& m : Motor::wheel)
-            if (m == nullptr || !m->isConnected())
-                return false;
+        set_connection_bit(table, ConnectionBit::Wheel0, is_connected(Motor::wheel[0]));
+        set_connection_bit(table, ConnectionBit::Wheel1, is_connected(Motor::wheel[1]));
+        set_connection_bit(table, ConnectionBit::Wheel2, is_connected(Motor::wheel[2]));
+        set_connection_bit(table, ConnectionBit::Wheel3, is_connected(Motor::wheel[3]));
     }
 
     if constexpr (ProjectParts::EnableLift)
     {
-        if (Motor::lift_front == nullptr || !Motor::lift_front->isConnected())
-            return false;
-        if (Motor::lift_rear == nullptr || !Motor::lift_rear->isConnected())
-            return false;
+        set_connection_bit(table, ConnectionBit::LiftFront, is_connected(Motor::lift_front));
+        set_connection_bit(table, ConnectionBit::LiftRear, is_connected(Motor::lift_rear));
     }
 
     if constexpr (ProjectParts::EnableGrip)
     {
-        if (Motor::grip_arm == nullptr || !Motor::grip_arm->isConnected())
-            return false;
-        if (Motor::grip_turn == nullptr || !Motor::grip_turn->isConnected())
-            return false;
+        set_connection_bit(table, ConnectionBit::GripArm, is_connected(Motor::grip_arm));
+        set_connection_bit(table, ConnectionBit::GripTurn, is_connected(Motor::grip_turn));
     }
 
-    return true;
+    if constexpr (ProjectParts::EnableGyro)
+        set_connection_bit(table, ConnectionBit::GyroYaw, is_connected(Sensor::gyro_yaw));
+
+    connection_table = table;
+}
+
+bool isAllConnected()
+{
+    const uint16_t table = connection_table;
+
+    constexpr uint16_t mask = required_connection_mask();
+
+    return (table & mask) == mask;
 }
 
 void waitAllConnections()

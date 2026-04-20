@@ -18,6 +18,8 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
     static uint32_t grip_prescaler_500Hz = 0;
 
+    Device::updateConnectionTable();
+
     Chassis::update_1kHz();
 
     Device::update_1kHz();
