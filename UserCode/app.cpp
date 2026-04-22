@@ -7,6 +7,7 @@
 #include "chassis/chassis.hpp"
 #include "chassis/actions/Step.hpp"
 #include "cmsis_os2.h"
+#include "connection.hpp"
 #include "device.hpp"
 #include "grip/grip.hpp"
 #include "project_parts.hpp"
@@ -18,7 +19,7 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
     static uint32_t grip_prescaler_500Hz = 0;
 
-    Device::updateConnectionTable();
+    Connection::updateTable();
 
     Chassis::update_1kHz();
 
@@ -78,8 +79,8 @@ extern "C" void Init(void* argument)
     HAL_TIM_RegisterCallback(&htim13, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM_Callback_100Hz);
     HAL_TIM_Base_Start_IT(&htim13);
 
-    // 等待设备连接
-    Device::waitAllConnections();
+    // 等待设备和上位机等已启用连接对象在线
+    Connection::waitAll();
 
     // 等待更新
     osDelay(2000);
@@ -108,11 +109,11 @@ extern "C" void Init(void* argument)
     {
         // “底盘 ready”在当前工程里等价为：若启用了升降，则两个 LiftSide 已校准完成；
         // 若未启用升降，则不阻塞启动流程。
-        const bool chassis_ready =
-                !ProjectParts::EnableLift || (Chassis::motion != nullptr && Chassis::motion->isReady());
+        const bool chassis_ready = !ProjectParts::EnableLift ||
+                                   (Chassis::motion != nullptr && Chassis::motion->isReady());
         // grip 未启用时不阻塞；启用时必须等待其归零完成。
-        const bool grip_ready =
-                !ProjectParts::EnableGrip || (Grip::grip != nullptr && Grip::grip->isCalibrated());
+        const bool grip_ready = !ProjectParts::EnableGrip ||
+                                (Grip::grip != nullptr && Grip::grip->isCalibrated());
 
         if (chassis_ready && grip_ready)
             break;

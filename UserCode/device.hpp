@@ -19,36 +19,6 @@ constexpr auto UpperHost     = &huart3;
 
 namespace Device
 {
-enum class ConnectionBit : uint8_t
-{
-    Wheel0    = 0,
-    Wheel1    = 1,
-    Wheel2    = 2,
-    Wheel3    = 3,
-    LiftFront = 4,
-    LiftRear  = 5,
-    GripArm   = 6,
-    GripTurn  = 7,
-    GyroYaw   = 8,
-};
-
-/**
- * 两字节设备连接表，bit=1 表示对应设备已连接。
- *
- * 固定 bit 分配如下，未启用的设备对应 bit 恒为 0：
- * - bit0  : wheel[0]
- * - bit1  : wheel[1]
- * - bit2  : wheel[2]
- * - bit3  : wheel[3]
- * - bit4  : lift_front
- * - bit5  : lift_rear
- * - bit6  : grip_arm
- * - bit7  : grip_turn
- * - bit8  : gyro_yaw
- * - bit9~15: 预留
- */
-inline volatile uint16_t connection_table{};
-
 // 传感器声明
 namespace Sensor
 {
@@ -84,8 +54,5 @@ inline motors::DJIMotor* grip_turn{};
 } // namespace Motor
 
 void init();
-void updateConnectionTable();
-bool isAllConnected();
-void waitAllConnections();
 void update_1kHz();
 } // namespace Device
