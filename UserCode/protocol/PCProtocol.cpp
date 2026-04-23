@@ -5,15 +5,20 @@
  */
 #include "PCProtocol.hpp"
 
+#include "ActionState.hpp"
+#include "connection.hpp"
 #include "chassis/Config.hpp"
+#include "chassis/actions/Step.hpp"
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
-#include "chassis/actions/Step.hpp"
 #include "project_parts.hpp"
 #include "system.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <limits>
 
 namespace Protocol
 {
@@ -55,6 +60,28 @@ trajectory::LinkMode read_lift_link_mode(const uint8_t* data)
     default:
         return trajectory::LinkMode::PreviousCurve;
     }
+}
+
+void write_u32(uint8_t* data, const uint32_t value)
+{
+    data[0] = static_cast<uint8_t>(value >> 24);
+    data[1] = static_cast<uint8_t>(value >> 16);
+    data[2] = static_cast<uint8_t>(value >> 8);
+    data[3] = static_cast<uint8_t>(value);
+}
+
+void write_u16(uint8_t* data, const uint16_t value)
+{
+    data[0] = static_cast<uint8_t>(value >> 8);
+    data[1] = static_cast<uint8_t>(value);
+}
+
+int16_t to_scaled_i16(const float value, const float scale)
+{
+    const long scaled = lroundf(value * scale);
+    return static_cast<int16_t>(std::clamp(scaled,
+                                           static_cast<long>(std::numeric_limits<int16_t>::min()),
+                                           static_cast<long>(std::numeric_limits<int16_t>::max())));
 }
 } // namespace
 
@@ -113,11 +140,11 @@ void PCProtocol::cmdHandler(Frame& frame)
             const float                  chassis_height = to_pos(read_i16(&data[0]));
             const Chassis::Config::Limit limit{
                 .max_spd  = read_positive_or_default(&data[2],
-                                                    1000.0f,
-                                                    Chassis::Config::Lift::OnloadLimit.max_spd),
+                                                     1000.0f,
+                                                     Chassis::Config::Lift::OnloadLimit.max_spd),
                 .max_acc  = read_positive_or_default(&data[4],
-                                                    100.0f,
-                                                    Chassis::Config::Lift::OnloadLimit.max_acc),
+                                                     100.0f,
+                                                     Chassis::Config::Lift::OnloadLimit.max_acc),
                 .max_jerk = read_positive_or_default(&data[6],
                                                      1.0f,
                                                      Chassis::Config::Lift::OnloadLimit.max_jerk),
@@ -234,6 +261,56 @@ void PCProtocol::cmdHandler(Frame& frame)
     }
 }
 
+void PCProtocol::transmitFeedbackFrame()
+{
+    chassis::Posture posture{ .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
+    if (Chassis::loc != nullptr)
+        posture = Chassis::loc->postureInWorld();
+
+    float front_height = Chassis::Config::Lift::GroundingChassisHeight;
+    float rear_height  = Chassis::Config::Lift::GroundingChassisHeight;
+    if constexpr (ProjectParts::EnableLift)
+    {
+        if (Chassis::motion != nullptr && Chassis::motion->isReady())
+        {
+            front_height +=
+                    Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front).getPosition();
+            rear_height +=
+                    Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear).getPosition();
+        }
+    }
+
+    auto* payload = tx_buffer_.data() + HeaderLen;
+
+    tx_buffer_[0] = HEADER[0];
+    tx_buffer_[1] = HEADER[1];
+
+    write_u32(&payload[0], HAL_GetTick());
+    write_u16(&payload[4], static_cast<uint16_t>(to_scaled_i16(posture.x, 2000.0f)));
+    write_u16(&payload[6], static_cast<uint16_t>(to_scaled_i16(posture.y, 2000.0f)));
+    write_u16(&payload[8], static_cast<uint16_t>(to_scaled_i16(posture.yaw, 100.0f)));
+    write_u16(&payload[10], static_cast<uint16_t>(to_scaled_i16(front_height, 2000.0f)));
+    write_u16(&payload[12], static_cast<uint16_t>(to_scaled_i16(rear_height, 2000.0f)));
+    write_u16(&payload[14], ActionState::table);
+    write_u16(&payload[16], Connection::table);
+
+    const uint16_t crc = CRC16Modbus::calc(payload, FeedbackPayloadLen - 2);
+    write_u16(&payload[18], crc);
+
+    if (HAL_UART_Transmit_DMA(huart(), tx_buffer_.data(), tx_buffer_.size()) == HAL_OK)
+        tx_state_ = TxState::DMAActive;
+}
+
+void PCProtocol::transmitCallback()
+{
+    tx_state_ = TxState::Idle;
+}
+
+void PCProtocol::errorHandler()
+{
+    protocol::UartRxSync<HeaderLen, FrameLen>::errorHandler();
+}
+
 [[noreturn]] void PCProtocol::loop()
 {
     for (;;)
@@ -249,10 +326,27 @@ void PCProtocol::cmdHandler(Frame& frame)
     }
 }
 
+[[noreturn]] void PCProtocol::feedbackLoop()
+{
+    for (;;)
+    {
+        if (tx_state_ != TxState::DMAActive && huart()->gState == HAL_UART_STATE_READY)
+            transmitFeedbackFrame();
+
+        osDelay(1);
+    }
+}
+
 constexpr osThreadAttr_t processor_attr{
     .name       = "pc-cmd-processor",
     .stack_size = 1024 * 4,
     .priority   = osPriorityRealtime,
+};
+
+constexpr osThreadAttr_t feedback_attr{
+    .name       = "pc-feedback",
+    .stack_size = 512 * 4,
+    .priority   = osPriorityLow,
 };
 
 void init()
@@ -268,11 +362,18 @@ void init()
 
     pc_rx = new PCProtocol(config::uart::UpperHost);
     UartRxSync_RegisterCallback(pc_rx, config::uart::UpperHost);
+    HAL_UART_RegisterCallback(config::uart::UpperHost,
+                              HAL_UART_TX_COMPLETE_CB_ID,
+                              [](UART_HandleTypeDef* huart) { pc_rx->transmitCallback(); });
 
     if (!pc_rx->startReceive())
         Error_Handler();
 
+    if (pc_rx->huart()->hdmatx == nullptr || pc_rx->huart()->hdmatx->Init.Mode != DMA_NORMAL)
+        Error_Handler();
+
     osThreadNew(PCProtocol::TaskEntry, pc_rx, &processor_attr);
+    osThreadNew(PCProtocol::FeedbackTaskEntry, pc_rx, &feedback_attr);
 }
 
 } // namespace Protocol

@@ -5,4 +5,5 @@
  */
 #pragma once
 
+#include "protocol/ActionState.hpp"
 #include "protocol/PCProtocol.hpp"

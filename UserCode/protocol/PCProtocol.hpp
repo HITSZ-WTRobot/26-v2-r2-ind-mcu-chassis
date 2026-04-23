@@ -23,6 +23,13 @@ constexpr uint32_t HeaderLen  = 2;
 constexpr uint32_t PayloadLen = 1 + 2 * 6 + 4 + 2;
 constexpr uint32_t FrameLen   = HeaderLen + PayloadLen;
 
+/// 反馈帧：
+/// AA BB | timestamp(uint32) | x*2000(int16) | y*2000(int16) | yaw*100(int16) |
+/// frontHeight*2000(int16) | rearHeight*2000(int16) | action state(uint16) |
+/// connection state(uint16) | CRC16
+constexpr uint32_t FeedbackPayloadLen = 4 + 2 * 5 + 2 + 2 + 2;
+constexpr uint32_t FeedbackFrameLen   = HeaderLen + FeedbackPayloadLen;
+
 enum class PCCommand : uint8_t
 {
     /// 上位机对时信号
@@ -81,6 +88,10 @@ public:
     explicit PCProtocol(UART_HandleTypeDef* huart) : UartRxSync(huart) {}
 
     static void TaskEntry(void* argument) { static_cast<PCProtocol*>(argument)->loop(); }
+    static void FeedbackTaskEntry(void* argument)
+    {
+        static_cast<PCProtocol*>(argument)->feedbackLoop();
+    }
 
     [[nodiscard]] float transitionDelayMS() const
     {
@@ -89,6 +100,12 @@ public:
     }
 
     [[nodiscard]] const Sync::Clock& clock() const { return clock_; }
+
+    void transmitFeedbackFrame();
+
+    void transmitCallback();
+
+    void errorHandler();
 
 protected:
     static constexpr std::array<uint8_t, HeaderLen> HEADER = { 0xAA, 0xBB };
@@ -125,10 +142,22 @@ private:
     } debug_{};
 
     [[noreturn]] void loop();
+    [[noreturn]] void feedbackLoop();
 
     void cmdHandler(Frame& frame);
 
     Sync::Clock clock_{};
+
+    enum class TxState
+    {
+        Stopped,
+        DMAActive,
+        Idle,
+    };
+
+    TxState tx_state_{ TxState::Stopped };
+
+    std::array<uint8_t, FeedbackFrameLen> tx_buffer_{};
 };
 
 inline PCProtocol* pc_rx{};
