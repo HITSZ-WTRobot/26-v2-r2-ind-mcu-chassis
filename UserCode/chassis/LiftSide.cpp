@@ -31,10 +31,9 @@ constexpr Limit toMotorLimit(const Limit& limit)
              .max_jerk = toMotorSpeed(limit.max_jerk) };
 }
 
-// 4310 最大速度 1200deg/s
 constexpr Limit max_motor_limit = toMotorLimit(DefaultLimit);
 
-static_assert(max_motor_limit.max_spd <= 1200);
+static_assert(max_motor_limit.max_spd <= 2700.0f);
 
 static constexpr float toTrajectoryTarget(const float z_pos)
 {
@@ -46,9 +45,9 @@ static constexpr float toPosition(const float motor_angle)
     return motor_angle / 180.0f * M_PI * GearRadius - LiftOffset;
 }
 
-LiftSide::LiftSide(motors::IMotor* motor) :
-    ctrl_(motor, { PIDCfg, controllers::ControlMode::ExternalPID }),
-    traj_(trajectory::MotorTrajectory<1>(&ctrl_, max_motor_limit, PDErrorCfg), CalibrationCfg)
+LiftSide::LiftSide(motors::IMotor* motor0, motors::IMotor* motor1) :
+    ctrl_{ { motor0, { PIDCfg } }, { motor1, { PIDCfg } } },
+    traj_(trajectory::MotorTrajectory<MotorNum>(ctrl_, max_motor_limit, PDErrorCfg), CalibrationCfg)
 {
 }
 

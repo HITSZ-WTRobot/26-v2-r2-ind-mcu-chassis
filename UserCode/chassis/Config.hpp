@@ -26,10 +26,7 @@ using Limit = velocity_profile::SCurveProfile::Config;
 namespace Lift
 {
 constexpr PIDMotor::Config PIDCfg{
-    .Kp             = 0.09f,
-    .Ki             = 0.001f,
-    .Kd             = 0.0f,
-    .abs_output_max = 11,
+    .Kp = 500.0f, .Ki = 5.0f, .Kd = 0.00f, .abs_output_max = 16384 * 0.75
 };
 
 constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 3, .abs_output_max = 60 };
@@ -44,7 +41,7 @@ constexpr float RangeMM      = 227.74;
 constexpr float LiftMaxMM    = RangeMM - MinToLimitMM; // 最高抬升位置 unit mm
 constexpr float LiftMinMM    = 0;                      // 最低抬升位置 unit mm
 constexpr float LiftOffsetMM = MinToLimitMM;           // 辅助轮接地时到机械限位的偏移 (>0) unit mm
-constexpr float GearRadiusMM = 20;                     // 抬升齿轮半径 mm
+constexpr float GearRadiusMM = 25;                     // 抬升齿轮半径 mm
 
 constexpr float LiftMax    = LiftMaxMM * 1e-3f;
 constexpr float LiftMin    = LiftMinMM * 1e-3f;
@@ -53,10 +50,10 @@ constexpr float GearRadius = GearRadiusMM * 1e-3f;
 
 // TODO: 将回程差纳入考虑
 
-constexpr float MaxSpeed       = 0.418; // unit: m/s
+constexpr float MaxSpeed       = 1.178; // unit: m/s
 constexpr float MaxOnloadAccel = 3.0;   // unit: m/s^2， 对车先好一点
 // constexpr float MaxOnloadAccel = 5.5;   // unit: m/s^2
-constexpr float MaxNoloadAccel = 50; // unit: m/s^2
+constexpr float MaxNoloadAccel = 100; // unit: m/s^2
 
 constexpr Limit OnloadLimit{ MaxSpeed, MaxOnloadAccel, MaxOnloadAccel * 50 };
 
@@ -64,12 +61,13 @@ constexpr Limit NoloadLimit{ MaxSpeed, MaxNoloadAccel, MaxNoloadAccel * 50 };
 
 constexpr Limit DefaultLimit = OnloadLimit;
 
-constexpr float CalibrationSpeed = 0.02f; // 校准归零速度 m/s, 该速度无问题，无需增大
+constexpr float CalibrationSpeed = 0.05f; // 校准归零速度 m/s, 该速度无问题，无需增大
 constexpr float CalibrationRpm   = -CalibrationSpeed / GearRadius * 60.0f / (2.0f * M_PI);
 
-constexpr float    CalibrationMaxCurrent = 2.2f; // 堵转寻点时速度环输出上限
-constexpr uint32_t CalibrationMinTicks   = 500;  // 堵转最小保持时间 (ms)
-constexpr float    CalibrationDeadAngle  = 0.1f; // 堵转检测过程允许的角度误差 (deg)
+constexpr float    CalibrationMaxCurrent = 2000.0f; // 约 2 * 0.61 Nm
+constexpr uint32_t CalibrationMinTicks   = 500;     // 堵转最小保持时间 (ms)
+constexpr float    CalibrationDeadAngle  = 0.1f;    // 堵转检测
+// 允许的角度误差 (deg)
 
 /**
  * 使用到的点位
@@ -85,7 +83,7 @@ constexpr float UpR1   = LiftMax; // 比 R1 的台阶高，在最后阶段 unit 
 
 constexpr float CalibrationOffsetAngle = LiftOffset / GearRadius / M_PI * 180.0f;
 
-constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig CalibrationCfg{
+constexpr trajectory::HomingMotorTrajectory<2>::CalibrationConfig CalibrationCfg{
     .speed       = CalibrationRpm,
     .max_current = CalibrationMaxCurrent,
     .min_ticks   = CalibrationMinTicks,

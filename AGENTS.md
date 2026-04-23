@@ -20,6 +20,7 @@ All STM32 + CubeMX projects in this workspace follow these conventions. Applicat
 This repository also has several project-specific conventions derived from `UserCode/`:
 - Treat `UserCode/project_parts.hpp` as the only place to enable or disable major subsystems. Prefer using derived `ProjectParts::EnableXxx` / `NeedXxx` constants in code; do not re-combine the raw `PROJECT_PART_ENABLE_*` macros elsewhere.
 - `Chassis::motion` is intentionally a single `IndLiftMecanum4` object that owns both the mecanum wheelset and the dual lift sides. As long as either wheel chassis or lift is enabled, keep that unified motion-object assumption intact.
+- Each `Lift::LiftSide` is now a synchronized dual-motor side built from `trajectory::HomingMotorTrajectory<2>` and two `MotorVelController`s. Keep the “front pair + rear pair” grouping intact unless the hardware contract changes again.
 - `Chassis::loc` and `Chassis::ctrl` exist only when wheel chassis support is enabled. Localization mode is selected at compile time: no gyro uses `JustEncoder`, gyro uses `LocEKF`, and upper-host localization delays EKF creation until the first posture packet arrives.
 - `Grip::grip`, `Protocol::pc_rx`, `Chassis::motion`, `Chassis::loc`, and `Chassis::ctrl` are namespace-level singleton-style pointers. Follow the existing ownership model instead of introducing additional dynamic-lifetime managers.
 - `UserCode/arena.cpp` overrides global `new` / `delete` with a one-way static arena. Avoid designs that assume `delete` frees memory or that repeatedly allocate and release heap objects at runtime.
@@ -42,11 +43,11 @@ When adding a new subsystem, update its init, periodic update hooks, readiness g
 ## Device & Protocol Mapping
 The current hardware/software mapping in `UserCode/` is:
 - `UART2` (`huart2`) is the yaw gyro (`HWT101CT`); `UART3` (`huart3`) is the upper-host link.
-- Wheel motors are DJI motors on CAN IDs 1–4, split across `hcan1` and `hcan2`.
-- Lift motors are DM J4310 motors: front on `hcan1` with `id0 = 0xB`, rear on `hcan2` with `id0 = 0xA`.
+- Wheel motors are DJI motors: front wheel pair on `hcan1` with `id1 = 1, 2`, rear wheel pair on `hcan2` with `id1 = 3, 4`.
+- Lift motors are also DJI motors, tracked as `Device::Motor::lift[4]`: front lift pair on `hcan1` with `id1 = 3, 4`, rear lift pair on `hcan2` with `id1 = 5, 6`.
 - Grip uses two DJI motors on `hcan2`: arm `id1 = 1`, turn `id1 = 2`.
 
-`Connection::table` and `Connection::Bit` in `UserCode/connection.hpp` define the canonical connection bitmap. The upper-host link uses bit15 directly. If you add, remove, or repurpose a device/protocol link, update the enum, required mask, table refresh logic, and connection wait path together.
+`Connection::table` and `Connection::Bit` in `UserCode/connection.hpp` define the canonical connection bitmap. The upper-host link uses bit15 directly. The four lift motors occupy four independent connection bits; if you add, remove, or repurpose a device/protocol link, update the enum, required mask, table refresh logic, and connection wait path together.
 
 Upper-host protocol behavior is likewise feature-gated:
 - Create `Protocol::PCProtocol` only when `ProjectParts::EnableUpperHostProtocol` is true.

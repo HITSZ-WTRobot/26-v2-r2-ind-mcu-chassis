@@ -50,7 +50,8 @@ IndLiftMecanum4::IndLiftMecanum4() :
         { Device::Motor::wheel[2], { Config::Motion::MotorWheelVelPIDCfg } }, // 左后轮
         { Device::Motor::wheel[3], { Config::Motion::MotorWheelVelPIDCfg } }, // 右后轮
     },
-    lift_{ Lift::LiftSide(Device::Motor::lift_front), Lift::LiftSide(Device::Motor::lift_rear) }
+    lift_{ Lift::LiftSide(Device::Motor::lift[0], Device::Motor::lift[1]),
+           Lift::LiftSide(Device::Motor::lift[2], Device::Motor::lift[3]) }
 {
     wheel_radius_ = Config::Motion::wheelRadius * 1e-3f;
 

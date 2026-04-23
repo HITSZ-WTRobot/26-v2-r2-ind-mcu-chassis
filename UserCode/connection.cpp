@@ -44,8 +44,10 @@ void set_bit(uint16_t& current, const Bit bit, const bool connected)
 
     if constexpr (ProjectParts::EnableLift)
     {
-        required |= mask(Bit::LiftFront);
-        required |= mask(Bit::LiftRear);
+        required |= mask(Bit::LiftFront0);
+        required |= mask(Bit::LiftFront1);
+        required |= mask(Bit::LiftRear0);
+        required |= mask(Bit::LiftRear1);
     }
 
     if constexpr (ProjectParts::EnableGrip)
@@ -78,8 +80,10 @@ void updateTable()
 
     if constexpr (ProjectParts::EnableLift)
     {
-        set_bit(current, Bit::LiftFront, is_connected(Device::Motor::lift_front));
-        set_bit(current, Bit::LiftRear, is_connected(Device::Motor::lift_rear));
+        set_bit(current, Bit::LiftFront0, is_connected(Device::Motor::lift[0]));
+        set_bit(current, Bit::LiftFront1, is_connected(Device::Motor::lift[1]));
+        set_bit(current, Bit::LiftRear0, is_connected(Device::Motor::lift[2]));
+        set_bit(current, Bit::LiftRear1, is_connected(Device::Motor::lift[3]));
     }
 
     if constexpr (ProjectParts::EnableGrip)

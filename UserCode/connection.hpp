@@ -11,16 +11,18 @@ namespace Connection
 {
 enum class Bit : uint8_t
 {
-    Wheel0    = 0,
-    Wheel1    = 1,
-    Wheel2    = 2,
-    Wheel3    = 3,
-    LiftFront = 4,
-    LiftRear  = 5,
-    GripArm   = 6,
-    GripTurn  = 7,
-    GyroYaw   = 8,
-    UpperHost = 15,
+    Wheel0     = 0,
+    Wheel1     = 1,
+    Wheel2     = 2,
+    Wheel3     = 3,
+    LiftFront0 = 4,
+    LiftFront1 = 5,
+    LiftRear0  = 6,
+    LiftRear1  = 7,
+    GripArm    = 8,
+    GripTurn   = 9,
+    GyroYaw    = 10,
+    UpperHost  = 15,
 };
 
 /**
@@ -31,12 +33,14 @@ enum class Bit : uint8_t
  * - bit1  : wheel[1]
  * - bit2  : wheel[2]
  * - bit3  : wheel[3]
- * - bit4  : lift_front
- * - bit5  : lift_rear
- * - bit6  : grip_arm
- * - bit7  : grip_turn
- * - bit8  : gyro_yaw
- * - bit9~14: 预留
+ * - bit4  : lift[0]（前侧抬升 0）
+ * - bit5  : lift[1]（前侧抬升 1）
+ * - bit6  : lift[2]（后侧抬升 0）
+ * - bit7  : lift[3]（后侧抬升 1）
+ * - bit8  : grip_arm
+ * - bit9  : grip_turn
+ * - bit10 : gyro_yaw
+ * - bit11~14: 预留
  * - bit15 : upper_host
  */
 inline volatile uint16_t table{};

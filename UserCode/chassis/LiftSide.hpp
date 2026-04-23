@@ -15,7 +15,7 @@ namespace Lift
 class LiftSide
 {
 public:
-    explicit LiftSide(motors::IMotor* motor);
+    LiftSide(motors::IMotor* motor0, motors::IMotor* motor1);
 
     float to(float position);
     float to(float position, const Chassis::Config::Limit& limit);
@@ -34,7 +34,7 @@ public:
 
     bool enable() { return traj_.enable(); }
 
-    [[nodiscard]] bool enabled() const { return ctrl_.enabled(); }
+    [[nodiscard]] bool enabled() const { return ctrl_[0].enabled() && ctrl_[1].enabled(); }
 
     void disable() { traj_.disable(); }
 
@@ -50,8 +50,10 @@ public:
     void setGrounding(const bool grounding) { grounding_ = grounding; }
 
 private:
-    controllers::MotorVelController      ctrl_;
-    trajectory::HomingMotorTrajectory<1> traj_;
+    static constexpr size_t MotorNum = 2;
+
+    controllers::MotorVelController             ctrl_[MotorNum];
+    trajectory::HomingMotorTrajectory<MotorNum> traj_;
 
     bool grounding_ = true;
 };
