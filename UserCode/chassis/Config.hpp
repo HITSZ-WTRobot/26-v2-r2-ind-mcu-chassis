@@ -42,11 +42,18 @@ constexpr float LiftMaxMM    = RangeMM - MinToLimitMM; // 最高抬升位置 uni
 constexpr float LiftMinMM    = 0;                      // 最低抬升位置 unit mm
 constexpr float LiftOffsetMM = MinToLimitMM;           // 辅助轮接地时到机械限位的偏移 (>0) unit mm
 constexpr float GearRadiusMM = 25;                     // 抬升齿轮半径 mm
+constexpr float GroundingChassisHeightMM = 0.0f;       // 辅助轮接地时底盘离地高度 unit mm
 
-constexpr float LiftMax    = LiftMaxMM * 1e-3f;
-constexpr float LiftMin    = LiftMinMM * 1e-3f;
-constexpr float LiftOffset = LiftOffsetMM * 1e-3f;
-constexpr float GearRadius = GearRadiusMM * 1e-3f;
+constexpr float LiftMax                = LiftMaxMM * 1e-3f;
+constexpr float LiftMin                = LiftMinMM * 1e-3f;
+constexpr float LiftOffset             = LiftOffsetMM * 1e-3f;
+constexpr float GearRadius             = GearRadiusMM * 1e-3f;
+constexpr float GroundingChassisHeight = GroundingChassisHeightMM * 1e-3f;
+
+constexpr float chassisHeightToLiftPosition(const float chassis_height)
+{
+    return chassis_height - GroundingChassisHeight;
+}
 
 // TODO: 将回程差纳入考虑
 

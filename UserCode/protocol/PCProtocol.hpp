@@ -32,6 +32,14 @@ enum class PCCommand : uint8_t
     /// 停止底盘
     StopChassis = 0x10,
 
+    /// 设置底盘离地高度
+    /// |       int16        |   uint16   |   uint16   | uint16 |   uint16   |
+    /// | chassisHeight*2000 | v_max*1000 | a_max*100  | j_max  |  linkMode  |
+    /// @note 上位机使用底盘离地高度；下位机 lift 零点为辅助轮接地位置。
+    /// @note v_max / a_max / j_max 为 0 时，分别回退到带载参数。
+    /// @note linkMode: 0=默认(PreviousCurve), 1=CurrentState, 2=PreviousCurve.
+    SetChassisHeight = 0x11,
+
     /// Slave 模式下 push 轨迹点
     /// | int16  | int16  |     int16    |  int16  |  int16  |    int16    |
     /// | x*2000 | y*2000 | yaw(deg)*100 | vx*2000 | vy*2000 | wz(deg)*100 |

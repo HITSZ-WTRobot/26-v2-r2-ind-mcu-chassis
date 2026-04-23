@@ -58,7 +58,18 @@ LiftSide::LiftSide(motors::IMotor* motor0, motors::IMotor* motor1) :
  */
 float LiftSide::to(const float position)
 {
-    if (!traj_.setTarget(toTrajectoryTarget(position), trajectory::LinkMode::PreviousCurve))
+    return to(position, trajectory::LinkMode::PreviousCurve);
+}
+
+/**
+ * 抬升到
+ * @param position 目标位置，零点为辅助轮接地，往上为正
+ * @param link_mode 轨迹衔接模式
+ * @return 用时，规划失败为 -1
+ */
+float LiftSide::to(const float position, const trajectory::LinkMode link_mode)
+{
+    if (!traj_.setTarget(toTrajectoryTarget(position), link_mode))
         return -1;
     return traj_.getTotalTime();
 }
@@ -71,9 +82,19 @@ float LiftSide::to(const float position)
  */
 float LiftSide::to(const float position, const Limit& limit)
 {
-    if (!traj_.setTarget(toTrajectoryTarget(position),
-                         trajectory::LinkMode::PreviousCurve,
-                         toMotorLimit(limit)))
+    return to(position, limit, trajectory::LinkMode::PreviousCurve);
+}
+
+/**
+ * 抬升到
+ * @param position 目标位置，零点为辅助轮接地，往上为正
+ * @param limit 限制，单位 m/s^x
+ * @param link_mode 轨迹衔接模式
+ * @return 用时，规划失败为 -1
+ */
+float LiftSide::to(const float position, const Limit& limit, const trajectory::LinkMode link_mode)
+{
+    if (!traj_.setTarget(toTrajectoryTarget(position), link_mode, toMotorLimit(limit)))
         return -1;
     return traj_.getTotalTime();
 }

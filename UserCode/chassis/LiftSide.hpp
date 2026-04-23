@@ -18,7 +18,9 @@ public:
     LiftSide(motors::IMotor* motor0, motors::IMotor* motor1);
 
     float to(float position);
+    float to(float position, trajectory::LinkMode link_mode);
     float to(float position, const Chassis::Config::Limit& limit);
+    float to(float position, const Chassis::Config::Limit& limit, trajectory::LinkMode link_mode);
 
     void stop() { traj_.stop(); }
 

@@ -76,12 +76,32 @@ public:
         return std::max(lift(LiftType::Front).to(pos), lift(LiftType::Rear).to(pos));
     }
 
+    float liftAllTo(const float pos, const trajectory::LinkMode link_mode)
+    {
+        if constexpr (!ProjectParts::EnableLift)
+            return 0.0f;
+
+        return std::max(lift(LiftType::Front).to(pos, link_mode),
+                        lift(LiftType::Rear).to(pos, link_mode));
+    }
+
     float liftAllTo(const float pos, const Config::Limit& limit)
     {
         if constexpr (!ProjectParts::EnableLift)
             return 0.0f;
 
         return std::max(lift(LiftType::Front).to(pos, limit), lift(LiftType::Rear).to(pos, limit));
+    }
+
+    float liftAllTo(const float                pos,
+                    const Config::Limit&       limit,
+                    const trajectory::LinkMode link_mode)
+    {
+        if constexpr (!ProjectParts::EnableLift)
+            return 0.0f;
+
+        return std::max(lift(LiftType::Front).to(pos, limit, link_mode),
+                        lift(LiftType::Rear).to(pos, limit, link_mode));
     }
 
     [[nodiscard]] bool isLiftAllFinished()

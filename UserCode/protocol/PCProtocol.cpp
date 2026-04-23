@@ -5,6 +5,7 @@
  */
 #include "PCProtocol.hpp"
 
+#include "chassis/Config.hpp"
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
@@ -33,6 +34,27 @@ int16_t read_i16(const uint8_t* data)
 {
     return static_cast<int16_t>(static_cast<uint16_t>(data[0]) << 8 |
                                 static_cast<uint16_t>(data[1]));
+}
+
+float read_positive_or_default(const uint8_t* data, const float scale, const float default_value)
+{
+    const int16_t raw = read_i16(data);
+    if (raw <= 0)
+        return default_value;
+    return static_cast<float>(raw) / scale;
+}
+
+trajectory::LinkMode read_lift_link_mode(const uint8_t* data)
+{
+    switch (read_u16(data))
+    {
+    case 1:
+        return trajectory::LinkMode::CurrentState;
+    case 2:
+    case 0:
+    default:
+        return trajectory::LinkMode::PreviousCurve;
+    }
 }
 } // namespace
 
@@ -80,6 +102,32 @@ void PCProtocol::cmdHandler(Frame& frame)
         {
             if (Chassis::ctrl != nullptr)
                 Chassis::ctrl->stop();
+        }
+        break;
+    case PCCommand::SetChassisHeight:
+        if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableLift)
+        {
+            if (Chassis::motion == nullptr || !Chassis::motion->isReady())
+                break;
+
+            const float                  chassis_height = to_pos(read_i16(&data[0]));
+            const Chassis::Config::Limit limit{
+                .max_spd  = read_positive_or_default(&data[2],
+                                                    1000.0f,
+                                                    Chassis::Config::Lift::OnloadLimit.max_spd),
+                .max_acc  = read_positive_or_default(&data[4],
+                                                    100.0f,
+                                                    Chassis::Config::Lift::OnloadLimit.max_acc),
+                .max_jerk = read_positive_or_default(&data[6],
+                                                     1.0f,
+                                                     Chassis::Config::Lift::OnloadLimit.max_jerk),
+            };
+            const trajectory::LinkMode link_mode = read_lift_link_mode(&data[8]);
+
+            Chassis::motion->liftAllTo(Chassis::Config::Lift::chassisHeightToLiftPosition(
+                                               chassis_height),
+                                       limit,
+                                       link_mode);
         }
         break;
     case PCCommand::SlavePushChassisTrajectory:
