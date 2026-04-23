@@ -6,6 +6,7 @@
 #pragma once
 #include "Config.hpp"
 #include "device.hpp"
+#include "homing_motor_trajectory.hpp"
 #include "motor_trajectory.hpp"
 #include "motor_vel_controller.hpp"
 
@@ -38,7 +39,7 @@ public:
     void disable() { traj_.disable(); }
 
     void               startCalibration();
-    [[nodiscard]] bool isCalibrated() const { return calib_state_ == CalibState::Done; }
+    [[nodiscard]] bool isCalibrated() const { return traj_.isCalibrated(); }
 
     void update_1kHz();
     void update_500Hz() { traj_.errorUpdate(); }
@@ -49,20 +50,9 @@ public:
     void setGrounding(const bool grounding) { grounding_ = grounding; }
 
 private:
-    controllers::MotorVelController ctrl_;
-    trajectory::MotorTrajectory<1>  traj_;
+    controllers::MotorVelController      ctrl_;
+    trajectory::HomingMotorTrajectory<1> traj_;
 
     bool grounding_ = true;
-
-    // 堵转检测来复位
-    enum class CalibState
-    {
-        Idle,
-        Downing, // 降低底盘寻找限位
-        Rising,  // 抬升底盘到达零点
-        Done,
-    };
-    CalibState calib_state_   = CalibState::Idle;
-    uint32_t   stalled_ticks_ = 0;
 };
 } // namespace Lift

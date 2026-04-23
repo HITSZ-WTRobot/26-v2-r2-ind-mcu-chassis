@@ -126,7 +126,7 @@ void Grip::closeClaw()
 
 bool Grip::isFinished() const
 {
-    return arm_trajectory_.isFinished() && turn_trajectory_.isFinished();
+    return isCalibrated() && arm_trajectory_.isFinished() && turn_trajectory_.isFinished();
 }
 
 void Grip::waitForFinish() const

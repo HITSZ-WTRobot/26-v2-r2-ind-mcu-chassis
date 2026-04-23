@@ -7,6 +7,7 @@
  */
 #pragma once
 #include "Master.hpp"
+#include "homing_motor_trajectory.hpp"
 #include "pid_motor.hpp"
 #include "pid_pd.hpp"
 #include "s_curve.hpp"
@@ -64,11 +65,11 @@ constexpr Limit NoloadLimit{ MaxSpeed, MaxNoloadAccel, MaxNoloadAccel * 50 };
 constexpr Limit DefaultLimit = OnloadLimit;
 
 constexpr float CalibrationSpeed = 0.02f; // 校准归零速度 m/s, 该速度无问题，无需增大
+constexpr float CalibrationRpm   = -CalibrationSpeed / GearRadius * 60.0f / (2.0f * M_PI);
 
-constexpr float    StalledTorqueMax = 2.2f;                    // 校准时最大扭矩
-constexpr float    StalledTorqueMin = 0.95 * StalledTorqueMax; // 堵转时最小扭矩
-constexpr float    StalledSpeedMax  = 0.1f * CalibrationSpeed; // 堵转时最大速度
-constexpr uint32_t StalledTicks     = 500;                     // 堵转最小保持时间 (ms)
+constexpr float    CalibrationMaxCurrent = 2.2f; // 堵转寻点时速度环输出上限
+constexpr uint32_t CalibrationMinTicks   = 500;  // 堵转最小保持时间 (ms)
+constexpr float    CalibrationDeadAngle  = 0.1f; // 堵转检测过程允许的角度误差 (deg)
 
 /**
  * 使用到的点位
@@ -81,6 +82,16 @@ constexpr float Normal = 0.010f;  // 行进默认保持高度 unit m
 constexpr float UpStep = 0.22f;   // 比台阶略高 unit m
 constexpr float UpR1   = LiftMax; // 比 R1 的台阶高，在最后阶段 unit m
 } // namespace Position
+
+constexpr float CalibrationOffsetAngle = LiftOffset / GearRadius / M_PI * 180.0f;
+
+constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig CalibrationCfg{
+    .speed       = CalibrationRpm,
+    .max_current = CalibrationMaxCurrent,
+    .min_ticks   = CalibrationMinTicks,
+    .offset      = CalibrationOffsetAngle,
+    .dead_angle  = CalibrationDeadAngle,
+};
 } // namespace Lift
 
 /**
