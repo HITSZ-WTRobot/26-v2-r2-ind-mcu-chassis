@@ -53,10 +53,10 @@ IndLiftMecanum4::IndLiftMecanum4() :
     lift_{ Lift::LiftSide(Device::Motor::lift[0], Device::Motor::lift[1]),
            Lift::LiftSide(Device::Motor::lift[2], Device::Motor::lift[3]) }
 {
-    wheel_radius_ = Config::Motion::wheelRadius * 1e-3f;
+    wheel_radius_ = Config::Motion::WheelRadiusMM * 1e-3f;
 
-    constexpr float half_x = Config::Motion::wheelDistanceX * 1e-3f * 0.5f;
-    constexpr float half_y = Config::Motion::wheelDistanceY * 1e-3f * 0.5f;
+    constexpr float half_x = Config::Motion::WheelDistanceXMM * 1e-3f * 0.5f;
+    constexpr float half_y = Config::Motion::WheelDistanceYMM * 1e-3f * 0.5f;
 
     k_omega_ = half_x + half_y;
 }

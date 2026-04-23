@@ -104,9 +104,9 @@ constexpr PIDMotor::Config MotorWheelVelPIDCfg = { //
     .abs_output_max = 8000.0f
 };
 
-constexpr float wheelRadius    = 50.0f;   // 轮子半径 unit mm
-constexpr float wheelDistanceX = 454.9f;  // 前后轮距 unit mm
-constexpr float wheelDistanceY = 406.78f; // 左右轮距 unit mm
+constexpr float WheelRadiusMM    = 50.0f;   // 轮子半径 unit mm
+constexpr float WheelDistanceXMM = 454.9f;  // 前后轮距 unit mm
+constexpr float WheelDistanceYMM = 406.78f; // 左右轮距 unit mm
 } // namespace Motion
 
 /**
@@ -127,8 +127,8 @@ constexpr float AbsAuxOuterWheelX = AuxOuterWheelDistanceMM * 0.5f * 1e-3f;
 // 内侧辅助轮中心相对于车体中心
 constexpr float AbsAuxInnerWheelX = AuxInnerWheelDistanceMM * 0.5f * 1e-3f;
 
-constexpr float AbsWheelX   = Motion::wheelDistanceX * 0.5f * 1e-3f; // 主动轮距中心的距离
-constexpr float WheelRadius = Motion::wheelRadius * 1e-3f;           // 主动轮半径
+constexpr float AbsWheelX   = Motion::WheelDistanceXMM * 0.5f * 1e-3f; // 主动轮距中心的距离
+constexpr float WheelRadius = Motion::WheelRadiusMM * 1e-3f;           // 主动轮半径
 
 constexpr float AbsWheelOuterEdgeX = AbsWheelX + WheelRadius; // 主动轮外边缘位置
 constexpr float AbsWheelInnerEdgeX = AbsWheelX - WheelRadius; // 主动轮内边缘位置
