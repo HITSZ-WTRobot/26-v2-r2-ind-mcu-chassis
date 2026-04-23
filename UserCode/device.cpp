@@ -93,6 +93,7 @@ void wheel_motor_init()
 
 // TODO: lift 电机型号 / 减速比 / 实际正方向尚未补充；
 // 当前先按 DJI 电流控制链路占位接入，后续补齐这些参数即可。
+// 鉴于电机安装方式，必定是一个电机正转，一个反转；后续根据调试情况安排
 constexpr motors::DJIMotor::Config motor_lift_config[4] = {
     {
             .hcan           = &hcan1,
@@ -105,7 +106,7 @@ constexpr motors::DJIMotor::Config motor_lift_config[4] = {
             .hcan           = &hcan1,
             .type           = motors::DJIMotor::Type::M3508_C620,
             .id1            = 4,
-            .reverse        = false,
+            .reverse        = true,
             .reduction_rate = 1.0f,
     },
     {
@@ -119,7 +120,7 @@ constexpr motors::DJIMotor::Config motor_lift_config[4] = {
             .hcan           = &hcan2,
             .type           = motors::DJIMotor::Type::M3508_C620,
             .id1            = 6,
-            .reverse        = false,
+            .reverse        = true,
             .reduction_rate = 1.0f,
     },
 };
