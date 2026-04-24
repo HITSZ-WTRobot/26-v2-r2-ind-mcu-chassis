@@ -9,12 +9,8 @@
 #include "cmsis_os2.h"
 #include "connection.hpp"
 #include "device.hpp"
-<<<<<<< HEAD
-#include "grip.hpp"
-=======
 #include "grip/grip.hpp"
 #include "project_parts.hpp"
->>>>>>> 737e3bab694e35a9f53aa2fe791919a912e27ed2
 #include "protocol.hpp"
 #include "system.hpp"
 #include "tim.h"
@@ -30,9 +26,6 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 
     Device::update_1kHz();
 
-<<<<<<< HEAD
-    Gripping::update_1kHz();
-=======
     if (Grip::grip != nullptr)
     {
         grip_prescaler_500Hz++;
@@ -43,7 +36,6 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
         }
         Grip::grip->update_1kHz();
     }
->>>>>>> 737e3bab694e35a9f53aa2fe791919a912e27ed2
 
     service::Watchdog::EatAll();
 }
@@ -72,12 +64,8 @@ extern "C" void Init(void* argument)
 
     Protocol::init();
 
-<<<<<<< HEAD
-    Gripping::init();
-=======
     if constexpr (ProjectParts::EnableGrip)
         Grip::init();
->>>>>>> 737e3bab694e35a9f53aa2fe791919a912e27ed2
 
     // 检查看门狗是否已满
     if (service::Watchdog::isFull())
@@ -106,10 +94,6 @@ extern "C" void Init(void* argument)
 
         osDelay(1000);
 
-<<<<<<< HEAD
-    Chassis::motion->startCalibration();
-    Gripping::grip->locked_all_init();  // 电机堵转到限位处进行初始化
-=======
         // 只有升降机构开启时，才需要执行底盘下部抬升校准。
         if constexpr (ProjectParts::EnableLift)
             Chassis::motion->startCalibration();
@@ -134,7 +118,6 @@ extern "C" void Init(void* argument)
 
         if (chassis_ready && grip_ready)
             break;
->>>>>>> 737e3bab694e35a9f53aa2fe791919a912e27ed2
 
         osDelay(1);
     }
@@ -153,15 +136,11 @@ extern "C" void Init(void* argument)
 
     // 仅在底盘轮组启用时，才真正使能底盘控制器。
     Chassis::enable();
-<<<<<<< HEAD
-    Gripping::enable();
-=======
     if constexpr (ProjectParts::EnableGrip)
     {
         if (Grip::grip == nullptr || !Grip::grip->enable())
             Error_Handler();
     }
->>>>>>> 737e3bab694e35a9f53aa2fe791919a912e27ed2
 
     // 等待启动
     osDelay(1000);
