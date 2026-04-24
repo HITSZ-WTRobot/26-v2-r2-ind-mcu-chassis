@@ -308,6 +308,17 @@ void PCProtocol::transmitCallback()
 
 void PCProtocol::errorHandler()
 {
+    const bool has_tx_dma_error = (huart()->ErrorCode & HAL_UART_ERROR_DMA) != 0U &&
+                                  huart()->hdmatx != nullptr &&
+                                  huart()->hdmatx->ErrorCode != HAL_DMA_ERROR_NONE;
+
+    if (has_tx_dma_error)
+    {
+        HAL_UART_AbortTransmit(huart());
+        huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
+        tx_state_                  = TxState::Idle;
+    }
+
     protocol::UartRxSync<HeaderLen, FrameLen>::errorHandler();
 }
 
@@ -361,7 +372,12 @@ void init()
     assert(config::uart::UpperHost->Init.BaudRate == 230400);
 
     pc_rx = new PCProtocol(config::uart::UpperHost);
-    UartRxSync_RegisterCallback(pc_rx, config::uart::UpperHost);
+    HAL_UART_RegisterCallback(config::uart::UpperHost,
+                              HAL_UART_RX_COMPLETE_CB_ID,
+                              [](UART_HandleTypeDef* huart) { pc_rx->receiveCallback(); });
+    HAL_UART_RegisterCallback(config::uart::UpperHost,
+                              HAL_UART_ERROR_CB_ID,
+                              [](UART_HandleTypeDef* huart) { pc_rx->errorHandler(); });
     HAL_UART_RegisterCallback(config::uart::UpperHost,
                               HAL_UART_TX_COMPLETE_CB_ID,
                               [](UART_HandleTypeDef* huart) { pc_rx->transmitCallback(); });
