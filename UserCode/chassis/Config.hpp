@@ -32,11 +32,11 @@ constexpr PIDMotor::Config PIDCfg{
 constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 3, .abs_output_max = 60 };
 
 /**
- * 辅助轮接地时离下限位距离 1.9mm
- * 到上限位时离下限位 227.74mm
+ * 辅助轮接地时离下限位距离 1.25mm
+ * 到上限位时离下限位 330.2mm
  */
-constexpr float MinToLimitMM = 1.9f;
-constexpr float RangeMM      = 227.74;
+constexpr float MinToLimitMM = 1.25f;
+constexpr float RangeMM      = 330.2;
 
 constexpr float LiftMaxMM    = RangeMM - MinToLimitMM; // 最高抬升位置 unit mm
 constexpr float LiftMinMM    = 0;                      // 最低抬升位置 unit mm
@@ -112,8 +112,8 @@ constexpr PIDMotor::Config MotorWheelVelPIDCfg = { //
 };
 
 constexpr float WheelRadiusMM    = 50.0f;   // 轮子半径 unit mm
-constexpr float WheelDistanceXMM = 454.9f;  // 前后轮距 unit mm
-constexpr float WheelDistanceYMM = 406.78f; // 左右轮距 unit mm
+constexpr float WheelDistanceXMM = 458.1f;  // 前后轮距 unit mm
+constexpr float WheelDistanceYMM = 401.08f; // 左右轮距 unit mm
 } // namespace Motion
 
 /**
