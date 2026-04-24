@@ -52,6 +52,17 @@ enum class PCCommand : uint8_t
     /// | x*2000 | y*2000 | yaw(deg)*100 | vx*2000 | vy*2000 | wz(deg)*100 |
     SlavePushChassisTrajectory = 0x12,
 
+    /// Master 模式下设置底盘目标位姿，轨迹从当前状态衔接
+    /// | int16  | int16  |     int16    |    uint12   |    uint12   | uint12  | uint12  |
+    /// | x*2000 | y*2000 | yaw(deg)*100 | xy_vmax*200 | xy_amax*200 | yaw_vmax | yaw_amax |
+    /// @note 4 个 uint12 按高位优先连续打包：
+    ///       [a11:a4] [a3:a0|b11:b8] [b7:b0] [c11:c4] [c3:c0|d11:d8] [d7:d0]
+    SetMasterChassisTargetCurrentState = 0x13,
+
+    /// Master 模式下设置底盘目标位姿，轨迹沿上一条曲线衔接
+    /// 参数格式与 0x13 完全一致。
+    SetMasterChassisTargetPreviousCurve = 0x14,
+
     /// 雷达位姿
     /// | int16  | int16  |     int16    |       uint32       |
     /// | x*2000 | y*2000 | yaw(deg)*100 | lidarTimestamp(ms) |
