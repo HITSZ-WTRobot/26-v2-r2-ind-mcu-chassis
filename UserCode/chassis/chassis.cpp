@@ -19,7 +19,7 @@ constexpr float sq(const float value)
     return value * value;
 }
 
-chassis::loc::LocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
+ChassisLocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
 {
     const float init_gyro_yaw = Device::Sensor::gyro_yaw->getYaw();
 
@@ -103,8 +103,8 @@ void initLocCtrl(const chassis::Posture& init_posture)
         if (Device::Sensor::gyro_yaw == nullptr)
             return;
 
-        loc_ekf = new chassis::loc::LocEKF(
-                *motion, make_loc_ekf_config(init_posture), *Device::Sensor::gyro_yaw, 1);
+        loc_ekf = new ChassisLocEKF(*motion, make_loc_ekf_config(init_posture),
+                                    *Device::Sensor::gyro_yaw, 1);
         loc = loc_ekf;
     }
     else if constexpr (ProjectParts::EnableJustEncoderLocalization)
