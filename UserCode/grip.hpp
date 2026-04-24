@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #ifndef GRIP_PNEUMATIC_H_
 #define GRIP_PNEUMATIC_H_
 #include "motor_vel_controller.hpp"
@@ -72,3 +73,8 @@ void enable();
 }
 
 #endif
+=======
+#pragma once
+
+#include "grip/grip.hpp"
+>>>>>>> 737e3bab694e35a9f53aa2fe791919a912e27ed2

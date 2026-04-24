@@ -11,6 +11,7 @@
 #include "IChassisMotion.hpp"
 #include "LiftSide.hpp"
 #include "motor_vel_controller.hpp"
+#include "project_parts.hpp"
 
 #include <cstddef>
 
@@ -49,35 +50,68 @@ public:
 
     [[nodiscard]] bool isReady() const override
     {
-        for (auto& l : lift_)
-            if (!l.isCalibrated())
-                return false;
+        if constexpr (ProjectParts::EnableLift)
+        {
+            for (auto& l : lift_)
+                if (!l.isCalibrated())
+                    return false;
+        }
         return true;
     }
 
     void startCalibration()
     {
-        for (auto& l : lift_)
-            l.startCalibration();
+        if constexpr (ProjectParts::EnableLift)
+            for (auto& l : lift_)
+                l.startCalibration();
     }
 
     Lift::LiftSide& lift(const LiftType type) { return lift_[static_cast<size_t>(type)]; }
 
     float liftAllTo(const float pos)
     {
+        if constexpr (!ProjectParts::EnableLift)
+            return 0.0f;
+
         return std::max(lift(LiftType::Front).to(pos), lift(LiftType::Rear).to(pos));
+    }
+
+    float liftAllTo(const float pos, const trajectory::LinkMode link_mode)
+    {
+        if constexpr (!ProjectParts::EnableLift)
+            return 0.0f;
+
+        return std::max(lift(LiftType::Front).to(pos, link_mode),
+                        lift(LiftType::Rear).to(pos, link_mode));
     }
 
     float liftAllTo(const float pos, const Config::Limit& limit)
     {
+        if constexpr (!ProjectParts::EnableLift)
+            return 0.0f;
+
         return std::max(lift(LiftType::Front).to(pos, limit), lift(LiftType::Rear).to(pos, limit));
+    }
+
+    float liftAllTo(const float                pos,
+                    const Config::Limit&       limit,
+                    const trajectory::LinkMode link_mode)
+    {
+        if constexpr (!ProjectParts::EnableLift)
+            return 0.0f;
+
+        return std::max(lift(LiftType::Front).to(pos, limit, link_mode),
+                        lift(LiftType::Rear).to(pos, limit, link_mode));
     }
 
     [[nodiscard]] bool isLiftAllFinished()
     {
-        for (auto& l : lift_)
-            if (!l.isFinished())
-                return false;
+        if constexpr (ProjectParts::EnableLift)
+        {
+            for (auto& l : lift_)
+                if (!l.isFinished())
+                    return false;
+        }
         return true;
     }
 

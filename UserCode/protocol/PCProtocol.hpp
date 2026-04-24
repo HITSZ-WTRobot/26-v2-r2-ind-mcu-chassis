@@ -23,6 +23,13 @@ constexpr uint32_t HeaderLen  = 2;
 constexpr uint32_t PayloadLen = 1 + 2 * 6 + 4 + 2;
 constexpr uint32_t FrameLen   = HeaderLen + PayloadLen;
 
+/// 反馈帧：
+/// AA BB | timestamp(uint32) | x*2000(int16) | y*2000(int16) | yaw*100(int16) |
+/// frontHeight*2000(int16) | rearHeight*2000(int16) | action state(uint16) |
+/// connection state(uint16) | CRC16
+constexpr uint32_t FeedbackPayloadLen = 4 + 2 * 5 + 2 + 2 + 2;
+constexpr uint32_t FeedbackFrameLen   = HeaderLen + FeedbackPayloadLen;
+
 enum class PCCommand : uint8_t
 {
     /// 上位机对时信号
@@ -31,6 +38,14 @@ enum class PCCommand : uint8_t
 
     /// 停止底盘
     StopChassis = 0x10,
+
+    /// 设置底盘离地高度
+    /// |       int16        |   uint16   |   uint16   | uint16 |   uint16   |
+    /// | chassisHeight*2000 | v_max*1000 | a_max*100  | j_max  |  linkMode  |
+    /// @note 上位机使用底盘离地高度；下位机 lift 零点为辅助轮接地位置。
+    /// @note v_max / a_max / j_max 为 0 时，分别回退到带载参数。
+    /// @note linkMode: 0=默认(PreviousCurve), 1=CurrentState, 2=PreviousCurve.
+    SetChassisHeight = 0x11,
 
     /// Slave 模式下 push 轨迹点
     /// | int16  | int16  |     int16    |  int16  |  int16  |    int16    |
@@ -73,6 +88,10 @@ public:
     explicit PCProtocol(UART_HandleTypeDef* huart) : UartRxSync(huart) {}
 
     static void TaskEntry(void* argument) { static_cast<PCProtocol*>(argument)->loop(); }
+    static void FeedbackTaskEntry(void* argument)
+    {
+        static_cast<PCProtocol*>(argument)->feedbackLoop();
+    }
 
     [[nodiscard]] float transitionDelayMS() const
     {
@@ -81,6 +100,12 @@ public:
     }
 
     [[nodiscard]] const Sync::Clock& clock() const { return clock_; }
+
+    void transmitFeedbackFrame();
+
+    void transmitCallback();
+
+    void errorHandler();
 
 protected:
     static constexpr std::array<uint8_t, HeaderLen> HEADER = { 0xAA, 0xBB };
@@ -117,10 +142,22 @@ private:
     } debug_{};
 
     [[noreturn]] void loop();
+    [[noreturn]] void feedbackLoop();
 
     void cmdHandler(Frame& frame);
 
     Sync::Clock clock_{};
+
+    enum class TxState
+    {
+        Stopped,
+        DMAActive,
+        Idle,
+    };
+
+    TxState tx_state_{ TxState::Stopped };
+
+    std::array<uint8_t, FeedbackFrameLen> tx_buffer_{};
 };
 
 inline PCProtocol* pc_rx{};

@@ -32,6 +32,7 @@ set(WTR_MANAGED_PACKAGE_DIRS
     Modules/BasicComponents/libs/utils/deque
     Modules/BasicComponents/libs/concurrency
     Modules/ChassisController/Localization/EKF
+    Modules/ChassisController/Localization/JustEncoder
     Modules/BasicComponents/libs/utils/ring_buffer
     Modules/BasicComponents/bsp/can_driver
     Modules/MotorDrivers/motors/DJI
@@ -39,6 +40,8 @@ set(WTR_MANAGED_PACKAGE_DIRS
     Modules/MotorDrivers/motors/DM
     Modules/BasicComponents/libs/control/pid_pd
     Modules/TrajectoryControl/MotorTrajectory
+    Modules/TrajectoryControl/HomingMotorTrajectory
+    Modules/BasicComponents/bsp/gpio_driver
     Modules/BasicComponents/libs/utils/crc
     Modules/BasicComponents/libs/traits
 )
@@ -57,11 +60,14 @@ endforeach()
 set(WTR_DIRECT_PACKAGE_TARGETS
     Chassis::ControllerMaster
     ChassisLocalization::EKF
+    ChassisLocalization::JustEncoder
     MotorDrivers::Controller
     MotorDrivers::DJI
     MotorDrivers::DM
     SensorGyro::HWT101CT
+    Trajectory::HomingMotorTrajectory
     Trajectory::MotorTrajectory
+    bsp::GPIO_Driver
     libs::CRC
     libs::RingBuffer
     protocol::UartRxSync
@@ -88,6 +94,7 @@ set(WTR_RESOLVED_PACKAGE_TARGETS
     libs::Deque
     libs::Concurrency
     ChassisLocalization::EKF
+    ChassisLocalization::JustEncoder
     libs::RingBuffer
     bsp::CANDriver
     MotorDrivers::DJI
@@ -95,6 +102,8 @@ set(WTR_RESOLVED_PACKAGE_TARGETS
     MotorDrivers::DM
     libs::PID_PD
     Trajectory::MotorTrajectory
+    Trajectory::HomingMotorTrajectory
+    bsp::GPIO_Driver
     libs::CRC
     traits
     FreeRTOS

@@ -1,5 +1,6 @@
 #pragma once
 #include "IChassisDef.hpp"
+#include "project_parts.hpp"
 
 namespace System
 {
@@ -15,10 +16,19 @@ inline chassis::Posture posture;
 // hook
 extern void initPostureReceive();
 
-// 初始化完成函数
+/**
+ * 判断系统初始化是否完成。
+ *
+ * 规则：
+ * - 若启用了上位机定位包，则必须等待首帧上位机位姿；
+ * - 否则认为无需等待外部初始位姿，底盘会走本地初始化路径。
+ */
 inline bool inited()
 {
-    return postureReceived;
+    if constexpr (ProjectParts::NeedUpperHostInitPosture)
+        return postureReceived;
+
+    return true;
 }
 } // namespace Init
 } // namespace System
