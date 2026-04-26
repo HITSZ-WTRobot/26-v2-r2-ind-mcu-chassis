@@ -93,6 +93,15 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
     if (crc != crc_in_data)
         return false;
 
+    if constexpr (ProjectParts::EnablePcLocalization)
+    {
+        if (static_cast<PCCommand>(data[0]) == PCCommand::LidarPosture)
+        {
+            // 定位流连接状态统一通过 Watchdog 判定，单位是 EatAll() 消耗的 tick。
+            lidar_posture_watchdog_.feed(LidarPostureTimeoutTicks);
+        }
+    }
+
     return rx_buffer_.push(
             [&](Frame& frame)
             {
@@ -102,6 +111,11 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
                 frame.crc16        = crc_in_data;
                 std::memcpy(frame.data.data(), data + 1, frame.data.size());
             });
+}
+
+bool PCProtocol::isLidarPostureConnected() const
+{
+    return lidar_posture_watchdog_.isFed();
 }
 
 void PCProtocol::cmdHandler(Frame& frame)
@@ -414,6 +428,11 @@ constexpr osThreadAttr_t feedback_attr{
     .stack_size = 512 * 4,
     .priority   = osPriorityLow,
 };
+
+bool isPcLocalizationConnected()
+{
+    return pc_rx != nullptr && pc_rx->isLidarPostureConnected();
+}
 
 void init()
 {

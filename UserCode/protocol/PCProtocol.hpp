@@ -112,6 +112,8 @@ public:
 
     [[nodiscard]] const Sync::Clock& clock() const { return clock_; }
 
+    [[nodiscard]] bool isLidarPostureConnected() const;
+
     void transmitFeedbackFrame();
 
     void transmitCallback();
@@ -128,6 +130,8 @@ protected:
     [[nodiscard]] uint32_t timeout() const override { return 250; }
 
 private:
+    static constexpr uint32_t LidarPostureTimeoutTicks = 200;
+
     struct Frame
     {
         uint32_t                   rx_timestamp{};
@@ -159,6 +163,8 @@ private:
 
     Sync::Clock clock_{};
 
+    service::Watchdog lidar_posture_watchdog_{};
+
     enum class TxState
     {
         Stopped,
@@ -172,6 +178,8 @@ private:
 };
 
 inline PCProtocol* pc_rx{};
+
+bool isPcLocalizationConnected();
 
 void init();
 
