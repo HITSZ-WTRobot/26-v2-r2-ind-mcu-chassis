@@ -37,6 +37,7 @@ public:
     bool toNoworkPose();
     bool toReadyPose();
     bool toGripOutPose();
+    bool toStorePose();
     bool toDockingPose();
 
     void openClaw();

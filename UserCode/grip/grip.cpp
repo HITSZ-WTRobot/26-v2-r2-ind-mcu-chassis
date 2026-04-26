@@ -107,6 +107,14 @@ bool Grip::toGripOutPose()
     return arm_ok && turn_ok;
 }
 
+bool Grip::toStorePose()
+{
+    // 仅机械臂抬升到吸盘存储姿态，底盘不移动
+    const bool arm_ok  = arm_trajectory_.setTarget(Config::Position::ArmStore);
+    const bool turn_ok = turn_trajectory_.setTarget(Config::Position::TurnGrip);
+    return arm_ok && turn_ok;
+}
+
 bool Grip::toDockingPose()
 {
     const bool arm_ok  = arm_trajectory_.setTarget(Config::Position::ArmReady);
