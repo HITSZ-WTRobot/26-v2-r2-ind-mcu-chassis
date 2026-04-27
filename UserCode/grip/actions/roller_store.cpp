@@ -9,65 +9,48 @@ namespace
 constexpr uint32_t FlagStart = 1u << 0;
 } // namespace
 
-RollerStore::SuctionCup::SuctionCup()
-#ifdef GRIP_SUCTION_GPIO_Port
-    : gpio_{ GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin }, active_(false), available_(true)
-#else
-    : gpio_{ nullptr, 0 }, active_(false), available_(false)
-#endif
+KfsStore::SuctionCup::SuctionCup() :
+    gpio_(::Grip::Config::KfsStore::SuctionGPIO)
 {
-    // 如果没有定义吸盘 GPIO 引脚，那么吸盘动作为不可用
 }
 
-void RollerStore::SuctionCup::activate()
+void KfsStore::SuctionCup::activate()
 {
-    if (!available_)
-        return;
     GPIO_SetPin(&gpio_);
-    active_ = true;
 }
 
-void RollerStore::SuctionCup::deactivate()
+void KfsStore::SuctionCup::deactivate()
 {
-    if (!available_)
-        return;
     GPIO_ResetPin(&gpio_);
-    active_ = false;
 }
 
-bool RollerStore::SuctionCup::isActive() const
+bool KfsStore::SuctionCup::isActive() const
 {
-    return active_;
+    return HAL_GPIO_ReadPin(gpio_.port, gpio_.pin) == GPIO_PIN_SET;
 }
 
-bool RollerStore::SuctionCup::isAvailable() const
-{
-    return available_;
-}
-
-RollerStore::RollerStore()
+KfsStore::KfsStore()
 {
     constexpr osThreadAttr_t attr{
         .stack_size = 256 * 4,
         .priority   = osPriorityNormal,
     };
-    task_        = osThreadNew(TaskEntry, this, &attr);
-    roller_store = this;
+    task_ = osThreadNew(TaskEntry, this, &attr);
 }
 
-RollerStore& RollerStore::inst()
+KfsStore& KfsStore::inst()
 {
-    static RollerStore instance;
+    static KfsStore instance;
     return instance;
 }
 
-bool RollerStore::canStart() const
+bool KfsStore::canStart() const
 {
     return (state_ == State::Idle || state_ == State::Done) && ::Grip::grip != nullptr &&
            ::Grip::grip->enabled();
 }
 
-void RollerStore::store(float /*storage_distance_x*/)
+void KfsStore::store()
 {
     if (!canStart())
         return;
@@ -75,67 +58,105 @@ void RollerStore::store(float /*storage_distance_x*/)
     if (state_ == State::Done)
         state_ = State::Idle;
 
-    if (::Grip::grip->toStorePose())
+    suction_.activate();
+    if (::Grip::grip->toKfsPickupPose())
     {
-        state_ = State::MovingToStorePose;
+        delay_ms_remaining_ = 0;
+        state_              = State::MovingToPickupPose;
+        osThreadFlagsSet(task_, FlagStart);
+        return;
+    }
+
+    suction_.deactivate();
+}
+
+void KfsStore::release()
+{
+    if (!canStart())
+        return;
+
+    if (state_ == State::Done)
+        state_ = State::Idle;
+
+    if (::Grip::grip->toKfsReleasePose())
+    {
+        state_ = State::MovingToReleasePose;
         osThreadFlagsSet(task_, FlagStart);
     }
 }
 
-void RollerStore::release()
-{
-    suction_.deactivate();
-}
-
-bool RollerStore::isIdle() const
+bool KfsStore::isIdle() const
 {
     return state_ == State::Idle;
 }
 
-bool RollerStore::isFinished() const
+bool KfsStore::isFinished() const
 {
     return state_ == State::Done;
 }
 
-bool RollerStore::isRunning() const
+bool KfsStore::isRunning() const
 {
     return state_ != State::Idle && state_ != State::Done;
 }
 
-bool RollerStore::isSuctionActive() const
+bool KfsStore::isSuctionActive() const
 {
     return suction_.isActive();
 }
 
-void RollerStore::waitForFinish() const
+void KfsStore::waitForFinish() const
 {
     while (!isFinished())
         osDelay(10);
 }
 
-void RollerStore::update()
+void KfsStore::update()
 {
     switch (state_)
     {
     case State::Idle:
     case State::Done:
         break;
-    case State::MovingToStorePose:
-        // 机械臂到达卷轴临时存放姿态后，启动吸盘吸持卷轴
+    case State::MovingToPickupPose:
         if (::Grip::grip->isFinished())
         {
-            if (suction_.isAvailable())
-                suction_.activate();
-            state_ = State::ActivatingSuction;
+            delay_ms_remaining_ = ::Grip::Config::KfsStore::SuctionBuildUpDelayMs;
+            state_              = State::WaitingSuctionBuildUp;
         }
         break;
-    case State::ActivatingSuction:
-        state_ = State::Done;
+    case State::WaitingSuctionBuildUp:
+        if (delay_ms_remaining_ > 0)
+        {
+            --delay_ms_remaining_;
+            break;
+        }
+
+        // TODO: 增加气压计，改为等待吸盘建立足够负压后再切到暂存位。
+        if (::Grip::grip->toKfsStorePose())
+            state_ = State::MovingToStorePose;
+        break;
+    case State::MovingToStorePose:
+        if (::Grip::grip->isFinished())
+            state_ = State::Done;
+        break;
+    case State::MovingToReleasePose:
+        if (::Grip::grip->isFinished())
+        {
+            // TODO: 增加电磁阀，释放阶段应先切阀再关闭气泵 / 吸盘。
+            suction_.deactivate();
+            if (::Grip::grip->toKfsStandbyPose())
+                state_ = State::MovingToStandbyPose;
+        }
+        break;
+    case State::MovingToStandbyPose:
+        if (::Grip::grip->isFinished())
+            state_ = State::Done;
         break;
     }
 }
 
-[[noreturn]] void RollerStore::loop()
+[[noreturn]] void KfsStore::loop()
 {
     for (;;)
     {

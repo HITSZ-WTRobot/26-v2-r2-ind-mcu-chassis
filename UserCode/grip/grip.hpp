@@ -42,6 +42,10 @@ public:
     bool toGripOutPose();
     bool toStorePose();
     bool toDockingPose();
+    bool toKfsPickupPose();
+    bool toKfsStorePose();
+    bool toKfsReleasePose();
+    bool toKfsStandbyPose();
 
     void openClaw();
     void closeClaw();

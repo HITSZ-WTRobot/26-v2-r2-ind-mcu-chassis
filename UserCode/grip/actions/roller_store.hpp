@@ -14,22 +14,20 @@ namespace Grip::Action
 /**
  * @brief 卷轴临时存放动作
  *
- * 负责：通过机械臂抬升到吸盘存储姿态，然后启动吸盘吸取卷轴，底盘不移动
+ * 负责：卷轴吸盘的无参暂存 / 释放动作，底盘不移动
  */
-class RollerStore : traits::NoCopy, traits::NoDelete
+class KfsStore : traits::NoCopy, traits::NoDelete
 {
 public:
-    RollerStore();
-    static RollerStore& inst();
+    KfsStore();
+    static KfsStore& inst();
 
     /**
      * @brief 开始卷轴临时存放动作
-     *
-     * @param storage_distance_x 保留参数，当前只执行机械臂吸盘存储，不移动底盘
      */
-    void store(float storage_distance_x);
+    void store();
 
-    /** @brief 释放吸盘 */
+    /** @brief 开始卷轴释放动作 */
     void release();
 
     [[nodiscard]] bool isIdle() const;
@@ -42,8 +40,11 @@ private:
     enum class State
     {
         Idle,
+        MovingToPickupPose,
+        WaitingSuctionBuildUp,
         MovingToStorePose,
-        ActivatingSuction,
+        MovingToReleasePose,
+        MovingToStandbyPose,
         Done
     };
 
@@ -59,15 +60,12 @@ private:
         void deactivate();
 
         [[nodiscard]] bool isActive() const;
-        [[nodiscard]] bool isAvailable() const;
 
     private:
         GPIO_t gpio_;
-        bool   active_;
-        bool   available_;
     };
 
-    static void TaskEntry(void* self) { static_cast<RollerStore*>(self)->loop(); }
+    static void TaskEntry(void* self) { static_cast<KfsStore*>(self)->loop(); }
 
     void              update();
     [[noreturn]] void loop();
@@ -78,6 +76,7 @@ private:
     osThreadId_t task_{};
     State        state_ = State::Idle;
     SuctionCup   suction_{};
+    uint32_t     delay_ms_remaining_{ 0 };
 };
 
 } // namespace Grip::Action

@@ -122,6 +122,35 @@ bool Grip::toDockingPose()
     return arm_ok && turn_ok;
 }
 
+bool Grip::toKfsPickupPose()
+{
+    const bool arm_ok  = arm_trajectory_.setTarget(Config::KfsStore::PickupPose.arm);
+    const bool turn_ok = turn_trajectory_.setTarget(Config::KfsStore::PickupPose.turn);
+    return arm_ok && turn_ok;
+}
+
+bool Grip::toKfsStorePose()
+{
+    const bool arm_ok  = arm_trajectory_.setTarget(Config::KfsStore::StorePose.arm);
+    const bool turn_ok = turn_trajectory_.setTarget(Config::KfsStore::StorePose.turn);
+    return arm_ok && turn_ok;
+}
+
+bool Grip::toKfsReleasePose()
+{
+    const bool arm_ok  = arm_trajectory_.setTarget(Config::KfsStore::ReleasePose.arm);
+    const bool turn_ok = turn_trajectory_.setTarget(Config::KfsStore::ReleasePose.turn);
+    return arm_ok && turn_ok;
+}
+
+bool Grip::toKfsStandbyPose()
+{
+    const bool arm_ok  = arm_trajectory_.setTarget(Config::KfsStore::StandbyPose.arm);
+    const bool turn_ok = turn_trajectory_.setTarget(Config::KfsStore::StandbyPose.turn);
+    openClaw();
+    return arm_ok && turn_ok;
+}
+
 void Grip::openClaw()
 {
     GPIO_ResetPin(&claw_);

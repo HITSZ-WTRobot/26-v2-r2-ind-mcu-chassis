@@ -6,6 +6,7 @@
 
 #include "can.h"
 #include "dji.hpp"
+#include "gpio_driver.h"
 #include "homing_motor_trajectory.hpp"
 #include "motor_vel_controller.hpp"
 #include "pid_pd.hpp"
@@ -25,6 +26,24 @@ constexpr float ArmStore  = 90.0f; // 卷轴临时存放机械臂位置
 constexpr float TurnGrip    = 235.0f;
 constexpr float TurnDocking = 145.0f;
 } // namespace Position
+
+namespace KfsStore
+{
+inline const GPIO_t SuctionGPIO{ GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin };
+
+struct Pose
+{
+    float arm;
+    float turn;
+};
+
+constexpr Pose PickupPose{ Position::ArmStore, Position::TurnGrip };
+constexpr Pose StorePose{ Position::ArmStore, Position::TurnDocking };
+constexpr Pose ReleasePose{ Position::ArmStore, Position::TurnGrip };
+constexpr Pose StandbyPose{ Position::ArmNowork, Position::TurnGrip };
+
+constexpr uint32_t SuctionBuildUpDelayMs = 300;
+} // namespace KfsStore
 
 namespace SpearGrab
 {
