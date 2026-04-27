@@ -59,6 +59,9 @@ void set_bit(uint16_t& current, const Bit bit, const bool connected)
     if constexpr (ProjectParts::EnableGyro)
         required |= mask(Bit::GyroYaw);
 
+    if constexpr (ProjectParts::EnablePcLocalization)
+        required |= mask(Bit::UpperHostLocalization);
+
     if constexpr (ProjectParts::EnableUpperHostProtocol)
         required |= mask(Bit::UpperHost);
 
@@ -94,6 +97,9 @@ void updateTable()
 
     if constexpr (ProjectParts::EnableGyro)
         set_bit(current, Bit::GyroYaw, is_connected(Device::Sensor::gyro_yaw));
+
+    if constexpr (ProjectParts::EnablePcLocalization)
+        set_bit(current, Bit::UpperHostLocalization, Protocol::isPcLocalizationConnected());
 
     if constexpr (ProjectParts::EnableUpperHostProtocol)
         set_bit(current, Bit::UpperHost, is_connected(Protocol::pc_rx));

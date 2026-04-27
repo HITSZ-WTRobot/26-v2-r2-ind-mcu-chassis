@@ -93,6 +93,15 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
     if (crc != crc_in_data)
         return false;
 
+    if constexpr (ProjectParts::EnablePcLocalization)
+    {
+        if (static_cast<PCCommand>(data[0]) == PCCommand::LidarPosture)
+        {
+            // 定位流连接状态统一通过 Watchdog 判定，单位是 EatAll() 消耗的 tick。
+            lidar_posture_watchdog_.feed(LidarPostureTimeoutTicks);
+        }
+    }
+
     return rx_buffer_.push(
             [&](Frame& frame)
             {
@@ -102,6 +111,11 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
                 frame.crc16        = crc_in_data;
                 std::memcpy(frame.data.data(), data + 1, frame.data.size());
             });
+}
+
+bool PCProtocol::isLidarPostureConnected() const
+{
+    return lidar_posture_watchdog_.isFed();
 }
 
 void PCProtocol::cmdHandler(Frame& frame)
@@ -140,11 +154,11 @@ void PCProtocol::cmdHandler(Frame& frame)
             const float                  chassis_height = to_pos(read_i16(&data[0]));
             const Chassis::Config::Limit limit{
                 .max_spd  = read_positive_or_default(&data[2],
-                                                     1000.0f,
-                                                     Chassis::Config::Lift::OnloadLimit.max_spd),
+                                                    1000.0f,
+                                                    Chassis::Config::Lift::OnloadLimit.max_spd),
                 .max_acc  = read_positive_or_default(&data[4],
-                                                     100.0f,
-                                                     Chassis::Config::Lift::OnloadLimit.max_acc),
+                                                    100.0f,
+                                                    Chassis::Config::Lift::OnloadLimit.max_acc),
                 .max_jerk = read_positive_or_default(&data[6],
                                                      1.0f,
                                                      Chassis::Config::Lift::OnloadLimit.max_jerk),
@@ -158,6 +172,61 @@ void PCProtocol::cmdHandler(Frame& frame)
         }
         break;
     case PCCommand::SlavePushChassisTrajectory:
+        break;
+    case PCCommand::SetMasterChassisTargetCurrentState:
+    case PCCommand::SetMasterChassisTargetPreviousCurve:
+        if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableWheelChassis)
+        {
+            if (Chassis::ctrl == nullptr)
+                break;
+
+            const chassis::Posture target = { .x   = to_pos(read_i16(&data[0])),
+                                              .y   = to_pos(read_i16(&data[2])),
+                                              .yaw = to_angle(read_i16(&data[4])) };
+
+            const auto xy_vmax_raw = static_cast<uint16_t>(static_cast<uint16_t>(data[6]) << 4 |
+                                                           static_cast<uint16_t>(data[7]) >> 4);
+
+            const auto xy_amax_raw = static_cast<uint16_t>(
+                    (static_cast<uint16_t>(data[7]) & 0x0F) << 8 | static_cast<uint16_t>(data[8]));
+
+            const auto yaw_vmax_raw = static_cast<uint16_t>(static_cast<uint16_t>(data[9]) << 4 |
+                                                            static_cast<uint16_t>(data[10]) >> 4);
+
+            const auto yaw_amax_raw = static_cast<uint16_t>((static_cast<uint16_t>(data[10]) & 0x0F)
+                                                                    << 8 |
+                                                            static_cast<uint16_t>(data[11]));
+
+            const float xy_vmax  = static_cast<float>(xy_vmax_raw) / 200.0f;
+            const float xy_amax  = static_cast<float>(xy_amax_raw) / 200.0f;
+            const auto  yaw_vmax = static_cast<float>(yaw_vmax_raw);
+            const auto  yaw_amax = static_cast<float>(yaw_amax_raw);
+
+            const Chassis::ChassisController::TrajectoryLimit limit{
+                .x = {
+                    .max_spd = xy_vmax,
+                    .max_acc = xy_amax,
+                    .max_jerk = xy_amax * 50.0f,
+                },
+                .y = {
+                    .max_spd = xy_vmax,
+                    .max_acc = xy_amax,
+                    .max_jerk = xy_amax * 50.0f,
+                },
+                .yaw = {
+                    .max_spd = yaw_vmax,
+                    .max_acc = yaw_amax,
+                    .max_jerk = yaw_amax * 50.0f,
+                },
+            };
+
+            const Chassis::ChassisController::TrajectoryLinkMode link_mode =
+                    frame.cmd == PCCommand::SetMasterChassisTargetCurrentState
+                            ? Chassis::ChassisController::TrajectoryLinkMode::CurrentState
+                            : Chassis::ChassisController::TrajectoryLinkMode::PreviousCurve;
+
+            Chassis::ctrl->setTargetPostureInWorld(target, link_mode, limit);
+        }
         break;
     case PCCommand::LidarPosture:
     {
@@ -359,6 +428,11 @@ constexpr osThreadAttr_t feedback_attr{
     .stack_size = 512 * 4,
     .priority   = osPriorityLow,
 };
+
+bool isPcLocalizationConnected()
+{
+    return pc_rx != nullptr && pc_rx->isLidarPostureConnected();
+}
 
 void init()
 {

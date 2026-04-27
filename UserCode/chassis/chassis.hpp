@@ -17,7 +17,7 @@ namespace Chassis
 
 using ChassisController = chassis::controller::Master;
 using ChassisLoc        = chassis::loc::IChassisLoc;
-using ChassisLocEKF     = chassis::loc::LocEKF;
+using ChassisLocEKF     = chassis::loc::LocEKF<256>;
 using ChassisLocEncoder = chassis::loc::JustEncoder;
 using ChassisMotion     = IndLiftMecanum4;
 

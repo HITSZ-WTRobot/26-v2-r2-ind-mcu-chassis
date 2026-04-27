@@ -47,7 +47,7 @@ The current hardware/software mapping in `UserCode/` is:
 - Lift motors are also DJI motors, tracked as `Device::Motor::lift[4]`: front lift pair on `hcan1` with `id1 = 3, 4`, rear lift pair on `hcan2` with `id1 = 5, 6`.
 - Grip uses two DJI motors on `hcan2`: arm `id1 = 1`, turn `id1 = 2`.
 
-`Connection::table` and `Connection::Bit` in `UserCode/connection.hpp` define the canonical connection bitmap. The upper-host link uses bit15 directly. The four lift motors occupy four independent connection bits; if you add, remove, or repurpose a device/protocol link, update the enum, required mask, table refresh logic, and connection wait path together.
+`Connection::table` and `Connection::Bit` in `UserCode/connection.hpp` define the canonical connection bitmap. The upper-host localization stream uses bit14 and is considered online only while its dedicated watchdog remains fed, currently for 200 watchdog ticks after each valid `LidarPosture` frame; the upper-host UART link itself uses bit15 directly. The four lift motors occupy four independent connection bits; if you add, remove, or repurpose a device/protocol link, update the enum, required mask, table refresh logic, and connection wait path together.
 
 Upper-host protocol behavior is likewise feature-gated:
 - Create `Protocol::PCProtocol` only when `ProjectParts::EnableUpperHostProtocol` is true.
