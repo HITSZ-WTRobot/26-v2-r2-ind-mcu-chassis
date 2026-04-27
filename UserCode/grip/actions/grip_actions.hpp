@@ -15,7 +15,8 @@ namespace Grip::Action
 /**
  * @brief 矛头夹取动作
  *
- * 负责：底盘移动到准备位置 -> 机械臂到位 -> 前进夹取 -> 后退 -> 机械臂回到对接状态
+ * 负责：底盘切入 prepare 区 -> 夹爪进入 ready -> 到 target_pos 夹取 ->
+ *      先沿 target_pos 的 x 方向离开危险区 -> 再移动到 end_pos 并对接
  */
 class SpearGrab : traits::NoCopy, traits::NoDelete
 {
@@ -26,15 +27,13 @@ public:
     /**
      * @brief 开始矛头夹取动作
      *
-     * @param prepare_distance_x 车体先移动至准备位置的相对 x 距离
-     * @param prepare_distance_y 车体先移动至准备位置的相对 y 距离
-     * @param advance_distance   夹取矛头时前进的距离
-     * @param backoff_distance   夹取完成后后退的距离
+     * @param target_pos 待取矛头所在的世界系绝对位姿
+     * @param end_pos    动作完成后的世界系绝对位姿，需保证其位于安全区内
+     * @param safe_distance 相对于 target_pos 的安全 x 距离
      */
-    void grab(float prepare_distance_x,
-              float prepare_distance_y,
-              float advance_distance,
-              float backoff_distance);
+    void grab(const chassis::Posture& target_pos,
+              const chassis::Posture& end_pos,
+              float                   safe_distance);
 
     /** @brief 是否为空闲状态 */
     [[nodiscard]] bool isIdle() const;
@@ -52,13 +51,11 @@ private:
     enum class State
     {
         Idle,
-        DrivingToReady,
-        LiftToGrabHeight,
-        ArmReady,
-        DrivingForward,
+        MovingToPrepare,
+        MovingToTarget,
         Grabbing,
-        DrivingBack,
-        Docking,
+        LeavingTargetToSafeX,
+        MovingToEnd,
         Done
     };
 
@@ -67,20 +64,20 @@ private:
     void update();
     [[noreturn]] void loop();
 
-    [[nodiscard]] chassis::Posture relativePosture(float x, float y) const;
-    [[nodiscard]] float        currentRelativeX() const;
-    [[nodiscard]] bool         canStart() const;
+    [[nodiscard]] chassis::Posture postureRelativeToTargetInWorld(const chassis::Posture& rel_pos)
+            const;
+    [[nodiscard]] chassis::Posture currentRelativeToTarget() const;
+    [[nodiscard]] bool             canStart() const;
 
     osThreadId_t task_{};
     State        state_ = State::Idle;
 
-    float          prepare_distance_x_ = 0.0f;
-    float          prepare_distance_y_ = 0.0f;
-    float          advance_distance_   = 0.0f;
-    float          backoff_distance_   = 0.0f;
-    float          grab_target_x_      = 0.0f;
-    float          back_target_x_      = 0.0f;
-    chassis::Posture start_pos_{};
+    float           safe_distance_ = 0.0f;
+    chassis::Posture target_pos_{};
+    chassis::Posture end_pos_{};
+    chassis::Posture end_pos_rel_to_target_{};
+    chassis::Posture prepare_pos_{};
+    chassis::Posture leave_target_x_only_pos_{};
 };
 
 /**
@@ -155,4 +152,3 @@ private:
     SuctionCup   suction_{};
 };
 }
-

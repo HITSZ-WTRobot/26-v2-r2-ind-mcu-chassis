@@ -3,6 +3,9 @@
 
 #include "chassis/chassis.hpp"
 
+#include <cassert>
+#include <cmath>
+
 namespace Grip::Action
 {
 namespace
@@ -29,14 +32,24 @@ SpearGrab& SpearGrab::inst()
 
 bool SpearGrab::canStart() const
 {
+    // SpearGrab 必须依赖完整的“平面底盘 + 升降”动作链，缺一都不允许启动。
+    if constexpr (!ProjectParts::EnableWheelChassis || !ProjectParts::EnableLift)
+        return false;
+
     // 必须保证动作等待完成或空闲，同时机械臂与底盘控制器已就绪
-    return (state_ == State::Idle || state_ == State::Done) && ::Grip::grip != nullptr && ::Grip::grip->enabled() && Chassis::ctrl != nullptr && Chassis::loc != nullptr;
+    const bool basic_ready = (state_ == State::Idle || state_ == State::Done) &&
+                             ::Grip::grip != nullptr && ::Grip::grip->enabled() &&
+                             Chassis::ctrl != nullptr && Chassis::loc != nullptr;
+
+    if (!basic_ready)
+        return false;
+
+    return Chassis::motion != nullptr;
 }
 
-void SpearGrab::grab(float prepare_distance_x,
-                      float prepare_distance_y,
-                      float advance_distance,
-                      float backoff_distance)
+void SpearGrab::grab(const chassis::Posture& target_pos,
+                     const chassis::Posture& end_pos,
+                     float                   safe_distance)
 {
     if (!canStart())
         return;
@@ -44,16 +57,29 @@ void SpearGrab::grab(float prepare_distance_x,
     if (state_ == State::Done)
         state_ = State::Idle;
 
-    prepare_distance_x_ = prepare_distance_x;
-    prepare_distance_y_ = prepare_distance_y;
-    advance_distance_   = advance_distance;
-    backoff_distance_   = backoff_distance;
-    grab_target_x_      = prepare_distance_x_ + advance_distance_;
-    back_target_x_      = grab_target_x_ + backoff_distance_;
-    start_pos_          = Chassis::loc->postureInWorld();
+    safe_distance_           = safe_distance;
+    target_pos_              = target_pos;
+    end_pos_                 = end_pos;
+    end_pos_rel_to_target_   =
+            Chassis::ChassisLoc::WorldPosture2RelativePosture(target_pos_, end_pos_);
+    prepare_pos_             = postureRelativeToTargetInWorld({ safe_distance_, 0.0f, 0.0f });
+    leave_target_x_only_pos_ = postureRelativeToTargetInWorld(
+            { end_pos_rel_to_target_.x, 0.0f, 0.0f });
 
-    Chassis::ctrl->setTargetPostureInWorld(relativePosture(prepare_distance_x_, prepare_distance_y_));
-    state_ = State::DrivingToReady;
+    assert(safe_distance_ > 0.0f);
+    assert(end_pos_rel_to_target_.x > safe_distance_);
+
+    Chassis::ctrl->setTargetPostureInWorld(prepare_pos_);
+
+    if constexpr (ProjectParts::EnableLift)
+    {
+        Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftExecute,
+                                   Chassis::Config::Lift::OnloadLimit);
+    }
+
+    ::Grip::grip->toReadyPose();
+
+    state_ = State::MovingToPrepare;
     osThreadFlagsSet(task_, FlagStart);
 }
 
@@ -78,57 +104,49 @@ void SpearGrab::waitForFinish() const
         osDelay(10);
 }
 
-chassis::Posture SpearGrab::relativePosture(float x, float y) const
+chassis::Posture SpearGrab::postureRelativeToTargetInWorld(const chassis::Posture& rel_pos) const
 {
-    return Chassis::loc->RelativePosture2WorldPosture(start_pos_, { x, y, 0.0f });
+    return Chassis::ChassisLoc::RelativePosture2WorldPosture(target_pos_, rel_pos);
 }
 
-float SpearGrab::currentRelativeX() const
+chassis::Posture SpearGrab::currentRelativeToTarget() const
 {
-    return Chassis::loc->CurrentPostureRelativeTo(start_pos_).x;
+    return Chassis::loc->CurrentPostureRelativeTo(target_pos_);
 }
 
 void SpearGrab::update()
 {
+    const auto is_lift_finished = []() -> bool
+    {
+        if constexpr (ProjectParts::EnableLift)
+            return Chassis::motion->isLiftAllFinished();
+
+        return true;
+    };
+
     switch (state_)
     {
     case State::Idle:
     case State::Done:
         break;
-    case State::DrivingToReady:
-        // 底盘到达准备位置后，先抬升到底盘夹取高度，再摆出机械臂准备夹取
-        if (Chassis::ctrl->isTrajectoryFinished())
+    case State::MovingToPrepare:
+    {
+        const auto rel_pos = currentRelativeToTarget();
+
+        // 底盘先对准 prepare 轨迹；侧向/偏航收敛且 lift 到位后，就直接切入 target。
+        if (std::fabs(rel_pos.y) < ::Grip::Config::SpearGrab::PrepareYThreshold &&
+            std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold &&
+            is_lift_finished() && ::Grip::grip->isFinished())
         {
-            if constexpr (ProjectParts::EnableLift)
-            {
-                Chassis::motion->liftAllTo(::Grip::Config::Position::LiftGrab,
-                                           Chassis::Config::Lift::OnloadLimit);
-                state_ = State::LiftToGrabHeight;
-            }
-            else
-            {
-                ::Grip::grip->toReadyPose();
-                state_ = State::ArmReady;
-            }
+            // TODO: 不同运行阶段应使用不同的底盘速度限制，而不是沿用同一套默认轨迹参数。
+            Chassis::ctrl->setTargetPostureInWorld(target_pos_,
+                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            state_ = State::MovingToTarget;
         }
         break;
-    case State::LiftToGrabHeight:
-        if (Chassis::motion->isLiftAllFinished())
-        {
-            ::Grip::grip->toReadyPose();
-            state_ = State::ArmReady;
-        }
-        break;
-    case State::ArmReady:
-        // 机械臂到位后，底盘继续前进到夹取目标位置
-        if (::Grip::grip->isFinished())
-        {
-            Chassis::ctrl->setTargetPostureInWorld(relativePosture(grab_target_x_, prepare_distance_y_));
-            state_ = State::DrivingForward;
-        }
-        break;
-    case State::DrivingForward:
-        // 到达矛头位置后执行夹取动作
+    }
+    case State::MovingToTarget:
+        // 到达矛头位置后，执行从 ready 到 grip-out 的夹取动作。
         if (Chassis::ctrl->isTrajectoryFinished())
         {
             ::Grip::grip->toGripOutPose();
@@ -136,38 +154,47 @@ void SpearGrab::update()
         }
         break;
     case State::Grabbing:
-        // 夹取完成后，让底盘后退并进入收回姿态
         if (::Grip::grip->isFinished())
         {
-            Chassis::ctrl->setTargetPostureInWorld(relativePosture(back_target_x_, prepare_distance_y_), Master::TrajectoryLinkMode::PreviousCurve);
-            state_ = State::DrivingBack;
-        }
-        break;
-    case State::DrivingBack:
-        if (Chassis::ctrl->isTrajectoryFinished())
-        {
-            ::Grip::grip->toDockingPose();
-            if constexpr (ProjectParts::EnableLift)
+            if constexpr (ProjectParts::EnableLift &&
+                          (::Grip::Config::SpearGrab::LiftDocking >
+                           ::Grip::Config::SpearGrab::LiftExecute))
             {
-                Chassis::motion->liftAllTo(Chassis::Config::Lift::Position::Normal,
+                Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftDocking,
                                            Chassis::Config::Lift::OnloadLimit);
             }
-            state_ = State::Docking;
+
+            Chassis::ctrl->setTargetPostureInWorld(leave_target_x_only_pos_,
+                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            // TODO: 确保对接时机械臂不会更低。
+            ::Grip::grip->toDockingPose();
+            state_ = State::LeavingTargetToSafeX;
         }
         break;
-    case State::Docking:
-        // 机械臂回到对接姿态后结束动作
-        if (::Grip::grip->isFinished())
+    case State::LeavingTargetToSafeX:
+    {
+        const auto rel_pos = currentRelativeToTarget();
+
+        if (rel_pos.x > safe_distance_)
         {
-            if constexpr (ProjectParts::EnableLift)
+            if constexpr (ProjectParts::EnableLift &&
+                          (::Grip::Config::SpearGrab::LiftDocking <=
+                           ::Grip::Config::SpearGrab::LiftExecute))
             {
-                if (Chassis::motion->isLiftAllFinished())
-                    state_ = State::Done;
+                Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftDocking,
+                                           Chassis::Config::Lift::OnloadLimit);
             }
-            else
-            {
-                state_ = State::Done;
-            }
+            Chassis::ctrl->setTargetPostureInWorld(end_pos_,
+                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            state_ = State::MovingToEnd;
+        }
+        break;
+    }
+    case State::MovingToEnd:
+        if (Chassis::ctrl->isTrajectoryFinished() && ::Grip::grip->isFinished() &&
+            is_lift_finished())
+        {
+            state_ = State::Done;
         }
         break;
     }
@@ -239,7 +266,8 @@ RollerStore& RollerStore::inst()
 
 bool RollerStore::canStart() const
 {
-    return (state_ == State::Idle || state_ == State::Done) && ::Grip::grip != nullptr && ::Grip::grip->enabled();
+    return (state_ == State::Idle || state_ == State::Done) && ::Grip::grip != nullptr &&
+           ::Grip::grip->enabled();
 }
 
 void RollerStore::store(float /*storage_distance_x*/)

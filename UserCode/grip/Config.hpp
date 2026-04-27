@@ -20,19 +20,20 @@ namespace Position
 constexpr float ArmNowork = 130.0f;
 constexpr float ArmReady  = 68.0f;
 constexpr float ArmOut    = 100.0f;
-constexpr float ArmStore  = 90.0f;      //  吸取卷轴机械臂位置
+constexpr float ArmStore  = 90.0f; //  吸取卷轴机械臂位置
 
 constexpr float TurnGrip    = 235.0f;
 constexpr float TurnDocking = 145.0f;
-
-constexpr float LiftGrab = 0.18f; // 矛头夹取高度 unit m
-
-// 下面的距离参数均为：从当前位姿到目标位姿的相对距离，正值表示车向前，负值表示车向后。
-constexpr float gotoReadypos_x  = -10.0f;
-constexpr float gotoReadypos_y   = 20.0f;
-constexpr float gotoGrabpos_x   = -25.0f;
-constexpr float grabBackoff_x   = 25.0f;
 } // namespace Position
+
+namespace SpearGrab
+{
+constexpr float LiftExecute = 0.18f; // 矛头夹取执行高度 unit m
+constexpr float LiftDocking = 0.01f; // 夹取完成后的对接高度 unit m
+
+constexpr float PrepareYThreshold   = 0.005f; // prepare 阶段允许的侧向误差 unit m
+constexpr float PrepareYawThreshold = 0.5f;   // prepare 阶段允许的偏航误差 unit deg
+} // namespace SpearGrab
 
 namespace Motor
 {
