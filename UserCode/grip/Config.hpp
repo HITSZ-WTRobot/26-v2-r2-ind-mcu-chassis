@@ -20,7 +20,7 @@ namespace Position
 constexpr float ArmNowork = 130.0f;
 constexpr float ArmReady  = 68.0f;
 constexpr float ArmOut    = 100.0f;
-constexpr float ArmStore  = 90.0f; //  吸取卷轴机械臂位置
+constexpr float ArmStore  = 90.0f; // 卷轴临时存放机械臂位置
 
 constexpr float TurnGrip    = 235.0f;
 constexpr float TurnDocking = 145.0f;

@@ -1,7 +1,8 @@
-#include "grip_actions.hpp"
-#include "grip/Config.hpp"
+#include "spear_grab.hpp"
 
-#include "chassis/chassis.hpp"
+#include "grip/Config.hpp"
+#include "grip/grip.hpp"
+#include "project_parts.hpp"
 
 #include <cassert>
 #include <cmath>
@@ -60,8 +61,8 @@ void SpearGrab::grab(const chassis::Posture& target_pos,
     safe_distance_           = safe_distance;
     target_pos_              = target_pos;
     end_pos_                 = end_pos;
-    end_pos_rel_to_target_   =
-            Chassis::ChassisLoc::WorldPosture2RelativePosture(target_pos_, end_pos_);
+    end_pos_rel_to_target_   = Chassis::ChassisLoc::WorldPosture2RelativePosture(target_pos_,
+                                                                               end_pos_);
     prepare_pos_             = postureRelativeToTargetInWorld({ safe_distance_, 0.0f, 0.0f });
     leave_target_x_only_pos_ = postureRelativeToTargetInWorld(
             { end_pos_rel_to_target_.x, 0.0f, 0.0f });
@@ -156,9 +157,8 @@ void SpearGrab::update()
     case State::Grabbing:
         if (::Grip::grip->isFinished())
         {
-            if constexpr (ProjectParts::EnableLift &&
-                          (::Grip::Config::SpearGrab::LiftDocking >
-                           ::Grip::Config::SpearGrab::LiftExecute))
+            if constexpr (ProjectParts::EnableLift && (::Grip::Config::SpearGrab::LiftDocking >
+                                                       ::Grip::Config::SpearGrab::LiftExecute))
             {
                 Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftDocking,
                                            Chassis::Config::Lift::OnloadLimit);
@@ -177,9 +177,8 @@ void SpearGrab::update()
 
         if (rel_pos.x > safe_distance_)
         {
-            if constexpr (ProjectParts::EnableLift &&
-                          (::Grip::Config::SpearGrab::LiftDocking <=
-                           ::Grip::Config::SpearGrab::LiftExecute))
+            if constexpr (ProjectParts::EnableLift && (::Grip::Config::SpearGrab::LiftDocking <=
+                                                       ::Grip::Config::SpearGrab::LiftExecute))
             {
                 Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftDocking,
                                            Chassis::Config::Lift::OnloadLimit);
@@ -201,150 +200,6 @@ void SpearGrab::update()
 }
 
 [[noreturn]] void SpearGrab::loop()
-{
-    for (;;)
-    {
-        osThreadFlagsWait(FlagStart, osFlagsWaitAll, osWaitForever);
-        while (!isFinished())
-        {
-            update();
-            osDelay(1);
-        }
-    }
-}
-
-RollerStore::SuctionCup::SuctionCup()
-#ifdef GRIP_SUCTION_GPIO_Port
-    : gpio_{ GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin }, active_(false), available_(true)
-#else
-    : gpio_{ nullptr, 0 }, active_(false), available_(false)
-#endif
-{
-    // 如果没有定义吸盘 GPIO 引脚，那么吸盘动作为不可用
-}
-
-void RollerStore::SuctionCup::activate()
-{
-    if (!available_)
-        return;
-    GPIO_SetPin(&gpio_);
-    active_ = true;
-}
-
-void RollerStore::SuctionCup::deactivate()
-{
-    if (!available_)
-        return;
-    GPIO_ResetPin(&gpio_);
-    active_ = false;
-}
-
-bool RollerStore::SuctionCup::isActive() const
-{
-    return active_;
-}
-
-bool RollerStore::SuctionCup::isAvailable() const
-{
-    return available_;
-}
-
-RollerStore::RollerStore()
-{
-    constexpr osThreadAttr_t attr{
-        .stack_size = 256 * 4,
-        .priority   = osPriorityNormal,
-    };
-    task_ = osThreadNew(TaskEntry, this, &attr);
-}
-
-RollerStore& RollerStore::inst()
-{
-    static RollerStore instance;
-    return instance;
-}
-
-bool RollerStore::canStart() const
-{
-    return (state_ == State::Idle || state_ == State::Done) && ::Grip::grip != nullptr &&
-           ::Grip::grip->enabled();
-}
-
-void RollerStore::store(float /*storage_distance_x*/)
-{
-    if (!canStart())
-        return;
-
-    if (state_ == State::Done)
-        state_ = State::Idle;
-
-    start_pos_ = Chassis::loc->postureInWorld();
-    if (::Grip::grip->toStorePose())
-    {
-        state_ = State::MovingToStorePose;
-        osThreadFlagsSet(task_, FlagStart);
-    }
-}
-
-void RollerStore::release()
-{
-    suction_.deactivate();
-}
-
-bool RollerStore::isIdle() const
-{
-    return state_ == State::Idle;
-}
-
-bool RollerStore::isFinished() const
-{
-    return state_ == State::Done;
-}
-
-bool RollerStore::isRunning() const
-{
-    return state_ != State::Idle && state_ != State::Done;
-}
-
-bool RollerStore::isSuctionActive() const
-{
-    return suction_.isActive();
-}
-
-void RollerStore::waitForFinish() const
-{
-    while (!isFinished())
-        osDelay(10);
-}
-
-chassis::Posture RollerStore::relativePosture(float x) const
-{
-    return Chassis::loc->RelativePosture2WorldPosture(start_pos_, { x, 0.0f, 0.0f });
-}
-
-void RollerStore::update()
-{
-    switch (state_)
-    {
-    case State::Idle:
-    case State::Done:
-        break;
-    case State::MovingToStorePose:
-        // 机械臂到达存储姿态后，启动吸盘吸持卷轴
-        if (::Grip::grip->isFinished())
-        {
-            if (suction_.isAvailable())
-                suction_.activate();
-            state_ = State::ActivatingSuction;
-        }
-        break;
-    case State::ActivatingSuction:
-        state_ = State::Done;
-        break;
-    }
-}
-
-[[noreturn]] void RollerStore::loop()
 {
     for (;;)
     {

@@ -13,6 +13,9 @@
 namespace Grip
 {
 
+/**
+ * @brief Grip 低层机构对象
+ */
 class Grip : traits::NoCopy, traits::NoDelete
 {
 public:
