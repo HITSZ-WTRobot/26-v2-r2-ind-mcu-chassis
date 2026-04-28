@@ -13,7 +13,7 @@
  * 六个一级组件分别代表：
  * 1. 底盘（四个底盘电机组成的 mecanum4 平面运动部分）
  * 2. 升降（两个抬升电机组成的抬升机构）
- * 3. grip（夹取机构）
+ * 3. grip（夹取机构，负责取矛头和卷轴临时存放）
  * 4. 陀螺仪（当前为航向陀螺仪）
  * 5. 上位机定位包（上位机下发的外部位姿观测）
  * 6. 上位机控制指令（上位机其他控制命令）
@@ -51,7 +51,7 @@
 #    define PROJECT_PART_ENABLE_LIFT 1
 #endif
 
-/// 启用夹取机构，包括 arm / turn 电机和夹爪 GPIO。
+/// 启用夹取机构，包括 arm / turn 电机、夹爪 GPIO，以及取矛头 / 存放卷轴动作组。
 #ifndef PROJECT_PART_ENABLE_GRIP
 #    define PROJECT_PART_ENABLE_GRIP 1
 #endif

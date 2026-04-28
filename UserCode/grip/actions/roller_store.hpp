@@ -1,0 +1,102 @@
+/**
+ * @file    roller_store.hpp
+ * @brief   Grip 卷轴临时存放动作组
+ */
+#pragma once
+
+#include "chassis/chassis.hpp"
+#include "cmsis_os2.h"
+#include "gpio_driver.h"
+#include "traits.hpp"
+
+namespace Grip::Action
+{
+/**
+ * @brief 卷轴临时存放动作
+ *
+ * 负责：卷轴吸盘的无参暂存 / 释放动作，底盘不移动。
+ *
+ * 状态机会串联以下流程：
+ * - 暂存：吸盘启动 -> 去拾取位 -> 等待负压建立 -> 去暂存位；
+ * - 释放：去释放位 -> 关闭吸盘 -> 回待机位。
+ */
+class KfsStore : traits::NoCopy, traits::NoDelete
+{
+public:
+    /** @brief 创建后台状态机线程。 */
+    KfsStore();
+    /** @brief 获取全局唯一动作实例。 */
+    static KfsStore& inst();
+
+    /**
+     * @brief 开始卷轴临时存放动作
+     */
+    void store();
+
+    /** @brief 开始卷轴释放动作 */
+    void release();
+
+    /** @brief 当前是否为空闲状态。 */
+    [[nodiscard]] bool isIdle() const;
+    /** @brief 当前是否已结束。 */
+    [[nodiscard]] bool isFinished() const;
+    /** @brief 当前是否仍在执行动作。 */
+    [[nodiscard]] bool isRunning() const;
+    /** @brief 当前吸盘 GPIO 是否处于激活状态。 */
+    [[nodiscard]] bool isSuctionActive() const;
+    /** @brief 阻塞等待动作结束。 */
+    void waitForFinish() const;
+
+private:
+    /** @brief KFS 暂存 / 释放流程状态。 */
+    enum class State
+    {
+        Idle,                  ///< 空闲。
+        MovingToPickupPose,    ///< 正在移动到 KFS 拾取姿态。
+        WaitingSuctionBuildUp, ///< 已到拾取位，等待吸盘建立负压。
+        MovingToStorePose,     ///< 正在移动到 KFS 暂存姿态。
+        MovingToReleasePose,   ///< 正在移动到 KFS 释放姿态。
+        MovingToStandbyPose,   ///< 释放后回系统待机姿态。
+        Done                   ///< 流程结束。
+    };
+
+    struct SuctionCup
+    {
+        /** @brief 吸盘使能封装 */
+        SuctionCup();
+
+        /** @brief 激活吸盘 */
+        void activate();
+
+        /** @brief 关闭吸盘 */
+        void deactivate();
+
+        /** @brief 读取 GPIO，判断吸盘当前是否处于激活状态。 */
+        [[nodiscard]] bool isActive() const;
+
+    private:
+        /// 吸盘控制 GPIO。
+        GPIO_t gpio_;
+    };
+
+    static void TaskEntry(void* self) { static_cast<KfsStore*>(self)->loop(); }
+
+    /** @brief 推进一步状态机。由后台线程 1 ms 周期调用。 */
+    void update();
+    /** @brief 后台线程主循环，等待动作启动后推进状态机。 */
+    [[noreturn]] void loop();
+
+    /** @brief 检查动作是否可启动 */
+    [[nodiscard]] bool canStart() const;
+
+    /// 后台状态机线程句柄。
+    osThreadId_t task_{};
+    /// 当前 KFS 动作阶段。
+    State state_ = State::Idle;
+    /// 吸盘控制封装。
+    SuctionCup suction_{};
+    /// 剩余等待时间，单位 ms，对应 1 ms 线程周期。
+    uint32_t delay_ms_remaining_{ 0 };
+};
+
+} // namespace Grip::Action

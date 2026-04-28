@@ -7,7 +7,7 @@ Firmware integration lives at the repository root. `UserCode/` is the only proje
 - `UserCode/connection.*` — unified connection bitmap refresh and startup connection wait logic.
 - `UserCode/project_parts.hpp` — the single source of truth for compile-time feature toggles and derived capabilities.
 - `UserCode/chassis/` — the combined wheel-chassis + lift motion object, localization/controller setup, and step action state machine under `UserCode/chassis/actions/`.
-- `UserCode/grip/` — the grip mechanism entry point, trajectory control, and calibration config.
+- `UserCode/grip/` — the grip mechanism entry point, trajectory control, calibration config, and the two grip action modules under `UserCode/grip/actions/`: `SpearGrab` for taking spearheads and `KfsStore` for temporary roller storage.
 - `UserCode/protocol/` — upper-host UART frame parsing and command dispatch.
 - `UserCode/system.hpp` and `UserCode/sync/` — initialization handoff and clock alignment helpers.
 - `UserCode/arena.cpp` — the global static-allocation arena backing `new` / `delete`.
@@ -22,7 +22,10 @@ This repository also has several project-specific conventions derived from `User
 - `Chassis::motion` is intentionally a single `IndLiftMecanum4` object that owns both the mecanum wheelset and the dual lift sides. As long as either wheel chassis or lift is enabled, keep that unified motion-object assumption intact.
 - Each `Lift::LiftSide` is now a synchronized dual-motor side built from `trajectory::HomingMotorTrajectory<2>` and two `MotorVelController`s. Keep the “front pair + rear pair” grouping intact unless the hardware contract changes again.
 - `Chassis::loc` and `Chassis::ctrl` exist only when wheel chassis support is enabled. Localization mode is selected at compile time: no gyro uses `JustEncoder`, gyro uses `LocEKF`, and upper-host localization delays EKF creation until the first posture packet arrives.
-- `Grip::grip`, `Protocol::pc_rx`, `Chassis::motion`, `Chassis::loc`, and `Chassis::ctrl` are namespace-level singleton-style pointers. Follow the existing ownership model instead of introducing additional dynamic-lifetime managers.
+- `Grip::grip`, `Protocol::pc_rx`, `Chassis::motion`, `Chassis::loc`, and `Chassis::ctrl` are namespace-level singleton-style pointers. High-level grip actions are also single-instance objects, but they are exposed through `Grip::Action::SpearGrab::inst()` and `Grip::Action::KfsStore::inst()` rather than through additional global pointers. Follow the existing ownership model instead of introducing additional dynamic-lifetime managers.
+- `Grip` is responsible for two high-level action groups: `SpearGrab` for spearhead pickup and `KfsStore` for temporary roller storage. Keep them as separate modules under `UserCode/grip/actions/`; do not fold roller temporary-storage logic back into the spear-grab module.
+- `Grip::Action::KfsStore` owns a fixed no-parameter store/release flow. Keep its suction-pickup / temporary-store / release / standby poses and suction delay centralized in `Grip::Config::KfsStore`, and update the config together with the action logic when that hardware sequence changes.
+- `Protocol::ActionState::table` is currently a fully reserved 16-bit feedback field. `ActionState::updateTable()` clears it to zero, and no action bits are defined yet; if future work needs action feedback, update the protocol definition and the table semantics together.
 - `UserCode/arena.cpp` overrides global `new` / `delete` with a one-way static arena. Avoid designs that assume `delete` frees memory or that repeatedly allocate and release heap objects at runtime.
 
 ## Runtime Flow

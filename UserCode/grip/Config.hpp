@@ -6,6 +6,7 @@
 
 #include "can.h"
 #include "dji.hpp"
+#include "gpio_driver.h"
 #include "homing_motor_trajectory.hpp"
 #include "motor_vel_controller.hpp"
 #include "pid_pd.hpp"
@@ -16,13 +17,59 @@ namespace Grip::Config
 
 namespace Position
 {
+// 之后可以改为相对电机绝对零点的角度，引入堵转检测的偏移 setoff。
+// 目前这些值仍直接作为校准后零点上的关节目标角度。
 constexpr float ArmNowork = 130.0f;
 constexpr float ArmReady  = 68.0f;
 constexpr float ArmOut    = 100.0f;
+constexpr float ArmStore  = 90.0f; // 卷轴临时存放机械臂位置
 
 constexpr float TurnGrip    = 235.0f;
 constexpr float TurnDocking = 145.0f;
 } // namespace Position
+
+struct JointPose
+{
+    /// 大臂目标角度，单位 deg，基于 grip 自身校准零点。
+    float arm_pos;
+    /// 转向目标角度，单位 deg，基于 grip 自身校准零点。
+    float turn_pos;
+};
+
+namespace Poses
+{
+/// 待机姿态：系统空闲、KFS 释放完成后都应回到这里。
+constexpr JointPose Standby{ Position::ArmNowork, Position::TurnGrip };
+/// 准备夹取姿态：夹爪张开，等待底盘靠近目标。
+constexpr JointPose PrepareGrab{ Position::ArmReady, Position::TurnGrip };
+/// 夹取执行姿态：夹爪闭合，并把大臂推出完成矛头夹取。
+constexpr JointPose Grab{ Position::ArmOut, Position::TurnGrip };
+/// 对接姿态：夹取完成后转向对接角度，等待底盘移动到最终位置。
+constexpr JointPose Docking{ Position::ArmReady, Position::TurnDocking };
+/// KFS 拾取姿态：吸盘对准取料位置。
+constexpr JointPose KfsPickup{ Position::ArmStore, Position::TurnGrip };
+/// KFS 暂存姿态：吸住卷轴后转到暂存朝向。
+constexpr JointPose KfsStore{ Position::ArmStore, Position::TurnDocking };
+/// KFS 释放姿态与拾取姿态相同，复用同一组关节目标，避免重复维护。
+inline constexpr const JointPose& KfsRelease = KfsPickup;
+} // namespace Poses
+
+namespace KfsStore
+{
+inline const GPIO_t SuctionGPIO{ GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin };
+
+/// 吸盘建立负压的最短等待时间，单位 ms。
+constexpr uint32_t SuctionBuildUpDelayMs = 300;
+} // namespace KfsStore
+
+namespace SpearGrab
+{
+constexpr float LiftExecute = 0.18f; // 矛头夹取执行高度 unit m
+constexpr float LiftDocking = 0.01f; // 夹取完成后的对接高度 unit m
+
+constexpr float PrepareYThreshold   = 0.005f; // prepare 阶段允许的侧向误差 unit m
+constexpr float PrepareYawThreshold = 0.5f;   // prepare 阶段允许的偏航误差 unit deg
+} // namespace SpearGrab
 
 namespace Motor
 {
