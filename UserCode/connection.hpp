@@ -47,6 +47,7 @@ enum class Bit : uint8_t
  */
 inline volatile uint16_t table{};
 
+void init();
 void updateTable();
 bool isAllConnected();
 void waitAll();

@@ -10,6 +10,7 @@
 #include "connection.hpp"
 #include "device.hpp"
 #include "grip/grip.hpp"
+#include "i2c.hpp"
 #include "project_parts.hpp"
 #include "protocol.hpp"
 #include "system.hpp"
@@ -66,6 +67,11 @@ extern "C" void Init(void* argument)
 
     if constexpr (ProjectParts::EnableGrip)
         Grip::init();
+
+    Connection::init();
+
+    if (!AppI2C::start_bus1_manager())
+        Error_Handler();
 
     // 检查看门狗是否已满
     if (service::Watchdog::isFull())

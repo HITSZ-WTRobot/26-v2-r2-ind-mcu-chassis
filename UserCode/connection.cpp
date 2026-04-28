@@ -7,6 +7,7 @@
 
 #include "cmsis_os2.h"
 #include "device.hpp"
+#include "i2c.hpp"
 #include "project_parts.hpp"
 #include "protocol.hpp"
 
@@ -14,6 +15,14 @@ namespace Connection
 {
 namespace
 {
+constexpr uint8_t  ConnectionTableI2CAddress7bit = 0x10U;
+constexpr bool     ConnectionTableI2CUseMemWrite = false;
+constexpr uint8_t  ConnectionTableI2CRegister    = 0x00U;
+constexpr bool     ConnectionTableI2CBigEndian   = true;
+constexpr uint32_t ConnectionTableI2CPeriodMs    = 200U; // 5Hz
+constexpr uint32_t ConnectionTableI2CPhaseMs     = 0U;
+constexpr uint32_t ConnectionTableI2CTimeoutMs   = 20U;
+
 template <typename T> [[nodiscard]] bool is_connected(const T* object)
 {
     return object != nullptr && object->isConnected();
@@ -28,6 +37,20 @@ void set_bit(uint16_t& current, const Bit bit, const bool connected)
 {
     if (connected)
         current |= mask(bit);
+}
+
+void encode_connection_table(uint8_t payload[2], const uint16_t value)
+{
+    if constexpr (ConnectionTableI2CBigEndian)
+    {
+        payload[0] = static_cast<uint8_t>(value >> 8);
+        payload[1] = static_cast<uint8_t>(value);
+    }
+    else
+    {
+        payload[0] = static_cast<uint8_t>(value);
+        payload[1] = static_cast<uint8_t>(value >> 8);
+    }
 }
 
 [[nodiscard]] constexpr uint16_t required_mask()
@@ -67,7 +90,74 @@ void set_bit(uint16_t& current, const Bit bit, const bool connected)
 
     return required;
 }
+
+class ConnectionTableI2CDevice final : public I2CDevice
+{
+public:
+    [[nodiscard]] const char* name() const override { return "connection-table"; }
+
+    [[nodiscard]] uint8_t address7bit() const override { return ConnectionTableI2CAddress7bit; }
+
+    bool init(I2CBusDMA& bus, const uint32_t timeout_ms) override
+    {
+        return transmit(bus, timeout_ms);
+    }
+
+protected:
+    bool onRead(I2CBusDMA& bus, const uint32_t now_ms, const uint32_t timeout_ms) override
+    {
+        (void)now_ms;
+        return transmit(bus, timeout_ms);
+    }
+
+private:
+    bool transmit(I2CBusDMA& bus, const uint32_t timeout_ms) const
+    {
+        const uint16_t current = table;
+        uint8_t        payload[2]{};
+        encode_connection_table(payload, current);
+
+        if constexpr (ConnectionTableI2CUseMemWrite)
+        {
+            return bus.memWrite(address7bit(),
+                                ConnectionTableI2CRegister,
+                                payload,
+                                sizeof(payload),
+                                timeout_ms);
+        }
+
+        return bus.write(address7bit(), payload, sizeof(payload), timeout_ms);
+    }
+};
+
+ConnectionTableI2CDevice& connection_table_i2c_device()
+{
+    static ConnectionTableI2CDevice device;
+    return device;
+}
 } // namespace
+
+void init()
+{
+    updateTable();
+
+    if constexpr (!ProjectParts::EnableConnectionTableI2CTx)
+        return;
+
+    static bool registered = false;
+    if (registered)
+        return;
+
+    if (!AppI2C::manager1().registerDevice(connection_table_i2c_device(),
+                                           ConnectionTableI2CPeriodMs,
+                                           ConnectionTableI2CPhaseMs,
+                                           ConnectionTableI2CTimeoutMs))
+    {
+        Error_Handler();
+    }
+
+    registered = true;
+}
 
 void updateTable()
 {

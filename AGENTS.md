@@ -4,6 +4,7 @@
 Firmware integration lives at the repository root. `UserCode/` is the only project-specific application layer; the current project is split into:
 - `UserCode/app.cpp` — RTOS init flow and timer-driven update scheduling.
 - `UserCode/device.*` — physical device creation and bus registration.
+- `UserCode/i2c.*` — shared `I2CBusDMA` / `I2CUpdateManager` ownership and app-level periodic I2C device registration.
 - `UserCode/connection.*` — unified connection bitmap refresh and startup connection wait logic.
 - `UserCode/project_parts.hpp` — the single source of truth for compile-time feature toggles and derived capabilities.
 - `UserCode/chassis/` — the combined wheel-chassis + lift motion object, localization/controller setup, and step action state machine under `UserCode/chassis/actions/`.
@@ -35,7 +36,8 @@ The real-time update flow is timer-driven and split by frequency:
 - `TIM_Callback_100Hz()` runs the slower profile updates for chassis and grip.
 
 The startup sequence in `Init()` is also part of the project contract:
-- Initialize in order: `Device::init()`, `Chassis::init()`, `Protocol::init()`, then optional `Grip::init()`.
+- Initialize in order: `Device::init()`, `Chassis::init()`, `Protocol::init()`, then optional `Grip::init()`, then `Connection::init()`.
+- Register all shared-I2C periodic devices before calling `AppI2C::start_bus1_manager()`. Do not start the shared I2C manager from an individual device module if other devices may still need to register on the same bus.
 - Wait for all enabled devices/protocol links to report connected before proceeding.
 - Enable and calibrate motion and grip separately, then wait until all enabled subsystems are ready.
 - Call `Chassis::initStandaloneLocCtrl()` only for local-initialization modes; when upper-host localization is enabled, the first posture frame triggers `System::Init::initPostureReceive()` instead.
@@ -70,6 +72,7 @@ Follow the root `.clang-format`: 4-space indentation, Allman braces, no tabs, an
 Preserve the local control-flow style when editing `UserCode/`:
 - Prefer `if constexpr` feature gating around subsystem-specific logic instead of runtime branching when the decision is compile-time.
 - Keep namespace-scoped inline globals and pointers consistent with existing code instead of hiding them behind new wrappers unless a refactor is explicitly requested.
+- Do not add helper functions that only forward a single call to an already semantically clear API, such as wrapping one member-function call with no additional policy or translation; call the original API directly.
 - Treat the state-machine enum names in `UserCode/chassis/actions/Step.*` as semantic documentation; do not rename or anglicize them casually.
 - Keep configuration constants in `UserCode/chassis/Config.hpp`, `UserCode/grip/Config.hpp`, and `UserCode/project_parts.hpp` instead of scattering magic numbers into behavior code.
 

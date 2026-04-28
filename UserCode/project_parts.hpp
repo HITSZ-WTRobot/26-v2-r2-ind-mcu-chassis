@@ -5,18 +5,19 @@
  * 本文件是“组件启用逻辑”的唯一入口。
  *
  * 使用规则：
- * - 只修改下面 6 个 0 / 1 宏；
+ * - 只修改下面 7 个 0 / 1 宏；
  * - 业务代码不要直接重新组合原始宏，统一使用本文件中派生出来的
  *   `ProjectParts::EnableXxx` / `NeedXxx` 常量；
  * - 派生常量的存在意义，是把“模块开关”翻译成“系统能力”。
  *
- * 六个一级组件分别代表：
+ * 七个一级开关分别代表：
  * 1. 底盘（四个底盘电机组成的 mecanum4 平面运动部分）
  * 2. 升降（两个抬升电机组成的抬升机构）
  * 3. grip（夹取机构，负责取矛头和卷轴临时存放）
  * 4. 陀螺仪（当前为航向陀螺仪）
  * 5. 上位机定位包（上位机下发的外部位姿观测）
  * 6. 上位机控制指令（上位机其他控制命令）
+ * 7. connection table I2C 周期发送
  *
  * 常见组合：
  * - 仅底盘调试：
@@ -71,6 +72,11 @@
 #    define PROJECT_PART_ENABLE_PC_CONTROL 1
 #endif
 
+/// 启用 connection table 的 I2C 周期发送。
+#ifndef PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX
+#    define PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX 1
+#endif
+
 namespace ProjectParts
 {
 
@@ -86,6 +92,9 @@ inline constexpr bool EnableGyro         = PROJECT_PART_ENABLE_GYRO != 0;
 inline constexpr bool EnablePcLocalization = PROJECT_PART_ENABLE_PC_LOCALIZATION != 0;
 /// 一级开关：上位机控制命令。
 inline constexpr bool EnablePcControl      = PROJECT_PART_ENABLE_PC_CONTROL != 0;
+/// 一级开关：connection table I2C 周期发送。
+inline constexpr bool EnableConnectionTableI2CTx =
+        PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX != 0;
 
 /**
  * 是否需要构造当前工程的底盘运动对象。

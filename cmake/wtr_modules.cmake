@@ -23,14 +23,14 @@ set(WTR_MANAGED_PACKAGE_DIRS
     Modules/VelocityProfile/Core
     Modules/VelocityProfile/SCurve
     Modules/ChassisController/Controller/Master
+    Modules/BasicComponents/libs/math/LinearAlgebra
+    Modules/BasicComponents/libs/math/EKF
     Modules/BasicComponents/services/watchdog
     Modules/BasicComponents/protocol/UartRxSync
     Modules/BasicComponents/utils
     Modules/Sensors/gyro/HWT101CT
-    Modules/BasicComponents/libs/math/LinearAlgebra
-    Modules/BasicComponents/libs/math/EKF
-    Modules/BasicComponents/libs/utils/deque
     Modules/BasicComponents/libs/concurrency
+    Modules/BasicComponents/libs/utils/deque
     Modules/ChassisController/Localization/EKF
     Modules/ChassisController/Localization/JustEncoder
     Modules/BasicComponents/libs/utils/ring_buffer
@@ -43,6 +43,8 @@ set(WTR_MANAGED_PACKAGE_DIRS
     Modules/TrajectoryControl/HomingMotorTrajectory
     Modules/BasicComponents/bsp/gpio_driver
     Modules/BasicComponents/libs/utils/crc
+    Modules/BasicComponents/bsp/i2c_driver
+    Modules/BasicComponents/services/i2c_update_manager
     Modules/BasicComponents/libs/traits
 )
 
@@ -71,6 +73,7 @@ set(WTR_DIRECT_PACKAGE_TARGETS
     libs::CRC
     libs::RingBuffer
     protocol::UartRxSync
+    services::I2CUpdateManager
     services::Watchdog
     traits
     utils
@@ -85,14 +88,14 @@ set(WTR_RESOLVED_PACKAGE_TARGETS
     VelocityProfile::Core
     VelocityProfile::SCurve
     Chassis::ControllerMaster
+    Math::LinearAlgebra
+    Math::EKF
     services::Watchdog
     protocol::UartRxSync
     utils
     SensorGyro::HWT101CT
-    Math::LinearAlgebra
-    Math::EKF
-    libs::Deque
     libs::Concurrency
+    libs::Deque
     ChassisLocalization::EKF
     ChassisLocalization::JustEncoder
     libs::RingBuffer
@@ -105,6 +108,8 @@ set(WTR_RESOLVED_PACKAGE_TARGETS
     Trajectory::HomingMotorTrajectory
     bsp::GPIO_Driver
     libs::CRC
+    bsp::I2CDriver
+    services::I2CUpdateManager
     traits
     FreeRTOS
     stm32cubemx

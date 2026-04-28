@@ -19,6 +19,7 @@ packages = [
     "libs::CRC",
     "libs::RingBuffer",
     "protocol::UartRxSync",
+    "services::I2CUpdateManager",
     "services::Watchdog",
     "traits",
     "utils",
