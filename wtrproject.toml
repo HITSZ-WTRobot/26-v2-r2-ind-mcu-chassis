@@ -13,6 +13,7 @@ packages = [
     "MotorDrivers::DJI",
     "MotorDrivers::DM",
     "SensorGyro::HWT101CT",
+    "SensorPressure::XGZP6847D",
     "Trajectory::HomingMotorTrajectory",
     "Trajectory::MotorTrajectory",
     "bsp::GPIO_Driver",
