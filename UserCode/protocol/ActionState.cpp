@@ -88,22 +88,26 @@ GripStatus currentGripStatus()
     if (::Grip::grip == nullptr || !::Grip::grip->isCalibrated())
         return GripStatus::Calibrating;
 
-    auto& spear = Grip::Action::SpearGrab::inst();
-    auto& kfs   = Grip::Action::KfsStore::inst();
+    const auto& spear = Grip::Action::SpearGrab::inst();
 
-    if (kfs.workflowPhase() == Grip::Action::KfsStore::WorkflowPhase::Release)
+    if constexpr (ProjectParts::EnableGripSuction)
     {
-        return kfs.isRunning() ? GripStatus::KfsRelease
-                               : (kfs.isFinished() ? GripStatus::Done : GripStatus::Idle);
-    }
+        const auto& kfs = Grip::Action::KfsStore::inst();
 
-    if (kfs.workflowPhase() == Grip::Action::KfsStore::WorkflowPhase::Store)
-    {
-        if (kfs.isRunning())
-            return GripStatus::KfsStore;
+        if (kfs.workflowPhase() == Grip::Action::KfsStore::WorkflowPhase::Release)
+        {
+            return kfs.isRunning() ? GripStatus::KfsRelease
+                                   : (kfs.isFinished() ? GripStatus::Done : GripStatus::Idle);
+        }
 
-        if (kfs.isFinished())
-            return GripStatus::Done;
+        if (kfs.workflowPhase() == Grip::Action::KfsStore::WorkflowPhase::Store)
+        {
+            if (kfs.isRunning())
+                return GripStatus::KfsStore;
+
+            if (kfs.isFinished())
+                return GripStatus::Done;
+        }
     }
 
     if (spear.isRunning())

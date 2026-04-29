@@ -6,7 +6,7 @@
 
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
-#include "gpio_driver.h"
+#include "suction/SuctionCup.hpp"
 #include "traits.hpp"
 
 namespace Grip::Action
@@ -50,8 +50,8 @@ public:
     [[nodiscard]] bool isFinished() const;
     /** @brief 当前是否仍在执行动作。 */
     [[nodiscard]] bool isRunning() const;
-    /** @brief 当前吸盘 GPIO 是否处于激活状态。 */
-    [[nodiscard]] bool isSuctionActive() const;
+    /** @brief 当前气压计最近一次访问后是否在线，仅在启用气压计编译开关时有意义。 */
+    [[nodiscard]] bool isPressureSensorOnline() const;
     /** @brief 当前高层流程归属：暂存、回放或尚未进入动作流。 */
     [[nodiscard]] WorkflowPhase workflowPhase() const { return workflow_phase_; }
     /** @brief 阻塞等待动作结束。 */
@@ -61,32 +61,14 @@ private:
     /** @brief KFS 暂存 / 释放流程状态。 */
     enum class State
     {
-        Idle,                  ///< 空闲。
-        MovingToPickupPose,    ///< 正在移动到 KFS 拾取姿态。
-        WaitingSuctionBuildUp, ///< 已到拾取位，等待吸盘建立负压。
-        MovingToStorePose,     ///< 正在移动到 KFS 暂存姿态。
-        MovingToReleasePose,   ///< 正在移动到 KFS 释放姿态。
-        MovingToStandbyPose,   ///< 释放后回系统待机姿态。
-        Done                   ///< 流程结束。
-    };
-
-    struct SuctionCup
-    {
-        /** @brief 吸盘使能封装 */
-        SuctionCup();
-
-        /** @brief 激活吸盘 */
-        void activate();
-
-        /** @brief 关闭吸盘 */
-        void deactivate();
-
-        /** @brief 读取 GPIO，判断吸盘当前是否处于激活状态。 */
-        [[nodiscard]] bool isActive() const;
-
-    private:
-        /// 吸盘控制 GPIO。
-        GPIO_t gpio_;
+        Idle,                 ///< 空闲。
+        MovingToPickupPose,   ///< 正在移动到 KFS 拾取姿态。
+        WaitingObjectAttach,  ///< 已到拾取位，等待吸盘内部确认已吸住。
+        MovingToStorePose,    ///< 正在移动到 KFS 暂存姿态。
+        MovingToReleasePose,  ///< 正在移动到 KFS 释放姿态。
+        WaitingObjectRelease, ///< 已关闭吸盘，等待吸盘内部确认已放开。
+        MovingToStandbyPose,  ///< 释放后回系统待机姿态。
+        Done                  ///< 流程结束。
     };
 
     static void TaskEntry(void* self) { static_cast<KfsStore*>(self)->loop(); }
@@ -105,10 +87,8 @@ private:
     State state_ = State::Idle;
     /// 面向上位机反馈的动作流归属；暂存完成后会保持为 Store，直到发起回放。
     WorkflowPhase workflow_phase_ = WorkflowPhase::Idle;
-    /// 吸盘控制封装。
-    SuctionCup suction_{};
-    /// 剩余等待时间，单位 ms，对应 1 ms 线程周期。
-    uint32_t delay_ms_remaining_{ 0 };
+    /// KFS 持有的吸盘组件。
+    Suction::SuctionCup kfs_suction_cup_;
 };
 
 } // namespace Grip::Action

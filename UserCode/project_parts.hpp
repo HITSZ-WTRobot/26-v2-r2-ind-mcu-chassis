@@ -5,19 +5,23 @@
  * 本文件是“组件启用逻辑”的唯一入口。
  *
  * 使用规则：
- * - 只修改下面 7 个 0 / 1 宏；
+ * - 只修改下面 9 个 0 / 1 宏；
+ * - 这些开关的设计目的，是方便局部联调 / 排障 / 单机构验证；
+ * - 正式比赛或正式交付构建时，必须按完整硬件形态启用全部功能，不把它当作长期产品分型配置；
  * - 业务代码不要直接重新组合原始宏，统一使用本文件中派生出来的
  *   `ProjectParts::EnableXxx` / `NeedXxx` 常量；
  * - 派生常量的存在意义，是把“模块开关”翻译成“系统能力”。
  *
- * 七个一级开关分别代表：
+ * 九个一级开关分别代表：
  * 1. 底盘（四个底盘电机组成的 mecanum4 平面运动部分）
  * 2. 升降（两个抬升电机组成的抬升机构）
- * 3. grip（夹取机构，负责取矛头和卷轴临时存放）
- * 4. 陀螺仪（当前为航向陀螺仪）
- * 5. 上位机定位包（上位机下发的外部位姿观测）
- * 6. 上位机控制指令（上位机其他控制命令）
- * 7. connection table I2C 周期发送
+ * 3. grip（夹取机构本体：arm / turn / claw）
+ * 4. grip suction（挂在 grip 上的吸盘）
+ * 5. grip suction pressure sensor（挂在吸盘上的气压计）
+ * 6. 陀螺仪（当前为航向陀螺仪）
+ * 7. 上位机定位包（上位机下发的外部位姿观测）
+ * 8. 上位机控制指令（上位机其他控制命令）
+ * 9. connection table I2C 周期发送
  *
  * 常见组合：
  * - 仅底盘调试：
@@ -30,7 +34,7 @@
  *   `WHEEL_CHASSIS=0, LIFT=1`
  *   => 只保留抬升机构初始化、校准和更新逻辑
  * - 仅 grip：
- *   `GRIP=1`，其余可全关
+ *   `GRIP=1`，`GRIP_SUCTION=0/1` 视当前调试对象而定，其余可全关
  * - 底盘 + 陀螺仪：
  *   `WHEEL_CHASSIS=1, GYRO=1, PC_LOCALIZATION=0`
  *   => 使用下位机本地 EKF，不等待上位机首帧位姿
@@ -52,9 +56,20 @@
 #    define PROJECT_PART_ENABLE_LIFT 1
 #endif
 
-/// 启用夹取机构，包括 arm / turn 电机、夹爪 GPIO，以及取矛头 / 存放卷轴动作组。
+/// 启用夹取机构本体，包括 arm / turn 电机、夹爪 GPIO，以及取矛头动作组。
 #ifndef PROJECT_PART_ENABLE_GRIP
 #    define PROJECT_PART_ENABLE_GRIP 1
+#endif
+
+/// 启用挂在 grip 上的吸盘组件，包括气泵 GPIO 与吸附判定逻辑。
+#ifndef PROJECT_PART_ENABLE_GRIP_SUCTION
+#    define PROJECT_PART_ENABLE_GRIP_SUCTION 1
+#endif
+
+/// 启用挂在 grip suction 上的气压计；关闭时吸住/放开判定退化为延时。
+/// 这个开关只影响“怎么确认已吸住/已放开”，不影响吸盘气泵 GPIO 本身是否存在。
+#ifndef PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR
+#    define PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR 1
 #endif
 
 /// 启用陀螺仪输入。关闭时底盘定位退化为 JustEncoder。
@@ -86,6 +101,11 @@ inline constexpr bool EnableWheelChassis = PROJECT_PART_ENABLE_WHEEL_CHASSIS != 
 inline constexpr bool EnableLift = PROJECT_PART_ENABLE_LIFT != 0;
 /// 一级开关：grip 机构。
 inline constexpr bool EnableGrip = PROJECT_PART_ENABLE_GRIP != 0;
+/// 一级开关：grip 上的吸盘组件。
+inline constexpr bool EnableGripSuction = PROJECT_PART_ENABLE_GRIP_SUCTION != 0;
+/// 一级开关：grip suction 上的气压计。
+inline constexpr bool EnableGripSuctionPressureSensor =
+        EnableGripSuction && (PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR != 0);
 /// 一级开关：陀螺仪。
 inline constexpr bool EnableGyro = PROJECT_PART_ENABLE_GYRO != 0;
 /// 一级开关：上位机定位包。
@@ -150,8 +170,9 @@ inline constexpr bool EnableStepAction = EnablePcControl && EnableWheelChassis &
  * `StoreKFS/ReleaseKFS` 只依赖：
  * - 上位机控制命令入口
  * - grip 机构
+ * - grip 上的吸盘
  */
-inline constexpr bool EnableKfsAction = EnablePcControl && EnableGrip;
+inline constexpr bool EnableKfsAction = EnablePcControl && EnableGrip && EnableGripSuction;
 
 /**
  * 取矛头动作组是否可用。
@@ -162,7 +183,8 @@ inline constexpr bool EnableKfsAction = EnablePcControl && EnableGrip;
  * - 底盘平面运动
  * - 升降机构
  */
-inline constexpr bool EnableSpearGrabAction = EnableKfsAction && EnableWheelChassis && EnableLift;
+inline constexpr bool EnableSpearGrabAction =
+        EnablePcControl && EnableGrip && EnableWheelChassis && EnableLift;
 
 /**
  * 编译期配置约束：
@@ -171,5 +193,10 @@ inline constexpr bool EnableSpearGrabAction = EnableKfsAction && EnableWheelChas
  */
 static_assert(!EnablePcLocalization || EnableEkfLocalization,
               "PROJECT_PART_ENABLE_PC_LOCALIZATION requires wheel chassis and gyro enabled.");
+static_assert(!EnableGripSuction || EnableGrip,
+              "PROJECT_PART_ENABLE_GRIP_SUCTION requires PROJECT_PART_ENABLE_GRIP enabled.");
+static_assert(
+        !EnableGripSuctionPressureSensor || EnableGripSuction,
+        "PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR requires PROJECT_PART_ENABLE_GRIP_SUCTION enabled.");
 
 } // namespace ProjectParts

@@ -12,6 +12,7 @@
 #include "motor_vel_controller.hpp"
 #include "pid_pd.hpp"
 #include "s_curve.hpp"
+#include "suction/SuctionCup.hpp"
 
 #include <cstdint>
 
@@ -59,10 +60,16 @@ inline constexpr const JointPose& KfsRelease = KfsPickup;
 
 namespace KfsStore
 {
-inline const GPIO_t SuctionGPIO{ GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin };
 
-/// 吸盘建立负压的最短等待时间，单位 ms。
-constexpr uint32_t SuctionBuildUpDelayMs = 300;
+inline const Suction::SuctionCup::OwnerConfig SuctionCupConfig{
+    .pump_gpio                     = { GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin },
+    .pressure_update_phase_ms      = 5U,
+    .pressure_stale_ms             = 120U,
+    .object_detect_on_pressure_pa  = Suction::Config::DetectOnPressurePa,
+    .object_detect_off_pressure_pa = Suction::Config::DetectOffPressurePa,
+    .object_detect_delay_ms        = Suction::Config::ObjectDetectDelayMs,
+    .object_release_delay_ms       = Suction::Config::ObjectReleaseDelayMs,
+};
 } // namespace KfsStore
 
 namespace SpearGrab

@@ -78,6 +78,10 @@ extern "C" void Init(void* argument)
         // 这些高层动作的构造函数内部会创建后台线程，必须在线程上下文预创建；
         // 后续 ISR 路径只读取 `::inst()` 暴露的状态，不再承担首次构造职责。
         (void)Grip::Action::SpearGrab::inst();
+    }
+
+    if constexpr (ProjectParts::EnableGripSuction)
+    {
         (void)Grip::Action::KfsStore::inst();
     }
 

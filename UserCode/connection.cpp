@@ -7,6 +7,8 @@
 
 #include "cmsis_os2.h"
 #include "device.hpp"
+#include "grip/actions/roller_store.hpp"
+#include "grip/grip.hpp"
 #include "i2c.hpp"
 #include "project_parts.hpp"
 #include "protocol.hpp"
@@ -77,6 +79,11 @@ void encode_connection_table(uint8_t payload[2], const uint16_t value)
     {
         required |= mask(Bit::GripArm);
         required |= mask(Bit::GripTurn);
+    }
+
+    if constexpr (ProjectParts::EnableGripSuctionPressureSensor)
+    {
+        required |= mask(Bit::GripSuctionPressure);
     }
 
     if constexpr (ProjectParts::EnableGyro)
@@ -183,6 +190,13 @@ void updateTable()
     {
         set_bit(current, Bit::GripArm, is_connected(Device::Motor::grip_arm));
         set_bit(current, Bit::GripTurn, is_connected(Device::Motor::grip_turn));
+    }
+
+    if constexpr (ProjectParts::EnableGripSuctionPressureSensor)
+    {
+        set_bit(current,
+                Bit::GripSuctionPressure,
+                Grip::Action::KfsStore::inst().isPressureSensorOnline());
     }
 
     if constexpr (ProjectParts::EnableGyro)
