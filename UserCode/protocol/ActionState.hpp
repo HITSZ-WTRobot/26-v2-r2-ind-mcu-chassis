@@ -23,6 +23,9 @@ namespace Protocol::ActionState
  */
 inline volatile uint16_t table{};
 
+/** @brief 启动 ActionState 的 50 Hz 低优先级刷新任务。 */
+void init();
+
 /**
  * 台阶动作状态
  */

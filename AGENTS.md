@@ -34,8 +34,10 @@ This repository also has several project-specific conventions derived from `User
 
 ## Runtime Flow
 The real-time update flow is timer-driven and split by frequency:
-- `TIM_Callback_1kHz_1()` in `UserCode/app.cpp` updates connection status, chassis control, device bus output, optional grip control, and feeds the watchdog.
-- Grip uses a local 500 Hz prescaler inside the 1 kHz callback for error updates.
+- `TIM_Callback_1kHz_1()` in `UserCode/app.cpp` handles the first half-cycle: chassis 1 kHz control plus optional grip 1 kHz / 500 Hz control updates.
+- `TIM_Callback_1kHz_2()` handles the second half-cycle, offset by half a timer period: the concentrated DJI CAN current sends for all active groups, followed by connection refresh and watchdog feeding.
+- Grip uses a local 500 Hz prescaler inside `TIM_Callback_1kHz_1()` for error updates.
+- `Protocol::ActionState::table` is refreshed by its own low-priority 50 Hz task in `UserCode/protocol/ActionState.*`, not from the timer ISR path.
 - `TIM_Callback_100Hz()` runs the slower profile updates for chassis and grip.
 
 The startup sequence in `Init()` is also part of the project contract:

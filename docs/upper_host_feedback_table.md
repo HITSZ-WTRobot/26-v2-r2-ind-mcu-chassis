@@ -64,6 +64,10 @@ grip_status              = (table >> 7) & 0x7
 grip_suction_has_object  = (table >> 10) & 0x1
 ```
 
+补充：
+
+- `ActionState::table` 由下位机一个独立的低优先级 `50 Hz` 任务刷新；串口反馈帧可能在相邻多个发送周期里重复同一份 `ActionState`。
+
 ### 3.1 `StepStatus`
 
 | 值 | 枚举 | 含义 |

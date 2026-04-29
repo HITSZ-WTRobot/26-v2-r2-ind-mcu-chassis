@@ -22,13 +22,8 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
     static uint32_t grip_prescaler_500Hz = 0;
 
-    Connection::updateTable();
-    Protocol::ActionState::updateTable();
-
+    // 上半拍统一完成本周期控制计算，给下半拍的集中 CAN 发送准备好最新输出。
     Chassis::update_1kHz();
-
-    Device::update_1kHz();
-
     if (Grip::grip != nullptr)
     {
         grip_prescaler_500Hz++;
@@ -39,11 +34,16 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
         }
         Grip::grip->update_1kHz();
     }
-
-    service::Watchdog::EatAll();
 }
 
-void TIM_Callback_1kHz_2(TIM_HandleTypeDef* htim) {}
+void TIM_Callback_1kHz_2(TIM_HandleTypeDef* htim)
+{
+    // 下半拍集中处理总线发送和管理刷新，避免把 CAN 发送再拆散到两个中断里。
+    Device::update_1kHz();
+
+    Connection::updateTable();
+    service::Watchdog::EatAll();
+}
 
 void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
 {
@@ -86,6 +86,9 @@ extern "C" void Init(void* argument)
         (void)Grip::Action::KfsStore::inst();
     }
 
+    // ActionState 低优先级任务只读取这些已预创建好的动作 / 机构状态，因此放在它们之后启动。
+    Protocol::ActionState::init();
+
     Connection::init();
 
     if (!AppI2C::start_bus1_manager())
@@ -96,7 +99,7 @@ extern "C" void Init(void* argument)
         Error_Handler();
 
     // 启动定时器
-    // 实现 1kHz 定时器交替触发，避免总线上同时控制多电机导致需要同时发送超过3条消息的情况
+    // 使用 1 kHz 周期中断 + 半周期后比较中断，把“控制计算”和“CAN 发送 / 管理刷新”分到两个半拍。
     HAL_TIM_RegisterCallback(&htim5, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM_Callback_1kHz_1);
     HAL_TIM_RegisterCallback(&htim5, HAL_TIM_OC_DELAY_ELAPSED_CB_ID, TIM_Callback_1kHz_2);
     HAL_TIM_Base_Start_IT(&htim5);

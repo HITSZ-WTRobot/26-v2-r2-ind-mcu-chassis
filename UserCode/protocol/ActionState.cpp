@@ -7,15 +7,26 @@
 
 #include "chassis/actions/Step.hpp"
 #include "chassis/chassis.hpp"
+#include "cmsis_os2.h"
 #include "grip/actions/roller_store.hpp"
 #include "grip/actions/spear_grab.hpp"
 #include "grip/grip.hpp"
+#include "main.h"
 #include "project_parts.hpp"
 
 namespace Protocol::ActionState
 {
 namespace
 {
+constexpr uint32_t       ActionStateUpdatePeriodMs = 20U;
+constexpr osThreadAttr_t ActionStateTaskAttr{
+    .name       = "action-state",
+    .stack_size = 256U * sizeof(uint32_t),
+    .priority   = osPriorityLow,
+};
+
+osThreadId_t task_{};
+
 StepStatus currentStepStatus()
 {
     if constexpr (!ProjectParts::EnableStepAction)
@@ -126,7 +137,32 @@ bool currentGripSuctionHasObject()
 
     return Grip::Action::KfsStore::inst().hasDetectedObject();
 }
+
+[[noreturn]] void loop(void* argument)
+{
+    for (;;)
+    {
+        updateTable();
+        osDelay(ActionStateUpdatePeriodMs);
+    }
+}
 } // namespace
+
+void init()
+{
+    if constexpr (!ProjectParts::EnableUpperHostProtocol)
+        return;
+
+    if (task_ != nullptr)
+        return;
+
+    // 先同步刷新一次，避免协议启动后短时间内仍读到默认零值。
+    updateTable();
+
+    task_ = osThreadNew(loop, nullptr, &ActionStateTaskAttr);
+    if (task_ == nullptr)
+        Error_Handler();
+}
 
 void updateTable()
 {
