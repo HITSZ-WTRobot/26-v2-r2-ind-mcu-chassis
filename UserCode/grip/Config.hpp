@@ -61,6 +61,10 @@ inline constexpr const JointPose& KfsRelease = KfsPickup;
 namespace KfsStore
 {
 inline constexpr uint32_t SuctionPressureUpdatePhaseMs = 5U;
+/// 无气压计时：到达取料位后，等待负压建立再认为已吸住。
+inline constexpr uint32_t AttachConfirmDelayMs = 150U;
+/// 无气压计时：到达释放位并关闭气泵后，等待卷轴脱离再认为已放下。
+inline constexpr uint32_t ReleaseConfirmDelayMs = 100U;
 
 inline const Suction::SuctionCup::Config SuctionCupConfig{
     .pump_gpio                     = { GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin },

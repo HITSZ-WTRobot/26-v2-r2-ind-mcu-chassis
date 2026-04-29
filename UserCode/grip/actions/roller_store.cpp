@@ -2,6 +2,7 @@
 
 #include "device.hpp"
 #include "grip/grip.hpp"
+#include "main.h"
 #include "project_parts.hpp"
 
 namespace Grip::Action
@@ -37,8 +38,8 @@ bool KfsStore::canStart() const
         return false;
 
     // 只允许在空闲 / 已完成状态重启，并且要求底层 grip 已经就绪。
-    return kfs_suction_cup_.canDetectObject() && (state_ == State::Idle || state_ == State::Done) &&
-           ::Grip::grip != nullptr && ::Grip::grip->enabled();
+    return (state_ == State::Idle || state_ == State::Done) && ::Grip::grip != nullptr &&
+           ::Grip::grip->enabled();
 }
 
 void KfsStore::store()
@@ -46,14 +47,22 @@ void KfsStore::store()
     if (!canStart())
         return;
 
-    // 是否已持有卷轴，统一以吸盘当前观测到的真实状态为准。
-    if (kfs_suction_cup_.hasObject())
+    // 有气压计时以实时检测为准；无气压计时退化为流程内的默认持物状态。
+    if (kfs_suction_cup_.canDetectObject())
+    {
+        if (kfs_suction_cup_.hasObject())
+            return;
+    }
+    else if (assumed_has_object_)
+    {
         return;
+    }
 
     if (state_ == State::Done)
         state_ = State::Idle;
 
     // 先启动吸盘，再把机构移向拾取位，避免刚到位时负压尚未建立。
+    assumed_has_object_ = false;
     kfs_suction_cup_.activate();
     if (::Grip::grip->toKfsPickupPose())
     {
@@ -72,9 +81,16 @@ void KfsStore::release()
     if (!canStart())
         return;
 
-    // 释放是否有意义，也统一由吸盘当前是否仍持有物体来决定。
-    if (!kfs_suction_cup_.hasObject())
+    // 有气压计时以实时检测为准；无气压计时退化为流程内的默认持物状态。
+    if (kfs_suction_cup_.canDetectObject())
+    {
+        if (!kfs_suction_cup_.hasObject())
+            return;
+    }
+    else if (!assumed_has_object_)
+    {
         return;
+    }
 
     if (state_ == State::Done)
         state_ = State::Idle;
@@ -119,15 +135,32 @@ void KfsStore::update()
     case State::MovingToPickupPose:
         if (::Grip::grip->isFinished())
         {
-            // 机械臂到位后，不再自己计时，统一等待吸盘内部给出“已吸住”语义。
+            // 机械臂到位后：有气压计继续等气压确认；无气压计则从此刻开始计保底延时。
+            wait_state_since_ms_ = HAL_GetTick();
             state_ = State::WaitingObjectAttach;
         }
         break;
     case State::WaitingObjectAttach:
-        // 是否吸住以及用什么手段确认，统一由吸盘内部自己决定。
-        if (kfs_suction_cup_.hasObject() && ::Grip::grip->toKfsStorePose())
-            state_ = State::MovingToStorePose;
+    {
+        bool attached = false;
+        if (kfs_suction_cup_.canDetectObject())
+        {
+            attached = kfs_suction_cup_.hasObject();
+        }
+        else
+        {
+            attached = HAL_GetTick() - wait_state_since_ms_ >=
+                       ::Grip::Config::KfsStore::AttachConfirmDelayMs;
+        }
+
+        if (attached)
+        {
+            assumed_has_object_ = true;
+            if (::Grip::grip->toKfsStorePose())
+                state_ = State::MovingToStorePose;
+        }
         break;
+    }
     case State::MovingToStorePose:
         // 暂存流程在到达暂存位后结束，吸盘保持工作状态。
         if (::Grip::grip->isFinished())
@@ -138,14 +171,31 @@ void KfsStore::update()
         {
             // TODO: 增加电磁阀，释放阶段应先切阀再关闭气泵 / 吸盘。
             kfs_suction_cup_.deactivate();
+            wait_state_since_ms_ = HAL_GetTick();
             state_ = State::WaitingObjectRelease;
         }
         break;
     case State::WaitingObjectRelease:
-        // 放料确认也统一由吸盘内部完成；无新鲜气压样本时，这里也会保持 false。
-        if (!kfs_suction_cup_.hasObject() && ::Grip::grip->toStandbyPose())
-            state_ = State::MovingToStandbyPose;
+    {
+        bool released = false;
+        if (kfs_suction_cup_.canDetectObject())
+        {
+            released = !kfs_suction_cup_.hasObject();
+        }
+        else
+        {
+            released = HAL_GetTick() - wait_state_since_ms_ >=
+                       ::Grip::Config::KfsStore::ReleaseConfirmDelayMs;
+        }
+
+        if (released)
+        {
+            assumed_has_object_ = false;
+            if (::Grip::grip->toStandbyPose())
+                state_ = State::MovingToStandbyPose;
+        }
         break;
+    }
     case State::MovingToStandbyPose:
         if (::Grip::grip->isFinished())
             state_ = State::Done;
