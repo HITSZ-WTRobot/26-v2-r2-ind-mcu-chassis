@@ -15,15 +15,6 @@ set(WTR_MANAGED_REPOSITORIES
 )
 
 set(WTR_MANAGED_PACKAGE_DIRS
-    Modules/BasicComponents/bsp/gpio_driver
-    Modules/BasicComponents/libs/utils/crc
-    Modules/BasicComponents/libs/utils/ring_buffer
-    Modules/BasicComponents/services/watchdog
-    Modules/BasicComponents/protocol/UartRxSync
-    Modules/BasicComponents/bsp/i2c_driver
-    Modules/BasicComponents/services/i2c_update_manager
-    Modules/BasicComponents/libs/traits
-    Modules/BasicComponents/utils
     Modules/BasicComponents/libs/control/mit_pd
     Modules/MotorDrivers/core
     Modules/BasicComponents/libs/control/pid_motor
@@ -34,19 +25,28 @@ set(WTR_MANAGED_PACKAGE_DIRS
     Modules/ChassisController/Controller/Master
     Modules/BasicComponents/libs/math/LinearAlgebra
     Modules/BasicComponents/libs/math/EKF
+    Modules/BasicComponents/services/watchdog
+    Modules/BasicComponents/protocol/UartRxSync
+    Modules/BasicComponents/utils
     Modules/Sensors/gyro/HWT101CT
     Modules/BasicComponents/libs/concurrency
     Modules/BasicComponents/libs/utils/deque
     Modules/ChassisController/Localization/EKF
     Modules/ChassisController/Localization/JustEncoder
+    Modules/BasicComponents/libs/utils/ring_buffer
     Modules/BasicComponents/bsp/can_driver
     Modules/MotorDrivers/motors/DJI
     Modules/BasicComponents/libs/utils/fixed_map
     Modules/MotorDrivers/motors/DM
+    Modules/BasicComponents/bsp/i2c_driver
+    Modules/BasicComponents/services/i2c_update_manager
     Modules/Sensors/pressure/XGZP6847D
     Modules/BasicComponents/libs/control/pid_pd
     Modules/TrajectoryControl/MotorTrajectory
     Modules/TrajectoryControl/HomingMotorTrajectory
+    Modules/BasicComponents/bsp/gpio_driver
+    Modules/BasicComponents/libs/utils/crc
+    Modules/BasicComponents/libs/traits
 )
 
 foreach(_wtr_package_dir IN LISTS WTR_MANAGED_PACKAGE_DIRS)
@@ -61,14 +61,6 @@ foreach(_wtr_package_dir IN LISTS WTR_MANAGED_PACKAGE_DIRS)
 endforeach()
 
 set(WTR_DIRECT_PACKAGE_TARGETS
-    bsp::GPIO_Driver
-    libs::CRC
-    libs::RingBuffer
-    protocol::UartRxSync
-    services::I2CUpdateManager
-    services::Watchdog
-    traits
-    utils
     Chassis::ControllerMaster
     ChassisLocalization::EKF
     ChassisLocalization::JustEncoder
@@ -79,18 +71,17 @@ set(WTR_DIRECT_PACKAGE_TARGETS
     SensorPressure::XGZP6847D
     Trajectory::HomingMotorTrajectory
     Trajectory::MotorTrajectory
-)
-
-set(WTR_RESOLVED_PACKAGE_TARGETS
     bsp::GPIO_Driver
     libs::CRC
     libs::RingBuffer
-    services::Watchdog
     protocol::UartRxSync
-    bsp::I2CDriver
     services::I2CUpdateManager
+    services::Watchdog
     traits
     utils
+)
+
+set(WTR_RESOLVED_PACKAGE_TARGETS
     libs::MIT_PD
     MotorDrivers::Core
     libs::PIDMotor
@@ -101,21 +92,30 @@ set(WTR_RESOLVED_PACKAGE_TARGETS
     Chassis::ControllerMaster
     Math::LinearAlgebra
     Math::EKF
+    services::Watchdog
+    protocol::UartRxSync
+    utils
     SensorGyro::HWT101CT
     libs::Concurrency
     libs::Deque
     ChassisLocalization::EKF
     ChassisLocalization::JustEncoder
+    libs::RingBuffer
     bsp::CANDriver
     MotorDrivers::DJI
     libs::FixedMap
     MotorDrivers::DM
+    bsp::I2CDriver
+    services::I2CUpdateManager
     SensorPressure::XGZP6847D
     libs::PID_PD
     Trajectory::MotorTrajectory
     Trajectory::HomingMotorTrajectory
-    stm32cubemx
+    bsp::GPIO_Driver
+    libs::CRC
+    traits
     FreeRTOS
+    stm32cubemx
 )
 
 add_library(wtr_project_dependencies INTERFACE)
