@@ -57,9 +57,7 @@ void SpearGrab::abort()
     state_ = State::Done;
 }
 
-void SpearGrab::grab(const chassis::Posture& target_pos,
-                     const chassis::Posture& end_pos,
-                     float                   safe_distance)
+void SpearGrab::grab(const chassis::Posture& target_pos, const chassis::Posture& end_pos)
 {
     // 若上次已结束，则允许复位到 Idle 重新启动一轮动作。
     if (!canStart())
@@ -68,17 +66,21 @@ void SpearGrab::grab(const chassis::Posture& target_pos,
     if (state_ == State::Done)
         state_ = State::Idle;
 
-    safe_distance_           = safe_distance;
-    target_pos_              = target_pos;
-    end_pos_                 = end_pos;
-    end_pos_rel_to_target_   = Chassis::ChassisLoc::WorldPosture2RelativePosture(target_pos_,
-                                                                                 end_pos_);
-    prepare_pos_             = postureRelativeToTargetInWorld({ safe_distance_, 0.0f, 0.0f });
+    constexpr float safe_distance = ::Grip::Config::SpearGrab::SafeDistance;
+    static_assert(safe_distance > 0.0f);
+
+    target_pos_            = target_pos;
+    end_pos_               = end_pos;
+    end_pos_rel_to_target_ = Chassis::ChassisLoc::WorldPosture2RelativePosture(target_pos_,
+                                                                               end_pos_);
+    if (end_pos_rel_to_target_.x <= safe_distance)
+        return;
+
+    prepare_pos_             = postureRelativeToTargetInWorld({ safe_distance, 0.0f, 0.0f });
     leave_target_x_only_pos_ = postureRelativeToTargetInWorld(
             { end_pos_rel_to_target_.x, 0.0f, 0.0f });
 
-    assert(safe_distance_ > 0.0f);
-    assert(end_pos_rel_to_target_.x > safe_distance_);
+    assert(end_pos_rel_to_target_.x > safe_distance);
 
     // 先确认 grip 能进入准备姿态，再发底盘 / 抬升目标，避免流程半启动。
     if (!::Grip::grip->toPrepareGrabPose())
@@ -202,7 +204,7 @@ void SpearGrab::update()
     {
         const auto rel_pos = currentRelativeToTarget();
 
-        if (rel_pos.x > safe_distance_)
+        if (rel_pos.x > ::Grip::Config::SpearGrab::SafeDistance)
         {
             if constexpr (ProjectParts::EnableLift && (::Grip::Config::SpearGrab::LiftDocking <=
                                                        ::Grip::Config::SpearGrab::LiftExecute))

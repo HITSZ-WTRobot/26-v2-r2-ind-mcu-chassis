@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include "IChassisDef.hpp"
 #include "can.h"
 #include "dji.hpp"
 #include "gpio_driver.h"
@@ -11,6 +12,8 @@
 #include "motor_vel_controller.hpp"
 #include "pid_pd.hpp"
 #include "s_curve.hpp"
+
+#include <cstdint>
 
 namespace Grip::Config
 {
@@ -50,7 +53,7 @@ constexpr JointPose Docking{ Position::ArmReady, Position::TurnDocking };
 constexpr JointPose KfsPickup{ Position::ArmStore, Position::TurnGrip };
 /// KFS 暂存姿态：吸住卷轴后转到暂存朝向。
 constexpr JointPose KfsStore{ Position::ArmStore, Position::TurnDocking };
-/// KFS 释放姿态与拾取姿态相同，复用同一组关节目标，避免重复维护。
+/// KFS 释放姿态：释放吸住的卷轴
 inline constexpr const JointPose& KfsRelease = KfsPickup;
 } // namespace Poses
 
@@ -64,8 +67,17 @@ constexpr uint32_t SuctionBuildUpDelayMs = 300;
 
 namespace SpearGrab
 {
-constexpr float LiftExecute = 0.18f; // 矛头夹取执行高度 unit m
-constexpr float LiftDocking = 0.01f; // 夹取完成后的对接高度 unit m
+// TODO: 用实测世界系位姿替换下面 6 个占位矛位。
+constexpr chassis::Posture TargetPoses[] = {
+    { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f },
+    { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f },
+};
+
+constexpr uint16_t TargetPosCount = std::size(TargetPoses);
+
+constexpr float SafeDistance = 0.20f; // 夹取后沿目标 x 方向先撤离的安全距离 unit m
+constexpr float LiftExecute  = 0.18f; // 矛头夹取执行高度 unit m
+constexpr float LiftDocking  = 0.01f; // 夹取完成后的对接高度 unit m
 
 constexpr float PrepareYThreshold   = 0.005f; // prepare 阶段允许的侧向误差 unit m
 constexpr float PrepareYawThreshold = 0.5f;   // prepare 阶段允许的偏航误差 unit deg

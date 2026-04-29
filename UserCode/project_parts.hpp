@@ -83,18 +83,17 @@ namespace ProjectParts
 /// 一级开关：四轮底盘。
 inline constexpr bool EnableWheelChassis = PROJECT_PART_ENABLE_WHEEL_CHASSIS != 0;
 /// 一级开关：升降机构。
-inline constexpr bool EnableLift         = PROJECT_PART_ENABLE_LIFT != 0;
+inline constexpr bool EnableLift = PROJECT_PART_ENABLE_LIFT != 0;
 /// 一级开关：grip 机构。
-inline constexpr bool EnableGrip         = PROJECT_PART_ENABLE_GRIP != 0;
+inline constexpr bool EnableGrip = PROJECT_PART_ENABLE_GRIP != 0;
 /// 一级开关：陀螺仪。
-inline constexpr bool EnableGyro         = PROJECT_PART_ENABLE_GYRO != 0;
+inline constexpr bool EnableGyro = PROJECT_PART_ENABLE_GYRO != 0;
 /// 一级开关：上位机定位包。
 inline constexpr bool EnablePcLocalization = PROJECT_PART_ENABLE_PC_LOCALIZATION != 0;
 /// 一级开关：上位机控制命令。
-inline constexpr bool EnablePcControl      = PROJECT_PART_ENABLE_PC_CONTROL != 0;
+inline constexpr bool EnablePcControl = PROJECT_PART_ENABLE_PC_CONTROL != 0;
 /// 一级开关：connection table I2C 周期发送。
-inline constexpr bool EnableConnectionTableI2CTx =
-        PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX != 0;
+inline constexpr bool EnableConnectionTableI2CTx = PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX != 0;
 
 /**
  * 是否需要构造当前工程的底盘运动对象。
@@ -119,8 +118,7 @@ inline constexpr bool EnableUpperHostProtocol = EnablePcLocalization || EnablePc
 inline constexpr bool EnableChassisLocalization = EnableWheelChassis;
 
 /// 纯编码器定位模式：有底盘，但没有陀螺仪。
-inline constexpr bool EnableJustEncoderLocalization =
-        EnableChassisLocalization && !EnableGyro;
+inline constexpr bool EnableJustEncoderLocalization = EnableChassisLocalization && !EnableGyro;
 
 /// EKF 定位模式：有底盘，且有陀螺仪。
 inline constexpr bool EnableEkfLocalization = EnableChassisLocalization && EnableGyro;
@@ -145,6 +143,26 @@ inline constexpr bool NeedUpperHostInitPosture = EnablePcLocalization;
  * 三者缺一都无法形成完整动作链，因此统一派生成一个能力开关。
  */
 inline constexpr bool EnableStepAction = EnablePcControl && EnableWheelChassis && EnableLift;
+
+/**
+ * 卷轴暂存 / 释放动作组是否可用。
+ *
+ * `StoreKFS/ReleaseKFS` 只依赖：
+ * - 上位机控制命令入口
+ * - grip 机构
+ */
+inline constexpr bool EnableKfsAction = EnablePcControl && EnableGrip;
+
+/**
+ * 取矛头动作组是否可用。
+ *
+ * `TakeSpear` 同时依赖：
+ * - 上位机控制命令入口
+ * - grip 机构
+ * - 底盘平面运动
+ * - 升降机构
+ */
+inline constexpr bool EnableSpearGrabAction = EnableKfsAction && EnableWheelChassis && EnableLift;
 
 /**
  * 编译期配置约束：

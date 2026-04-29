@@ -35,11 +35,8 @@ public:
      *
      * @param target_pos 待取矛头所在的世界系绝对位姿
      * @param end_pos 动作完成后的世界系绝对位姿，需保证其位于安全区内
-     * @param safe_distance 相对于 target_pos 的安全 x 距离
      */
-    void grab(const chassis::Posture& target_pos,
-              const chassis::Posture& end_pos,
-              float                   safe_distance);
+    void grab(const chassis::Posture& target_pos, const chassis::Posture& end_pos);
 
     /** @brief 是否为空闲状态，表示尚未接收动作或已被复位。 */
     [[nodiscard]] bool isIdle() const;
@@ -91,8 +88,6 @@ private:
     /// 当前高层动作阶段。
     State state_ = State::Idle;
 
-    /// 目标点前的安全 x 距离，单位 m。
-    float safe_distance_ = 0.0f;
     /// 待取矛头的世界系位姿。
     chassis::Posture target_pos_{};
     /// 流程结束后应到达的世界系位姿。

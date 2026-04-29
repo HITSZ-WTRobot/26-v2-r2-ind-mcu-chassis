@@ -91,6 +91,21 @@ enum class PCCommand : uint8_t
     /// @param shouldReset: 1 下台阶之后底盘恢复到正常高度
     ///                     0 下台阶最后一步不回收底盘，底盘仍处于比台阶高的状态
     StepDown = 0x32,
+
+    /// 取矛头
+    /// |      int16      |      int16      |         int16        |    int16   |    int16   |       int16      |
+    /// | target_x*2000   | target_y*2000   | target_yaw(deg)*100  | end_x*2000 | end_y*2000 | end_yaw(deg)*100 |
+    TakeSpear = 0x40,
+    /// 固定矛位取矛头
+    /// | uint16  |    int16   |    int16   |       int16      | uint16  | uint16  |
+    /// | spearId | end_x*2000 | end_y*2000 | end_yaw(deg)*100 | reserve | reserve |
+    /// @param spearId: 固定矛位索引，对应 `Grip::Config::SpearGrab::TargetPoses`
+    /// @note 后 2 个 `uint16` 数据位当前保留并忽略。
+    TakeSpearById = 0x41,
+    /// 启动 KFS 暂存动作组。
+    StoreKFS = 0x42,
+    /// 启动 KFS 释放动作组。
+    ReleaseKFS = 0x43,
 };
 
 class PCProtocol final : public protocol::UartRxSync<HeaderLen, FrameLen>

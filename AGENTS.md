@@ -58,6 +58,9 @@ Upper-host protocol behavior is likewise feature-gated:
 - Create `Protocol::PCProtocol` only when `ProjectParts::EnableUpperHostProtocol` is true.
 - Treat the first `LidarPosture` frame as the delayed initialization trigger when upper-host localization is enabled.
 - Keep step-action commands gated by `ProjectParts::EnableStepAction`, which currently means PC control + wheel chassis + lift all enabled.
+- Grip action commands occupy `0x40..0x43`: `0x40 TakeSpear` carries target/end posture as 6 packed `int16` values, `0x41 TakeSpearById` carries `SpearId + endPos`, and `0x42/0x43` trigger `StoreKFS/ReleaseKFS`.
+- The six fixed spear target postures live in `Grip::Config::SpearGrab::TargetPoses`; fill them with calibrated world-frame values before using `TakeSpearById`.
+- `TakeSpear` uses `Grip::Config::SpearGrab::SafeDistance` as a fixed retreat distance and is gated by `ProjectParts::EnableSpearGrabAction`; `StoreKFS/ReleaseKFS` are gated by `ProjectParts::EnableKfsAction`.
 
 ## Build, Test, and Development Commands
 - `cmake --preset Debug` — configure a Ninja debug build with the `arm-none-eabi` toolchain.

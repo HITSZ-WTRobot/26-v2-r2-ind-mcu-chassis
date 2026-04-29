@@ -12,6 +12,9 @@
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
+#include "grip/Config.hpp"
+#include "grip/actions/roller_store.hpp"
+#include "grip/actions/spear_grab.hpp"
 #include "project_parts.hpp"
 #include "system.hpp"
 
@@ -154,11 +157,11 @@ void PCProtocol::cmdHandler(Frame& frame)
             const float                  chassis_height = to_pos(read_i16(&data[0]));
             const Chassis::Config::Limit limit{
                 .max_spd  = read_positive_or_default(&data[2],
-                                                    1000.0f,
-                                                    Chassis::Config::Lift::OnloadLimit.max_spd),
+                                                     1000.0f,
+                                                     Chassis::Config::Lift::OnloadLimit.max_spd),
                 .max_acc  = read_positive_or_default(&data[4],
-                                                    100.0f,
-                                                    Chassis::Config::Lift::OnloadLimit.max_acc),
+                                                     100.0f,
+                                                     Chassis::Config::Lift::OnloadLimit.max_acc),
                 .max_jerk = read_positive_or_default(&data[6],
                                                      1.0f,
                                                      Chassis::Config::Lift::OnloadLimit.max_jerk),
@@ -325,6 +328,45 @@ void PCProtocol::cmdHandler(Frame& frame)
         Action::Step::inst().down(startDistance, endDistance, direction, shouldReset);
         break;
     }
+    case PCCommand::TakeSpear:
+    {
+        if constexpr (!ProjectParts::EnableSpearGrabAction)
+            break;
+
+        const chassis::Posture target = { .x   = to_pos(read_i16(&data[0])),
+                                          .y   = to_pos(read_i16(&data[2])),
+                                          .yaw = to_angle(read_i16(&data[4])) };
+        const chassis::Posture end    = { .x   = to_pos(read_i16(&data[6])),
+                                          .y   = to_pos(read_i16(&data[8])),
+                                          .yaw = to_angle(read_i16(&data[10])) };
+
+        Grip::Action::SpearGrab::inst().grab(target, end);
+        break;
+    }
+    case PCCommand::TakeSpearById:
+    {
+        if constexpr (!ProjectParts::EnableSpearGrabAction)
+            break;
+
+        const uint16_t spear_id = read_u16(&data[0]);
+        if (spear_id >= Grip::Config::SpearGrab::TargetPosCount)
+            break;
+
+        const chassis::Posture end = { .x   = to_pos(read_i16(&data[2])),
+                                       .y   = to_pos(read_i16(&data[4])),
+                                       .yaw = to_angle(read_i16(&data[6])) };
+
+        Grip::Action::SpearGrab::inst().grab(Grip::Config::SpearGrab::TargetPoses[spear_id], end);
+        break;
+    }
+    case PCCommand::StoreKFS:
+        if constexpr (ProjectParts::EnableKfsAction)
+            Grip::Action::KfsStore::inst().store();
+        break;
+    case PCCommand::ReleaseKFS:
+        if constexpr (ProjectParts::EnableKfsAction)
+            Grip::Action::KfsStore::inst().release();
+        break;
     default:
         break;
     }
