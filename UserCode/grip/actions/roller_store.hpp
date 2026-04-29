@@ -52,6 +52,8 @@ public:
     [[nodiscard]] bool isRunning() const;
     /** @brief 当前高层流程归属：暂存、回放或尚未进入动作流。 */
     [[nodiscard]] WorkflowPhase workflowPhase() const { return workflow_phase_; }
+    /** @brief 吸盘当前是否检测到物体；无气压计时固定返回 false。 */
+    [[nodiscard]] bool hasDetectedObject();
     /** @brief 阻塞等待动作结束。 */
     void waitForFinish() const;
 

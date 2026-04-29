@@ -80,8 +80,9 @@ extern "C" void Init(void* argument)
         (void)Grip::Action::SpearGrab::inst();
     }
 
-    if constexpr (ProjectParts::EnableKfsAction)
+    if constexpr (ProjectParts::EnableGripSuction)
     {
+        // KFS 吸盘状态需要在线程上下文预创建，后续 ISR / 反馈路径只读取状态，不首次构造对象。
         (void)Grip::Action::KfsStore::inst();
     }
 

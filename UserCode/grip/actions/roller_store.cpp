@@ -119,6 +119,11 @@ bool KfsStore::isRunning() const
     return state_ != State::Idle && state_ != State::Done;
 }
 
+bool KfsStore::hasDetectedObject()
+{
+    return kfs_suction_cup_.canDetectObject() && kfs_suction_cup_.hasObject();
+}
+
 void KfsStore::waitForFinish() const
 {
     while (!isFinished())

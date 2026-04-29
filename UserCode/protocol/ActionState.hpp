@@ -18,7 +18,8 @@ namespace Protocol::ActionState
  * - bit5..6   Lift 状态：Calibrating / Running / Ready / NotEnabled
  * - bit7..9   Grip 状态：Calibrating / TakingSpear / KfsStore /
  *               KfsRelease / Idle / Done
- * - bit10..15 预留
+ * - bit10     Grip suction 是否检测到物体（仅在启用吸盘气压计时有效）
+ * - bit11..15 预留
  */
 inline volatile uint16_t table{};
 
@@ -69,25 +70,29 @@ inline constexpr uint16_t ChassisModeShift         = 2u;
 inline constexpr uint16_t ChassisCurveFinishedBit  = 4u;
 inline constexpr uint16_t LiftShift                = 5u;
 inline constexpr uint16_t GripShift                = 7u;
+inline constexpr uint16_t GripSuctionHasObjectBit  = 10u;
 inline constexpr uint16_t StepMask                 = 0x3u << StepShift;
 inline constexpr uint16_t ChassisModeMask          = 0x3u << ChassisModeShift;
 inline constexpr uint16_t ChassisCurveFinishedMask = 0x1u << ChassisCurveFinishedBit;
 inline constexpr uint16_t LiftMask                 = 0x3u << LiftShift;
 inline constexpr uint16_t GripMask                 = 0x7u << GripShift;
+inline constexpr uint16_t GripSuctionHasObjectMask = 0x1u << GripSuctionHasObjectBit;
 } // namespace Layout
 
 constexpr uint16_t pack(const StepStatus  step,
                         const ChassisMode chassis_mode,
                         const bool        chassis_curve_finished,
                         const LiftStatus  lift,
-                        const GripStatus  grip)
+                        const GripStatus  grip,
+                        const bool        grip_suction_has_object)
 {
     return static_cast<uint16_t>(
             (static_cast<uint16_t>(step) << Layout::StepShift) |
             (static_cast<uint16_t>(chassis_mode) << Layout::ChassisModeShift) |
             ((chassis_curve_finished ? 1u : 0u) << Layout::ChassisCurveFinishedBit) |
             (static_cast<uint16_t>(lift) << Layout::LiftShift) |
-            (static_cast<uint16_t>(grip) << Layout::GripShift));
+            (static_cast<uint16_t>(grip) << Layout::GripShift) |
+            ((grip_suction_has_object ? 1u : 0u) << Layout::GripSuctionHasObjectBit));
 }
 
 void updateTable();

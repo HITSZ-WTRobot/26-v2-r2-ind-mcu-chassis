@@ -118,6 +118,14 @@ GripStatus currentGripStatus()
 
     return GripStatus::Idle;
 }
+
+bool currentGripSuctionHasObject()
+{
+    if constexpr (!ProjectParts::EnableGripSuctionPressureSensor)
+        return false;
+
+    return Grip::Action::KfsStore::inst().hasDetectedObject();
+}
 } // namespace
 
 void updateTable()
@@ -126,6 +134,7 @@ void updateTable()
                  currentChassisMode(),
                  isChassisCurveFinished(),
                  currentLiftStatus(),
-                 currentGripStatus());
+                 currentGripStatus(),
+                 currentGripSuctionHasObject());
 }
 } // namespace Protocol::ActionState

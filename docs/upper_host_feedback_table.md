@@ -50,7 +50,8 @@
 | `bit4` | `0x0010` | `ChassisCurveFinished` | 底盘位置轨迹是否完成 |
 | `bit5..6` | `0x0060` | `LiftStatus` | 升降机构状态 |
 | `bit7..9` | `0x0380` | `GripStatus` | Grip / 动作组状态 |
-| `bit10..15` | `0xFC00` | Reserved | 预留 |
+| `bit10` | `0x0400` | `GripSuctionHasObject` | Grip 吸盘是否检测到物体 |
+| `bit11..15` | `0xF800` | Reserved | 预留 |
 
 建议上位机按下面方式解码：
 
@@ -60,6 +61,7 @@ chassis_mode             = (table >> 2) & 0x3
 chassis_curve_finished   = (table >> 4) & 0x1
 lift_status              = (table >> 5) & 0x3
 grip_status              = (table >> 7) & 0x7
+grip_suction_has_object  = (table >> 10) & 0x1
 ```
 
 ### 3.1 `StepStatus`
@@ -111,6 +113,18 @@ grip_status              = (table >> 7) & 0x7
 
 - `GripStatus::Done` 会在动作结束后保持，直到发起下一次 Grip 动作或回到其他状态。
 - `KfsStore / KfsRelease` 的区分来自 KFS 动作内部记录的 `workflowPhase`。
+
+### 3.6 `GripSuctionHasObject`
+
+| 值 | 含义 |
+| --- | --- |
+| `0` | 当前未检测到物体，或当前工程未启用 Grip suction 气压计 |
+| `1` | 当前 Grip suction 检测到物体 |
+
+补充：
+
+- 该位只在 `PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR=1` 时有实际语义。
+- 当前它复用下位机吸盘组件内部的气压施密特判定结果，因此会跟随当前新鲜压力样本变化。
 
 ## 4. `Connection::table`
 
