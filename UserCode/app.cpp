@@ -9,6 +9,8 @@
 #include "cmsis_os2.h"
 #include "connection.hpp"
 #include "device.hpp"
+#include "grip/actions/roller_store.hpp"
+#include "grip/actions/spear_grab.hpp"
 #include "grip/grip.hpp"
 #include "i2c.hpp"
 #include "project_parts.hpp"
@@ -67,6 +69,17 @@ extern "C" void Init(void* argument)
 
     if constexpr (ProjectParts::EnableGrip)
         Grip::init();
+
+    if constexpr (ProjectParts::EnableStepAction)
+        (void)Action::Step::inst();
+
+    if constexpr (ProjectParts::EnableGrip)
+    {
+        // 这些高层动作的构造函数内部会创建后台线程，必须在线程上下文预创建；
+        // 后续 ISR 路径只读取 `::inst()` 暴露的状态，不再承担首次构造职责。
+        (void)Grip::Action::SpearGrab::inst();
+        (void)Grip::Action::KfsStore::inst();
+    }
 
     Connection::init();
 

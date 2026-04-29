@@ -25,7 +25,7 @@ constexpr uint32_t FrameLen   = HeaderLen + PayloadLen;
 
 /// 反馈帧：
 /// AA BB | timestamp(uint32) | x*2000(int16) | y*2000(int16) | yaw*100(int16) |
-/// frontHeight*2000(int16) | rearHeight*2000(int16) | action state(uint16) |
+/// frontHeight*2000(int16) | rearHeight*2000(int16) | action state(uint16, packed fields) |
 /// connection state(uint16) | CRC16
 constexpr uint32_t FeedbackPayloadLen = 4 + 2 * 5 + 2 + 2 + 2;
 constexpr uint32_t FeedbackFrameLen   = HeaderLen + FeedbackPayloadLen;

@@ -11,6 +11,7 @@
 
 namespace Grip::Action
 {
+
 /**
  * @brief 卷轴临时存放动作
  *
@@ -23,6 +24,13 @@ namespace Grip::Action
 class KfsStore : traits::NoCopy, traits::NoDelete
 {
 public:
+    enum class WorkflowPhase
+    {
+        Idle,
+        Store,
+        Release,
+    };
+
     /** @brief 创建后台状态机线程。 */
     KfsStore();
     /** @brief 获取全局唯一动作实例。 */
@@ -44,6 +52,8 @@ public:
     [[nodiscard]] bool isRunning() const;
     /** @brief 当前吸盘 GPIO 是否处于激活状态。 */
     [[nodiscard]] bool isSuctionActive() const;
+    /** @brief 当前高层流程归属：暂存、回放或尚未进入动作流。 */
+    [[nodiscard]] WorkflowPhase workflowPhase() const { return workflow_phase_; }
     /** @brief 阻塞等待动作结束。 */
     void waitForFinish() const;
 
@@ -93,6 +103,8 @@ private:
     osThreadId_t task_{};
     /// 当前 KFS 动作阶段。
     State state_ = State::Idle;
+    /// 面向上位机反馈的动作流归属；暂存完成后会保持为 Store，直到发起回放。
+    WorkflowPhase workflow_phase_ = WorkflowPhase::Idle;
     /// 吸盘控制封装。
     SuctionCup suction_{};
     /// 剩余等待时间，单位 ms，对应 1 ms 线程周期。

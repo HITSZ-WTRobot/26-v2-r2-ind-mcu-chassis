@@ -62,6 +62,7 @@ void KfsStore::store()
     suction_.activate();
     if (::Grip::grip->toKfsPickupPose())
     {
+        workflow_phase_     = WorkflowPhase::Store;
         delay_ms_remaining_ = 0;
         state_              = State::MovingToPickupPose;
         osThreadFlagsSet(task_, FlagStart);
@@ -83,6 +84,7 @@ void KfsStore::release()
     // 释放流程先移动到释放位，真正关闭吸盘要等机构到位后再执行。
     if (::Grip::grip->toKfsReleasePose())
     {
+        workflow_phase_ = WorkflowPhase::Release;
         state_ = State::MovingToReleasePose;
         osThreadFlagsSet(task_, FlagStart);
     }
