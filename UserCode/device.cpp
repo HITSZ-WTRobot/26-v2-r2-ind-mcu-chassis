@@ -5,7 +5,10 @@
  */
 #include "device.hpp"
 #include "can.h"
+#include "grip/Config.hpp"
+#include "i2c.hpp"
 #include "project_parts.hpp"
+#include "suction/Config.hpp"
 
 #ifndef M_PI
 #    define M_PI 3.14159265358979323846f
@@ -34,6 +37,23 @@ void sensor_init()
     // 开启接收
     if (!Sensor::gyro_yaw->startReceive())
         Error_Handler();
+}
+
+void pressure_sensor_init()
+{
+    if constexpr (ProjectParts::EnableGripSuctionPressureSensor)
+    {
+        Sensor::grip_suction_pressure = new XGZP6847DDevice(Suction::Config::PressureRangeKPa,
+                                                            Suction::Config::PressureAddress7bit);
+
+        if (!AppI2C::manager1().registerDevice(*Sensor::grip_suction_pressure,
+                                               Suction::Config::PressureUpdatePeriodMs,
+                                               Grip::Config::KfsStore::SuctionPressureUpdatePhaseMs,
+                                               Suction::Config::PressureTimeoutMs))
+        {
+            Error_Handler();
+        }
+    }
 }
 
 void can_init()
@@ -176,6 +196,7 @@ void motor_grip_init()
 void init()
 {
     sensor_init();
+    pressure_sensor_init();
 
     can_init();
 

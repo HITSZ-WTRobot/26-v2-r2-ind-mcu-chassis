@@ -80,7 +80,7 @@ extern "C" void Init(void* argument)
         (void)Grip::Action::SpearGrab::inst();
     }
 
-    if constexpr (ProjectParts::EnableGripSuction)
+    if constexpr (ProjectParts::EnableKfsAction)
     {
         (void)Grip::Action::KfsStore::inst();
     }

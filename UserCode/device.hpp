@@ -5,6 +5,7 @@
  */
 #pragma once
 #include "HWT101CT.hpp"
+#include "XGZP6847DDevice.hpp"
 #include "dji.hpp"
 #include "usart.h"
 
@@ -28,6 +29,12 @@ namespace Sensor
  * HWT101CT， UART2
  */
 inline sensors::gyro::HWT101CT* gyro_yaw{};
+
+/**
+ * Grip 吸盘气压计
+ * XGZP6847D， I2C1
+ */
+inline XGZP6847DDevice* grip_suction_pressure{};
 } // namespace Sensor
 
 // 电机声明

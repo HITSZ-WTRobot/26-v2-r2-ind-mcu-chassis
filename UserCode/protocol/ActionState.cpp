@@ -90,7 +90,7 @@ GripStatus currentGripStatus()
 
     const auto& spear = Grip::Action::SpearGrab::inst();
 
-    if constexpr (ProjectParts::EnableGripSuction)
+    if constexpr (ProjectParts::EnableKfsAction)
     {
         const auto& kfs = Grip::Action::KfsStore::inst();
 

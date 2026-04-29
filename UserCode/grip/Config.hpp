@@ -60,15 +60,13 @@ inline constexpr const JointPose& KfsRelease = KfsPickup;
 
 namespace KfsStore
 {
+inline constexpr uint32_t SuctionPressureUpdatePhaseMs = 5U;
 
-inline const Suction::SuctionCup::OwnerConfig SuctionCupConfig{
+inline const Suction::SuctionCup::Config SuctionCupConfig{
     .pump_gpio                     = { GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin },
-    .pressure_update_phase_ms      = 5U,
     .pressure_stale_ms             = 120U,
     .object_detect_on_pressure_pa  = Suction::Config::DetectOnPressurePa,
     .object_detect_off_pressure_pa = Suction::Config::DetectOffPressurePa,
-    .object_detect_delay_ms        = Suction::Config::ObjectDetectDelayMs,
-    .object_release_delay_ms       = Suction::Config::ObjectReleaseDelayMs,
 };
 } // namespace KfsStore
 

@@ -1,5 +1,6 @@
 #include "roller_store.hpp"
 
+#include "device.hpp"
 #include "grip/grip.hpp"
 #include "project_parts.hpp"
 
@@ -11,7 +12,9 @@ namespace
 constexpr uint32_t FlagStart = 1u << 0;
 } // namespace
 
-KfsStore::KfsStore() : kfs_suction_cup_(::Grip::Config::KfsStore::SuctionCupConfig)
+KfsStore::KfsStore() :
+    kfs_suction_cup_(::Grip::Config::KfsStore::SuctionCupConfig,
+                     Device::Sensor::grip_suction_pressure)
 {
     // 与 SpearGrab 一样，KFS 使用独立后台线程管理分阶段流程。
     constexpr osThreadAttr_t attr{
@@ -30,18 +33,21 @@ KfsStore& KfsStore::inst()
 
 bool KfsStore::canStart() const
 {
-    if constexpr (!ProjectParts::EnableGripSuction)
+    if constexpr (!ProjectParts::EnableKfsAction)
         return false;
 
     // 只允许在空闲 / 已完成状态重启，并且要求底层 grip 已经就绪。
-    return (state_ == State::Idle || state_ == State::Done) && ::Grip::grip != nullptr &&
-           ::Grip::grip->enabled();
+    return kfs_suction_cup_.canDetectObject() && (state_ == State::Idle || state_ == State::Done) &&
+           ::Grip::grip != nullptr && ::Grip::grip->enabled();
 }
 
 void KfsStore::store()
 {
+    if (!canStart())
+        return;
+
     // 是否已持有卷轴，统一以吸盘当前观测到的真实状态为准。
-    if (!canStart() || kfs_suction_cup_.hasObject())
+    if (kfs_suction_cup_.hasObject())
         return;
 
     if (state_ == State::Done)
@@ -63,8 +69,11 @@ void KfsStore::store()
 
 void KfsStore::release()
 {
+    if (!canStart())
+        return;
+
     // 释放是否有意义，也统一由吸盘当前是否仍持有物体来决定。
-    if (!canStart() || !kfs_suction_cup_.hasObject())
+    if (!kfs_suction_cup_.hasObject())
         return;
 
     if (state_ == State::Done)
@@ -94,15 +103,6 @@ bool KfsStore::isRunning() const
     return state_ != State::Idle && state_ != State::Done;
 }
 
-bool KfsStore::isPressureSensorOnline() const
-{
-    if constexpr (!ProjectParts::EnableGripSuctionPressureSensor)
-        return false;
-
-    // 连接表仍然需要一个独立的“气压计在线”观测位，但它不再参与动作启动判断。
-    return kfs_suction_cup_.isPressureSensorOnline();
-}
-
 void KfsStore::waitForFinish() const
 {
     while (!isFinished())
@@ -126,7 +126,7 @@ void KfsStore::update()
     case State::WaitingObjectAttach:
         // 是否吸住以及用什么手段确认，统一由吸盘内部自己决定。
         if (kfs_suction_cup_.hasObject() && ::Grip::grip->toKfsStorePose())
-            state_   = State::MovingToStorePose;
+            state_ = State::MovingToStorePose;
         break;
     case State::MovingToStorePose:
         // 暂存流程在到达暂存位后结束，吸盘保持工作状态。
@@ -138,11 +138,11 @@ void KfsStore::update()
         {
             // TODO: 增加电磁阀，释放阶段应先切阀再关闭气泵 / 吸盘。
             kfs_suction_cup_.deactivate();
-            state_   = State::WaitingObjectRelease;
+            state_ = State::WaitingObjectRelease;
         }
         break;
     case State::WaitingObjectRelease:
-        // 放料确认也统一由吸盘内部完成；这样有无气压计时，上层流程都保持一致。
+        // 放料确认也统一由吸盘内部完成；无新鲜气压样本时，这里也会保持 false。
         if (!kfs_suction_cup_.hasObject() && ::Grip::grip->toStandbyPose())
             state_ = State::MovingToStandbyPose;
         break;

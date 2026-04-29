@@ -66,8 +66,7 @@
 #    define PROJECT_PART_ENABLE_GRIP_SUCTION 1
 #endif
 
-/// 启用挂在 grip suction 上的气压计；关闭时吸住/放开判定退化为延时。
-/// 这个开关只影响“怎么确认已吸住/已放开”，不影响吸盘气泵 GPIO 本身是否存在。
+/// 启用挂在 grip suction 上的气压计；关闭时吸盘仍可开关，但不再提供是否吸住的判断能力。
 #ifndef PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR
 #    define PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR 1
 #endif
@@ -171,8 +170,10 @@ inline constexpr bool EnableStepAction = EnablePcControl && EnableWheelChassis &
  * - 上位机控制命令入口
  * - grip 机构
  * - grip 上的吸盘
+ * - 吸盘上的气压计判定能力
  */
-inline constexpr bool EnableKfsAction = EnablePcControl && EnableGrip && EnableGripSuction;
+inline constexpr bool EnableKfsAction = EnablePcControl && EnableGrip && EnableGripSuction &&
+                                        EnableGripSuctionPressureSensor;
 
 /**
  * 取矛头动作组是否可用。
@@ -183,8 +184,8 @@ inline constexpr bool EnableKfsAction = EnablePcControl && EnableGrip && EnableG
  * - 底盘平面运动
  * - 升降机构
  */
-inline constexpr bool EnableSpearGrabAction =
-        EnablePcControl && EnableGrip && EnableWheelChassis && EnableLift;
+inline constexpr bool EnableSpearGrabAction = EnablePcControl && EnableGrip && EnableWheelChassis &&
+                                              EnableLift;
 
 /**
  * 编译期配置约束：
@@ -195,8 +196,8 @@ static_assert(!EnablePcLocalization || EnableEkfLocalization,
               "PROJECT_PART_ENABLE_PC_LOCALIZATION requires wheel chassis and gyro enabled.");
 static_assert(!EnableGripSuction || EnableGrip,
               "PROJECT_PART_ENABLE_GRIP_SUCTION requires PROJECT_PART_ENABLE_GRIP enabled.");
-static_assert(
-        !EnableGripSuctionPressureSensor || EnableGripSuction,
-        "PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR requires PROJECT_PART_ENABLE_GRIP_SUCTION enabled.");
+static_assert(!EnableGripSuctionPressureSensor || EnableGripSuction,
+              "PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR requires "
+              "PROJECT_PART_ENABLE_GRIP_SUCTION enabled.");
 
 } // namespace ProjectParts

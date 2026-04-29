@@ -7,7 +7,6 @@
 
 #include "cmsis_os2.h"
 #include "device.hpp"
-#include "grip/actions/roller_store.hpp"
 #include "grip/grip.hpp"
 #include "i2c.hpp"
 #include "project_parts.hpp"
@@ -196,7 +195,8 @@ void updateTable()
     {
         set_bit(current,
                 Bit::GripSuctionPressure,
-                Grip::Action::KfsStore::inst().isPressureSensorOnline());
+                Device::Sensor::grip_suction_pressure != nullptr &&
+                        Device::Sensor::grip_suction_pressure->isOnline());
     }
 
     if constexpr (ProjectParts::EnableGyro)

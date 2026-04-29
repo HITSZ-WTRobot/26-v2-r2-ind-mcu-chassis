@@ -4,141 +4,56 @@
  */
 #include "SuctionCup.hpp"
 
-#include "I2CUpdateManager.hpp"
-#include "i2c.hpp"
 #include "main.h"
-#include "project_parts.hpp"
 
 namespace Suction
 {
-namespace
+SuctionCup::SuctionCup(const Config& config, XGZP6847DDevice* pressure_sensor) :
+    config_(config), pressure_sensor_(pressure_sensor)
 {
-[[nodiscard]] bool elapsed(const uint32_t now_ms, const uint32_t since_ms, const uint32_t delay_ms)
-{
-    return (now_ms - since_ms) >= delay_ms;
-}
-} // namespace
-
-SuctionCup::SuctionCup(const OwnerConfig& config) :
-    config_(config),
-    pressure_sensor_(::Suction::Config::PressureRangeKPa, ::Suction::Config::PressureAddress7bit)
-{
-    if constexpr (ProjectParts::EnableGripSuctionPressureSensor)
-    {
-        // 传感器注册属于吸盘内部实现细节；上层只关心“能不能判断吸住”。
-        if (!registerPressureSensor(AppI2C::manager1()))
-            Error_Handler();
-    }
 }
 
 void SuctionCup::activate()
 {
-    GPIO_t pump_gpio = config_.pump_gpio;
-    GPIO_SetPin(&pump_gpio);
-
-    taskENTER_CRITICAL();
-    pump_active_              = true;
-    pump_state_changed_at_ms_ = HAL_GetTick();
-    taskEXIT_CRITICAL();
+    GPIO_SetPin(&config_.pump_gpio);
 }
 
 void SuctionCup::deactivate()
 {
-    GPIO_t pump_gpio = config_.pump_gpio;
-    GPIO_ResetPin(&pump_gpio);
-
-    taskENTER_CRITICAL();
-    pump_active_              = false;
-    pump_state_changed_at_ms_ = HAL_GetTick();
-    taskEXIT_CRITICAL();
+    GPIO_ResetPin(&config_.pump_gpio);
 }
 
-bool SuctionCup::hasObject() const
+bool SuctionCup::hasObject()
 {
-    refreshObjectDetectedState();
-
-    taskENTER_CRITICAL();
-    const bool detected = object_detected_;
-    taskEXIT_CRITICAL();
-    return detected;
-}
-
-bool SuctionCup::registerPressureSensor(I2CUpdateManager& manager)
-{
-    if (i2c_registered_)
-        return true;
-
-    i2c_registered_ = manager.registerDevice(pressure_sensor_,
-                                             ::Suction::Config::PressureUpdatePeriodMs,
-                                             config_.pressure_update_phase_ms,
-                                             ::Suction::Config::PressureTimeoutMs);
-    return i2c_registered_;
-}
-
-bool SuctionCup::isPressureSensorOnline() const
-{
-    if constexpr (!ProjectParts::EnableGripSuctionPressureSensor)
+    if (pressure_sensor_ == nullptr)
         return false;
 
-    return pressure_sensor_.isOnline();
-}
-
-void SuctionCup::refreshObjectDetectedState() const
-{
     const uint32_t now_ms = HAL_GetTick();
 
-    taskENTER_CRITICAL();
-    bool     pump_active         = pump_active_;
-    uint32_t state_changed_at_ms = pump_state_changed_at_ms_;
-    taskEXIT_CRITICAL();
+    const XGZP6847DDevice::Sample sample = pressure_sensor_->snapshot();
 
-    if constexpr (ProjectParts::EnableGripSuctionPressureSensor)
+    if (!sample.valid || !pressure_sensor_->isDataFresh(now_ms, config_.pressure_stale_ms))
+        return false;
+
+    bool expected = has_object_.load(std::memory_order_relaxed);
+    for (;;)
     {
-        const PressureSample sample = pressure_sensor_.snapshot();
-        if (sample.valid && pressure_sensor_.isDataFresh(now_ms, config_.pressure_stale_ms))
+        bool desired = expected;
+        if (!expected)
         {
-            // 只要样本可用，就优先相信气压计，延时只作为编译期/运行期回退方案。
-            refreshObjectDetectedFromPressure(sample);
-            return;
+            if (sample.pressure_pa <= config_.object_detect_on_pressure_pa)
+                desired = true;
+        }
+        else if (sample.pressure_pa >= config_.object_detect_off_pressure_pa)
+        {
+            desired = false;
+        }
+
+        if (has_object_.compare_exchange_weak(
+                    expected, desired, std::memory_order_relaxed, std::memory_order_relaxed))
+        {
+            return desired;
         }
     }
-
-    // 无气压计，或本周期暂时没有新鲜压力样本时，退化为时间确认。
-    refreshObjectDetectedFromDelay(pump_active, state_changed_at_ms, now_ms);
 }
-
-void SuctionCup::refreshObjectDetectedFromPressure(const PressureSample& sample) const
-{
-    taskENTER_CRITICAL();
-    if (!object_detected_)
-    {
-        if (sample.pressure_pa <= config_.object_detect_on_pressure_pa)
-            object_detected_ = true;
-    }
-    else if (sample.pressure_pa >= config_.object_detect_off_pressure_pa)
-    {
-        object_detected_ = false;
-    }
-    taskEXIT_CRITICAL();
-}
-
-void SuctionCup::refreshObjectDetectedFromDelay(const bool     pump_active,
-                                                const uint32_t state_changed_at_ms,
-                                                const uint32_t now_ms) const
-{
-    taskENTER_CRITICAL();
-    if (pump_active)
-    {
-        // 只要持续开吸达到阈值，就把状态锁存为“已吸住”。
-        if (elapsed(now_ms, state_changed_at_ms, config_.object_detect_delay_ms))
-            object_detected_ = true;
-    }
-    else if (elapsed(now_ms, state_changed_at_ms, config_.object_release_delay_ms))
-    {
-        // 关闭吸盘后延时清除锁存，避免上层在切换瞬间误判。
-        object_detected_ = false;
-    }
-    taskEXIT_CRITICAL();
-}
-
 } // namespace Suction

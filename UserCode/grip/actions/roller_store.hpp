@@ -50,8 +50,6 @@ public:
     [[nodiscard]] bool isFinished() const;
     /** @brief 当前是否仍在执行动作。 */
     [[nodiscard]] bool isRunning() const;
-    /** @brief 当前气压计最近一次访问后是否在线，仅在启用气压计编译开关时有意义。 */
-    [[nodiscard]] bool isPressureSensorOnline() const;
     /** @brief 当前高层流程归属：暂存、回放或尚未进入动作流。 */
     [[nodiscard]] WorkflowPhase workflowPhase() const { return workflow_phase_; }
     /** @brief 阻塞等待动作结束。 */

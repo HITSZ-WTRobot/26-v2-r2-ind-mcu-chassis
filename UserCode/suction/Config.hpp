@@ -17,15 +17,9 @@ constexpr uint8_t PressureAddress7bit = 0x6DU;
 constexpr uint32_t PressureUpdatePeriodMs = 20U;
 constexpr uint32_t PressureTimeoutMs      = 20U;
 
-/// 未使用气压计，或气压样本不新鲜时，延时多久认为已经吸住，单位 ms。
-/// 这两个延时会被吸盘组件内部直接消费，KFS 状态机不再自己维护重复计时。
-constexpr uint32_t ObjectDetectDelayMs = 300U;
-/// 关闭吸盘后，延时多久认为已经放开，单位 ms。
-constexpr uint32_t ObjectReleaseDelayMs = 100U;
-
-/// 由未吸附状态到吸附状态的触发气压
+/// 当前未吸住时，压力低于该阈值则判定为“已吸住”。
 constexpr float DetectOnPressurePa = -5000.0f;
-/// 由吸附状态到未吸附状态的触发气压
+/// 当前已吸住时，压力高于该阈值则判定为“已放开 / 已滑落”。
 constexpr float DetectOffPressurePa = -2000.0f;
 
 } // namespace Suction::Config
