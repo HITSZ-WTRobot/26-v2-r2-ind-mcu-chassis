@@ -91,11 +91,12 @@ constexpr float UpR1   = LiftMax; // 比 R1 的台阶高，在最后阶段 unit 
 constexpr float CalibrationOffsetAngle = LiftOffset / GearRadius / M_PI * 180.0f;
 
 constexpr trajectory::HomingMotorTrajectory<2>::CalibrationConfig CalibrationCfg{
-    .speed       = CalibrationRpm,
-    .max_current = CalibrationMaxCurrent,
-    .min_ticks   = CalibrationMinTicks,
-    .offset      = CalibrationOffsetAngle,
-    .dead_angle  = CalibrationDeadAngle,
+    .speed               = CalibrationRpm,
+    .max_current         = CalibrationMaxCurrent,
+    .min_ticks           = CalibrationMinTicks,
+    .offset              = CalibrationOffsetAngle,
+    .target_after_homing = Position::Normal,
+    .dead_angle          = CalibrationDeadAngle,
 };
 } // namespace Lift
 

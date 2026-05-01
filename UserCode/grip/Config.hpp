@@ -122,6 +122,7 @@ constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig ArmCalibCfg = 
     .max_current = ArmLockCurrent,
     .min_ticks   = lockedTicks,
     .offset      = 0.0f,
+    .target_after_homing = 0.0f,
     .dead_angle  = deadAngle
 };
 constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg = { //
@@ -129,6 +130,7 @@ constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg =
     .max_current = TurnLockCurrent,
     .min_ticks   = lockedTicks,
     .offset      = 0.0f,
+    .target_after_homing = 0.0f,
     .dead_angle  = deadAngle
 };
 
