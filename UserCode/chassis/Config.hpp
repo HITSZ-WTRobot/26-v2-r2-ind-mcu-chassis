@@ -29,7 +29,7 @@ constexpr PIDMotor::Config PIDCfg{
     .Kp = 500.0f, .Ki = 5.0f, .Kd = 0.00f, .abs_output_max = 16384 * 0.75
 };
 
-constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 3, .abs_output_max = 60 };
+constexpr PD::Config PDErrorCfg{ .Kp = 0.3, .Kd = 0.2, .abs_output_max = 60 };
 
 /**
  * 辅助轮接地时离下限位距离 1.25mm
@@ -71,8 +71,8 @@ constexpr Limit DefaultLimit = OnloadLimit;
 constexpr float CalibrationSpeed = 0.05f; // 校准归零速度 m/s, 该速度无问题，无需增大
 constexpr float CalibrationRpm   = -CalibrationSpeed / GearRadius * 60.0f / (2.0f * M_PI);
 
-constexpr float    CalibrationMaxCurrent = 2000.0f; // 约 2 * 0.61 Nm
-constexpr uint32_t CalibrationMinTicks   = 500;     // 堵转最小保持时间 (ms)
+constexpr float    CalibrationMaxCurrent = 4000.0f; // 约 2 * 1.22 Nm
+constexpr uint32_t CalibrationMinTicks   = 800;     // 堵转最小保持时间 (ms)
 constexpr float    CalibrationDeadAngle  = 0.1f;    // 堵转检测
 // 允许的角度误差 (deg)
 
