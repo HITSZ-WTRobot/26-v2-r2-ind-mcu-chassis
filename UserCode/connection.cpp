@@ -154,7 +154,7 @@ void init()
     if (registered)
         return;
 
-    if (!AppI2C::manager1().registerDevice(connection_table_i2c_device(),
+    if (!AppI2C::manager2().registerDevice(connection_table_i2c_device(),
                                            ConnectionTableI2CPeriodMs,
                                            ConnectionTableI2CPhaseMs,
                                            ConnectionTableI2CTimeoutMs))

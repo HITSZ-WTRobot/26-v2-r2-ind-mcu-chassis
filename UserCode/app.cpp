@@ -91,7 +91,7 @@ extern "C" void Init(void* argument)
 
     Connection::init();
 
-    if (!AppI2C::start_bus1_manager())
+    if (!AppI2C::start_bus2_manager())
         Error_Handler();
 
     // 检查看门狗是否已满

@@ -10,24 +10,24 @@
 namespace AppI2C
 {
 /**
- * 共享 I2C1 总线对象。
+ * 共享 I2C2 总线对象。
  *
- * 所有走 I2C1 的周期设备都应通过这个 bus / manager 访问，避免多线程并发抢占同一总线。
+ * 所有走 I2C2 的周期设备都应通过这个 bus / manager 访问，避免多线程并发抢占同一总线。
  */
-I2CBusDMA& bus1();
+I2CBusDMA& bus2();
 
 /**
- * I2C1 对应的共享周期调度器。
+ * I2C2 对应的共享周期调度器。
  *
- * 设备必须在 `start_bus1_manager()` 前通过 `manager1().registerDevice(...)`
+ * 设备必须在 `start_bus2_manager()` 前通过 `manager2().registerDevice(...)`
  * 完成注册；manager 运行后不支持动态注册。
  */
-I2CUpdateManager& manager1();
+I2CUpdateManager& manager2();
 
 /**
- * 启动 I2C1 的共享 manager。
+ * 启动 I2C2 的共享 manager。
  *
  * 若当前没有任何已注册设备，则直接返回 true，不创建后台线程。
  */
-bool start_bus1_manager();
+bool start_bus2_manager();
 } // namespace AppI2C

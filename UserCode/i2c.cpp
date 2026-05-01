@@ -9,9 +9,9 @@
 
 namespace
 {
-constexpr auto                     Bus1Handle = &hi2c1;
-constexpr I2CUpdateManager::Config Bus1ManagerConfig{
-    .task_name        = "i2c1-mgr",
+constexpr auto                     Bus2Handle = &hi2c2;
+constexpr I2CUpdateManager::Config Bus2ManagerConfig{
+    .task_name        = "i2c2-mgr",
     .stack_size_bytes = 384U * sizeof(uint32_t),
     .priority         = osPriorityLow,
     .max_sleep_ms     = 500U,
@@ -20,21 +20,21 @@ constexpr I2CUpdateManager::Config Bus1ManagerConfig{
 
 namespace AppI2C
 {
-I2CBusDMA& bus1()
+I2CBusDMA& bus2()
 {
-    static I2CBusDMA bus(Bus1Handle);
+    static I2CBusDMA bus(Bus2Handle);
     return bus;
 }
 
-I2CUpdateManager& manager1()
+I2CUpdateManager& manager2()
 {
-    static I2CUpdateManager manager(bus1());
+    static I2CUpdateManager manager(bus2());
     return manager;
 }
 
-bool start_bus1_manager()
+bool start_bus2_manager()
 {
-    auto& manager = manager1();
+    auto& manager = manager2();
 
     if (manager.isRunning())
         return true;
@@ -42,6 +42,6 @@ bool start_bus1_manager()
     if (manager.deviceCount() == 0U)
         return true;
 
-    return manager.start(Bus1ManagerConfig);
+    return manager.start(Bus2ManagerConfig);
 }
 } // namespace AppI2C

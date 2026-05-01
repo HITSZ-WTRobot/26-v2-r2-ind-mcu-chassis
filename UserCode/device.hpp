@@ -32,7 +32,7 @@ inline sensors::gyro::HWT101CT* gyro_yaw{};
 
 /**
  * Grip 吸盘气压计
- * XGZP6847D， I2C1
+ * XGZP6847D， I2C2
  */
 inline XGZP6847DDevice* grip_suction_pressure{};
 } // namespace Sensor

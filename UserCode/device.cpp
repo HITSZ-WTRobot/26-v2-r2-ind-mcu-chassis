@@ -46,7 +46,7 @@ void pressure_sensor_init()
         Sensor::grip_suction_pressure = new XGZP6847DDevice(Suction::Config::PressureRangeKPa,
                                                             Suction::Config::PressureAddress7bit);
 
-        if (!AppI2C::manager1().registerDevice(*Sensor::grip_suction_pressure,
+        if (!AppI2C::manager2().registerDevice(*Sensor::grip_suction_pressure,
                                                Suction::Config::PressureUpdatePeriodMs,
                                                Grip::Config::KfsStore::SuctionPressureUpdatePhaseMs,
                                                Suction::Config::PressureTimeoutMs))

@@ -10,7 +10,7 @@ namespace Suction::Config
 {
 
 /// XGZP6847D 旧版 K 表等效量程，取 max(abs(Pmin), abs(Pmax))，单位 kPa。
-constexpr float PressureRangeKPa = 100.0f;
+constexpr float PressureRangeKPa = 300.0f;
 /// 压力传感器默认 7-bit I2C 地址。
 constexpr uint8_t PressureAddress7bit = 0x6DU;
 /// 周期采样参数：20 ms 更新一次已足够覆盖吸附建立判定。
