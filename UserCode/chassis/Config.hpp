@@ -29,7 +29,7 @@ constexpr PIDMotor::Config PIDCfg{
     .Kp = 500.0f, .Ki = 5.0f, .Kd = 0.00f, .abs_output_max = 16384 * 0.75
 };
 
-constexpr PD::Config PDErrorCfg{ .Kp = 0.3, .Kd = 0.2, .abs_output_max = 60 };
+constexpr PD::Config PDErrorCfg{ .Kp = 1.0, .Kd = 0.5, .abs_output_max = 60 };
 
 /**
  * 辅助轮接地时离下限位距离 1.25mm
@@ -83,7 +83,7 @@ namespace Position
 {
 using Lift::LiftMin;
 
-constexpr float Normal = 0.010f;  // 行进默认保持高度 unit m
+constexpr float Normal = 0.02f;   // 行进默认保持高度 unit m
 constexpr float UpStep = 0.22f;   // 比台阶略高 unit m
 constexpr float UpR1   = LiftMax; // 比 R1 的台阶高，在最后阶段 unit m
 } // namespace Position
@@ -153,17 +153,17 @@ namespace Control
 {
 constexpr chassis::controller::Master::Config masterCfg = {
     .posture_error_pd_cfg = {
-        .vx = { .Kp = 0.3, .Kd = 0.2f, .abs_output_max = 0.2f },
-        .vy = { .Kp = 0.3, .Kd = 0.2f, .abs_output_max = 0.2f },
-        .wz = { .Kp = 0.3, .Kd = 0.2f, .abs_output_max = 45.0f },
+        .vx = { .Kp = 0.2, .Kd = 0.15f, .abs_output_max = 0.2f },
+        .vy = { .Kp = 0.2, .Kd = 0.15f, .abs_output_max = 0.2f },
+        .wz = { .Kp = 0.2, .Kd = 0.15f, .abs_output_max = 45.0f },
     },
     .limit = {
         // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
         // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
         // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
-        .x = { .max_spd = 8.0f, .max_acc = 1.5f, .max_jerk = 80.0f },
-        .y   = { .max_spd = 8.0f, .max_acc = 1.5f, .max_jerk = 80.0f },
-        .yaw = { .max_spd = 1080, .max_acc = 360, .max_jerk = 1080 }
+        .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 80.0f },
+        .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 80.0f },
+        .yaw = { .max_spd = 360, .max_acc = 90, .max_jerk = 1080 }
     }
 };
 
