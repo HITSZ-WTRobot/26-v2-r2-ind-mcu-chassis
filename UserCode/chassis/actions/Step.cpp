@@ -111,13 +111,16 @@ void Step::down(const float     startDistance2Step,
     prepare(startDistance2Step, endDistance2Step, dir);
     should_reset_ = shouldReset;
 
-    chassis_state_ = ChassisState::Down1_前进使中前辅助轮到达台阶边缘_等待前轮放下;
+    chassis_state_ = ChassisState::Down0_前进使前轮前边缘到达台阶边缘_等待底盘降为过渡高度;
     front_state_   = LiftState::Down1_等待放下;
     rear_state_    = LiftState::Down1_等待放下;
 
-    // 第一个坐标点为中间外侧辅助轮到达台阶边缘
+    front_->to(Position::StepTransition, OnloadLimit);
+    rear_->to(Position::StepTransition, OnloadLimit);
+
+    // 第一个坐标点只是底盘的前导引导点；当两侧 lift 到达过渡高度后，会立即重定向到下一段目标。
     Chassis::ctrl->setTargetPostureInWorld(
-            relativePosture(startDistance2Step_ - AbsAuxInnerWheelX - 3 * SafeDistance));
+            relativePosture(startDistance2Step_ - AbsWheelOuterEdgeX - 3 * SafeDistance));
 
     osThreadFlagsSet(task_, FlagStart);
 }
@@ -165,7 +168,8 @@ void Step::update()
         }
         break;
     case ChassisState::Up3_前进将中辅助轮悬于台阶上方_等待前轮放下_等待后轮收起:
-        if (front_state_ == LiftState::Done && rear_state_ == LiftState::Up4_等待放下)
+        if ((front_state_ == LiftState::Done || front_state_ == LiftState::Up6_等待恢复到Normal) &&
+            rear_state_ == LiftState::Up4_等待放下)
         {
             Chassis::ctrl->setTargetPostureInWorld(relativePosture(startDistance2Step_ +
                                                                    endDistance2Step_),
@@ -178,6 +182,15 @@ void Step::update()
         if (Chassis::ctrl->isTrajectoryFinished())
         {
             chassis_state_ = ChassisState::Done;
+        }
+        break;
+    case ChassisState::Down0_前进使前轮前边缘到达台阶边缘_等待底盘降为过渡高度:
+        if (front_->isFinished() && rear_->isFinished())
+        {
+            // lift 已经到达过渡高度，此时允许底盘跳过前导目标，直接切到正式的下台阶位移目标。
+            Chassis::ctrl->setTargetPostureInWorld(
+                    relativePosture(startDistance2Step_ - AbsAuxInnerWheelX - 3 * SafeDistance));
+            chassis_state_ = ChassisState::Down1_前进使中前辅助轮到达台阶边缘_等待前轮放下;
         }
         break;
     case ChassisState::Down1_前进使中前辅助轮到达台阶边缘_等待前轮放下:
@@ -240,16 +253,26 @@ void Step::update()
         // 前轮已经完全登上
         if (currentRelativeX() > startDistance2Step_ - AbsWheelInnerEdgeX + 3 * SafeDistance)
         {
-            front_->to(Position::Normal, 放腿速度);
+            front_->to(Position::StepTransition, 放腿速度);
             front_state_ = LiftState::Up5_放下ing;
         }
         break;
     case LiftState::Up5_放下ing:
         if (front_->isFinished())
         {
-            front_state_ = LiftState::Done;
             front_->setGrounding(true); // 着地
+            if constexpr (Position::StepTransition == Position::Normal)
+                front_state_ = LiftState::Done;
+            else
+                front_state_ = LiftState::Up6_等待恢复到Normal;
         }
+        break;
+    case LiftState::Up6_等待恢复到Normal:
+        // 在 rear 触发
+        break;
+    case LiftState::Up7_恢复到Normaling:
+        if (front_->isFinished())
+            front_state_ = LiftState::Done;
         break;
     case LiftState::Down1_等待放下:
         if (currentRelativeX() > startDistance2Step_ - AbsWheelOuterEdgeX)
@@ -327,6 +350,11 @@ void Step::update()
         // 后轮已经完全登上
         if (currentRelativeX() > startDistance2Step_ + AbsWheelOuterEdgeX + 3 * SafeDistance)
         {
+            if (front_state_ == LiftState::Up6_等待恢复到Normal)
+            {
+                front_->to(Position::Normal, 放腿速度);
+                front_state_ = LiftState::Up7_恢复到Normaling;
+            }
             rear_->to(Position::Normal, 放腿速度);
             rear_state_ = LiftState::Up5_放下ing;
         }
@@ -337,6 +365,9 @@ void Step::update()
             rear_state_ = LiftState::Done;
             rear_->setGrounding(true); // 着地
         }
+        break;
+    case LiftState::Up6_等待恢复到Normal:
+    case LiftState::Up7_恢复到Normaling:
         break;
     case LiftState::Down1_等待放下:
         if (currentRelativeX() > startDistance2Step_ + AbsWheelInnerEdgeX)

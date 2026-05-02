@@ -31,18 +31,14 @@ constexpr PIDMotor::Config PIDCfg{
 
 constexpr PD::Config PDErrorCfg{ .Kp = 1.0, .Kd = 0.5, .abs_output_max = 60 };
 
-/**
- * 辅助轮接地时离下限位距离 1.25mm
- * 到上限位时离下限位 330.2mm
- */
-constexpr float MinToLimitMM = 1.25f;
-constexpr float RangeMM      = 330.2;
+constexpr float MinToLimitMM = 1.25f;  /// 辅助轮接地时离下限位距离
+constexpr float RangeMM      = 410.0f; ///  到上限位时离下限位
 
 constexpr float LiftMaxMM    = RangeMM - MinToLimitMM; // 最高抬升位置 unit mm
 constexpr float LiftMinMM    = 0;                      // 最低抬升位置 unit mm
 constexpr float LiftOffsetMM = MinToLimitMM;           // 辅助轮接地时到机械限位的偏移 (>0) unit mm
 constexpr float GearRadiusMM = 25;                     // 抬升齿轮半径 mm
-constexpr float GroundingChassisHeightMM = 0.0f;       // 辅助轮接地时底盘离地高度 unit mm
+constexpr float GroundingChassisHeightMM = 195.0f;     // 辅助轮接地时底盘离地高度 unit mm
 
 constexpr float LiftMax                = LiftMaxMM * 1e-3f;
 constexpr float LiftMin                = LiftMinMM * 1e-3f;
@@ -78,14 +74,17 @@ constexpr float    CalibrationDeadAngle  = 0.1f;    // 堵转检测
 
 /**
  * 使用到的点位
+ *
+ * 以下高度为抬升高度（在本机抬升高度表示辅助轮离地高度）
  */
 namespace Position
 {
 using Lift::LiftMin;
 
-constexpr float Normal = 0.02f;   // 行进默认保持高度 unit m
-constexpr float UpStep = 0.22f;   // 比台阶略高 unit m
-constexpr float UpR1   = LiftMax; // 比 R1 的台阶高，在最后阶段 unit m
+constexpr float Normal         = 0.02f;   // 行进默认保持高度 unit m
+constexpr float StepTransition = 0.01f;   // 上下台阶过程中的过渡高度 unit m
+constexpr float UpStep         = 0.22f;   // 比台阶略高 unit m
+constexpr float UpR1           = LiftMax; // 比 R1 的台阶高，在最后阶段 unit m
 } // namespace Position
 
 constexpr float CalibrationOffsetAngle = LiftOffset / GearRadius / M_PI * 180.0f;
