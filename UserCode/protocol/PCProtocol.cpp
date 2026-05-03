@@ -121,10 +121,21 @@ bool PCProtocol::isLidarPostureConnected() const
     return lidar_posture_watchdog_.isFed();
 }
 
+bool PCProtocol::isUpperHostIdentified() const
+{
+    return upper_host_identified_.load(std::memory_order_relaxed);
+}
+
 void PCProtocol::cmdHandler(Frame& frame)
 {
     clock_.align(static_cast<float>(frame.rx_timestamp),
                  static_cast<float>(frame.tx_timestamp) + transitionDelayMS());
+
+    if constexpr (ProjectParts::NeedUpperHostIdentifyInit)
+    {
+        upper_host_identified_.store(true, std::memory_order_relaxed);
+        System::Init::upperHostIdentified = true;
+    }
 
     ++msg_cnt_;
     if (msg_cnt_ < 50)
@@ -157,11 +168,11 @@ void PCProtocol::cmdHandler(Frame& frame)
             const float                  chassis_height = to_pos(read_i16(&data[0]));
             const Chassis::Config::Limit limit{
                 .max_spd  = read_positive_or_default(&data[2],
-                                                     1000.0f,
-                                                     Chassis::Config::Lift::OnloadLimit.max_spd),
+                                                    1000.0f,
+                                                    Chassis::Config::Lift::OnloadLimit.max_spd),
                 .max_acc  = read_positive_or_default(&data[4],
-                                                     100.0f,
-                                                     Chassis::Config::Lift::OnloadLimit.max_acc),
+                                                    100.0f,
+                                                    Chassis::Config::Lift::OnloadLimit.max_acc),
                 .max_jerk = read_positive_or_default(&data[6],
                                                      1.0f,
                                                      Chassis::Config::Lift::OnloadLimit.max_jerk),
@@ -412,6 +423,15 @@ void PCProtocol::transmitFeedbackFrame()
         tx_state_ = TxState::DMAActive;
 }
 
+void PCProtocol::transmitIdentifyByte()
+{
+    if (HAL_UART_Transmit_DMA(huart(), identify_tx_buffer_.data(), identify_tx_buffer_.size()) ==
+        HAL_OK)
+    {
+        tx_state_ = TxState::DMAActive;
+    }
+}
+
 void PCProtocol::transmitCallback()
 {
     tx_state_ = TxState::Idle;
@@ -453,7 +473,19 @@ void PCProtocol::errorHandler()
     for (;;)
     {
         if (tx_state_ != TxState::DMAActive && huart()->gState == HAL_UART_STATE_READY)
-            transmitFeedbackFrame();
+        {
+            if constexpr (ProjectParts::NeedUpperHostIdentifyInit)
+            {
+                if (!isUpperHostIdentified())
+                    transmitIdentifyByte();
+                else
+                    transmitFeedbackFrame();
+            }
+            else
+            {
+                transmitFeedbackFrame();
+            }
+        }
 
         osDelay(1);
     }

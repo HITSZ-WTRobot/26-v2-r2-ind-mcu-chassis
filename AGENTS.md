@@ -21,6 +21,7 @@ All STM32 + CubeMX projects in this workspace follow these conventions. Applicat
 
 This repository also has several project-specific conventions derived from `UserCode/`:
 - Treat `UserCode/project_parts.hpp` as the only place to enable or disable major subsystems. Prefer using derived `ProjectParts::EnableXxx` / `NeedXxx` constants in code; do not re-combine the raw `PROJECT_PART_ENABLE_*` macros elsewhere.
+- `ProjectParts::NeedUpperHostIdentifyInit` gates a dedicated upper-host UART identification stage: the firmware keeps transmitting raw `0xAA` bytes and does not switch to the normal upper-host feedback stream until any CRC-valid upper-host frame is received. This requirement belongs to the final `System::Init::inited()` gate, not to the pre-calibration local connection wait.
 - `Chassis::motion` is intentionally a single `IndLiftMecanum4` object that owns both the mecanum wheelset and the dual lift sides. As long as either wheel chassis or lift is enabled, keep that unified motion-object assumption intact.
 - Each `Lift::LiftSide` is now a synchronized dual-motor side built from `trajectory::HomingMotorTrajectory<2>` and two `MotorVelController`s. Keep the “front pair + rear pair” grouping intact unless the hardware contract changes again.
 - `Chassis::loc` and `Chassis::ctrl` exist only when wheel chassis support is enabled. Localization mode is selected at compile time: no gyro uses `JustEncoder`, gyro uses `LocEKF`, and upper-host localization delays EKF creation until the first posture packet arrives.
@@ -43,7 +44,8 @@ The real-time update flow is timer-driven and split by frequency:
 The startup sequence in `Init()` is also part of the project contract:
 - Initialize in order: `Device::init()`, `Chassis::init()`, `Protocol::init()`, then optional `Grip::init()`, then `Connection::init()`.
 - Register all shared-I2C periodic devices before calling `AppI2C::start_bus2_manager()`. Do not start the shared I2C manager from an individual device module if other devices may still need to register on the same bus.
-- Wait for all enabled devices/protocol links to report connected before proceeding.
+- `Connection::waitAll()` is only for lower-controller local hardware links needed before enable/calibration. Do not let any upper-host protocol state participate in this wait.
+- Upper-host identification and upper-host first-posture requirements belong to the later `System::Init::inited()` gate, so they must not block lower-controller enable or calibration work.
 - Enable and calibrate motion and grip separately, then wait until all enabled subsystems are ready.
 - Call `Chassis::initStandaloneLocCtrl()` only for local-initialization modes; when upper-host localization is enabled, the first posture frame triggers `System::Init::initPostureReceive()` instead.
 - Only enable the chassis controller after initialization is complete, and only enable grip after it is calibrated.
@@ -62,6 +64,8 @@ The current hardware/software mapping in `UserCode/` is:
 
 Upper-host protocol behavior is likewise feature-gated:
 - Create `Protocol::PCProtocol` only when `ProjectParts::EnableUpperHostProtocol` is true.
+- During the optional UART identification stage, `PCProtocol` must send only raw `0xAA` bytes on TX; once any valid frame is received, it resumes the normal feedback-frame transmitter.
+- Even when upper-host connection bits are present in `Connection::table`, they are observability bits only and must not be folded back into the pre-calibration local readiness gate.
 - Treat the first `LidarPosture` frame as the delayed initialization trigger when upper-host localization is enabled.
 - Keep step-action commands gated by `ProjectParts::EnableStepAction`, which currently means PC control + wheel chassis + lift all enabled.
 - When upper-host command IDs, payload layouts, or feedback layouts change, update `docs/upper_host_command_table.md` and `docs/upper_host_feedback_table.md` in the same change.

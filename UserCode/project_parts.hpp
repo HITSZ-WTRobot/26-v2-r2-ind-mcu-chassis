@@ -5,14 +5,14 @@
  * 本文件是“组件启用逻辑”的唯一入口。
  *
  * 使用规则：
- * - 只修改下面 9 个 0 / 1 宏；
+ * - 只修改下面 10 个 0 / 1 宏；
  * - 这些开关的设计目的，是方便局部联调 / 排障 / 单机构验证；
  * - 正式比赛或正式交付构建时，必须按完整硬件形态启用全部功能，不把它当作长期产品分型配置；
  * - 业务代码不要直接重新组合原始宏，统一使用本文件中派生出来的
  *   `ProjectParts::EnableXxx` / `NeedXxx` 常量；
  * - 派生常量的存在意义，是把“模块开关”翻译成“系统能力”。
  *
- * 九个一级开关分别代表：
+ * 十个一级开关分别代表：
  * 1. 底盘（四个底盘电机组成的 mecanum4 平面运动部分）
  * 2. 升降（两个抬升电机组成的抬升机构）
  * 3. grip（夹取机构本体：arm / turn / claw）
@@ -21,7 +21,8 @@
  * 6. 陀螺仪（当前为航向陀螺仪）
  * 7. 上位机定位包（上位机下发的外部位姿观测）
  * 8. 上位机控制指令（上位机其他控制命令）
- * 9. connection table I2C 周期发送
+ * 9. 上位机串口辨识初始化（下位机持续发送 0xAA，直到收到任意合法上位机帧）
+ * 10. connection table I2C 周期发送
  *
  * 常见组合：
  * - 仅底盘调试：
@@ -86,6 +87,11 @@
 #    define PROJECT_PART_ENABLE_PC_CONTROL 1
 #endif
 
+/// 启用上位机串口辨识初始化；开启后，下位机会持续发送 0xAA，直到收到任意合法上位机帧。
+#ifndef PROJECT_PART_ENABLE_UPPER_HOST_IDENTIFY_INIT
+#    define PROJECT_PART_ENABLE_UPPER_HOST_IDENTIFY_INIT 1
+#endif
+
 /// 启用 connection table 的 I2C 周期发送。
 #ifndef PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX
 #    define PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX 1
@@ -111,6 +117,9 @@ inline constexpr bool EnableGyro = PROJECT_PART_ENABLE_GYRO != 0;
 inline constexpr bool EnablePcLocalization = PROJECT_PART_ENABLE_PC_LOCALIZATION != 0;
 /// 一级开关：上位机控制命令。
 inline constexpr bool EnablePcControl = PROJECT_PART_ENABLE_PC_CONTROL != 0;
+/// 一级开关：上位机串口辨识初始化。
+inline constexpr bool EnableUpperHostIdentifyInit = PROJECT_PART_ENABLE_UPPER_HOST_IDENTIFY_INIT !=
+                                                    0;
 /// 一级开关：connection table I2C 周期发送。
 inline constexpr bool EnableConnectionTableI2CTx = PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX != 0;
 
@@ -127,6 +136,10 @@ inline constexpr bool EnableChassisMotion = EnableWheelChassis || EnableLift;
 
 /// 只要上位机任一通道打开，就需要启动上位机串口协议任务。
 inline constexpr bool EnableUpperHostProtocol = EnablePcLocalization || EnablePcControl;
+
+/// 是否需要执行“持续发送 0xAA，直到收到任意合法上位机帧”的串口辨识初始化流程。
+inline constexpr bool NeedUpperHostIdentifyInit = EnableUpperHostProtocol &&
+                                                  EnableUpperHostIdentifyInit;
 
 /**
  * 只要启用了四轮底盘，就认为“需要定位层”。

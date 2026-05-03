@@ -88,11 +88,8 @@ void encode_connection_table(uint8_t payload[2], const uint16_t value)
     if constexpr (ProjectParts::EnableGyro)
         required |= mask(Bit::GyroYaw);
 
-    if constexpr (ProjectParts::EnablePcLocalization)
-        required |= mask(Bit::UpperHostLocalization);
-
-    if constexpr (ProjectParts::EnableUpperHostProtocol)
-        required |= mask(Bit::UpperHost);
+    // 上位机链路状态仍会进入 connection table，但不参与这里的“校准前本地链路就绪”判定。
+    // 相关初始化要求统一放到 `System::Init::inited()` 的最终门槛中处理。
 
     return required;
 }

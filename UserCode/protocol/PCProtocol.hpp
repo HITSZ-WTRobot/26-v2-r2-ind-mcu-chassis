@@ -12,6 +12,7 @@
 #include "sync/Clock.hpp"
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 
 namespace Protocol
@@ -22,6 +23,8 @@ using CRC16Modbus = crc::CRCX<16, 0x8005, 0xFFFF, true, true, 0x0000>;
 constexpr uint32_t HeaderLen  = 2;
 constexpr uint32_t PayloadLen = 1 + 2 * 6 + 4 + 2;
 constexpr uint32_t FrameLen   = HeaderLen + PayloadLen;
+
+constexpr uint8_t IdentifyInitByte = 0xAA;
 
 /// 反馈帧：
 /// AA BB | timestamp(uint32) | x*2000(int16) | y*2000(int16) | yaw*100(int16) |
@@ -93,8 +96,8 @@ enum class PCCommand : uint8_t
     StepDown = 0x32,
 
     /// 取矛头
-    /// |      int16      |      int16      |         int16        |    int16   |    int16   |       int16      |
-    /// | target_x*2000   | target_y*2000   | target_yaw(deg)*100  | end_x*2000 | end_y*2000 | end_yaw(deg)*100 |
+    /// |     int16   |     int16   |        int16      |   int16  |   int16  |      int16     |
+    /// |target_x*2000|target_y*2000|target_yaw(deg)*100|end_x*2000|end_y*2000|end_yaw(deg)*100|
     TakeSpear = 0x40,
     /// 固定矛位取矛头
     /// | uint16  |    int16   |    int16   |       int16      | uint16  | uint16  |
@@ -128,8 +131,10 @@ public:
     [[nodiscard]] const Sync::Clock& clock() const { return clock_; }
 
     [[nodiscard]] bool isLidarPostureConnected() const;
+    [[nodiscard]] bool isUpperHostIdentified() const;
 
     void transmitFeedbackFrame();
+    void transmitIdentifyByte();
 
     void transmitCallback();
 
@@ -180,6 +185,8 @@ private:
 
     service::Watchdog lidar_posture_watchdog_{};
 
+    std::atomic_bool upper_host_identified_{ false };
+
     enum class TxState
     {
         Stopped,
@@ -189,12 +196,15 @@ private:
 
     TxState tx_state_{ TxState::Stopped };
 
+    std::array<uint8_t, 1> identify_tx_buffer_{ IdentifyInitByte };
+
     std::array<uint8_t, FeedbackFrameLen> tx_buffer_{};
 };
 
 inline PCProtocol* pc_rx{};
 
 bool isPcLocalizationConnected();
+bool isUpperHostIdentified();
 
 void init();
 

@@ -107,7 +107,7 @@ extern "C" void Init(void* argument)
     HAL_TIM_RegisterCallback(&htim13, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM_Callback_100Hz);
     HAL_TIM_Base_Start_IT(&htim13);
 
-    // 等待设备和上位机等已启用连接对象在线
+    // 这里只等待下位机本地硬件链路在线；上位机辨识/定位首帧等要求统一放到最终初始化完成门槛。
     Connection::waitAll();
 
     // 等待更新
@@ -156,8 +156,9 @@ extern "C" void Init(void* argument)
     // - 有陀螺仪但无上位机定位包：构造本地下位机 EKF
     Chassis::initStandaloneLocCtrl();
 
-    // 若当前启用了上位机定位包，则会在此等待首帧位姿；
-    // 否则 `System::Init::inited()` 立即返回 true。
+    // 这里统一等待“系统初始化完成”：
+    // - 若启用了上位机串口辨识初始化，则必须先收到任意合法上位机帧；
+    // - 若启用了上位机定位包，则还必须等待首帧位姿。
     while (!System::Init::inited())
         osDelay(1);
 
