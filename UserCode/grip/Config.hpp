@@ -19,19 +19,6 @@
 namespace Grip::Config
 {
 
-namespace Position
-{
-// 之后可以改为相对电机绝对零点的角度，引入堵转检测的偏移 setoff。
-// 目前这些值仍直接作为校准后零点上的关节目标角度。
-constexpr float ArmNowork = 130.0f;
-constexpr float ArmReady  = 68.0f;
-constexpr float ArmOut    = 100.0f;
-constexpr float ArmStore  = 90.0f; // 卷轴临时存放机械臂位置
-
-constexpr float TurnGrip    = 235.0f;
-constexpr float TurnDocking = 145.0f;
-} // namespace Position
-
 struct JointPose
 {
     /// 大臂目标角度，单位 deg，基于 grip 自身校准零点。
@@ -43,17 +30,17 @@ struct JointPose
 namespace Poses
 {
 /// 待机姿态：系统空闲、KFS 释放完成后都应回到这里。
-constexpr JointPose Standby{ Position::ArmNowork, Position::TurnGrip };
+constexpr JointPose Standby{ -80.0f, 0.0f };
 /// 准备夹取姿态：夹爪张开，等待底盘靠近目标。
-constexpr JointPose PrepareGrab{ Position::ArmReady, Position::TurnGrip };
+constexpr JointPose PrepareGrab{ 0.0f, 0.0f };
 /// 夹取执行姿态：夹爪闭合，并把大臂推出完成矛头夹取。
-constexpr JointPose Grab{ Position::ArmOut, Position::TurnGrip };
+constexpr JointPose Grab{ 20.0f, 0.0f };
 /// 对接姿态：夹取完成后转向对接角度，等待底盘移动到最终位置。
-constexpr JointPose Docking{ Position::ArmReady, Position::TurnDocking };
+constexpr JointPose Docking{ 0.0f, -91.0f };
 /// KFS 拾取姿态：吸盘对准取料位置。
-constexpr JointPose KfsPickup{ Position::ArmStore, Position::TurnGrip };
+constexpr JointPose KfsPickup{ 90.0f, 0.0f };
 /// KFS 暂存姿态：吸住卷轴后转到暂存朝向。
-constexpr JointPose KfsStore{ Position::ArmStore, Position::TurnDocking };
+constexpr JointPose KfsStore{ -80.0f, 0.0f };
 /// KFS 释放姿态：释放吸住的卷轴
 inline constexpr const JointPose& KfsRelease = KfsPickup;
 } // namespace Poses
@@ -101,7 +88,7 @@ constexpr controllers::MotorVelController::Config ArmVelControllerCfg{
 
 /// 转向电机速度环参数
 constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
-    .pid = { .Kp = 400.0f, .Ki = 5.0f, .Kd = 0.0f, .abs_output_max = 2000.0f },
+    .pid = { .Kp = 500.0f, .Ki = 5.0f, .Kd = 0.0f, .abs_output_max = 4000.0f },
 };
 
 } // namespace Motor
@@ -118,20 +105,20 @@ constexpr float ArmCalibVel  = -30.0f;
 constexpr float TurnCalibVel = -30.0f;
 
 constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig ArmCalibCfg = { //
-    .speed       = ArmCalibVel,
-    .max_current = ArmLockCurrent,
-    .min_ticks   = lockedTicks,
-    .offset      = 0.0f,
-    .target_after_homing = 0.0f,
-    .dead_angle  = deadAngle
+    .speed               = ArmCalibVel,                                           //
+    .max_current         = ArmLockCurrent,                                        //
+    .min_ticks           = lockedTicks,                                           //
+    .offset              = -100.0f,
+    .target_after_homing = 90.0f,
+    .dead_angle          = deadAngle
 };
 constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg = { //
-    .speed       = TurnCalibVel,
-    .max_current = TurnLockCurrent,
-    .min_ticks   = lockedTicks,
-    .offset      = 0.0f,
+    .speed               = TurnCalibVel,
+    .max_current         = TurnLockCurrent, //
+    .min_ticks           = lockedTicks,
+    .offset              = 200.0f, //
     .target_after_homing = 0.0f,
-    .dead_angle  = deadAngle
+    .dead_angle          = deadAngle
 };
 
 } // namespace Calibration
