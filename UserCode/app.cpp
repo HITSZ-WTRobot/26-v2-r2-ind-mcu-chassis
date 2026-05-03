@@ -162,6 +162,8 @@ extern "C" void Init(void* argument)
     while (!System::Init::inited())
         osDelay(1);
 
+    osDelay(50);
+
     // 仅在底盘轮组启用时，才真正使能底盘控制器。
     Chassis::enable();
     if constexpr (ProjectParts::EnableGrip)
