@@ -96,15 +96,6 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
     if (crc != crc_in_data)
         return false;
 
-    if constexpr (ProjectParts::EnablePcLocalization)
-    {
-        if (static_cast<PCCommand>(data[0]) == PCCommand::LidarPosture)
-        {
-            // 定位流连接状态统一通过 Watchdog 判定，单位是 EatAll() 消耗的 tick。
-            lidar_posture_watchdog_.feed(LidarPostureTimeoutTicks);
-        }
-    }
-
     return rx_buffer_.push(
             [&](Frame& frame)
             {
@@ -248,6 +239,9 @@ void PCProtocol::cmdHandler(Frame& frame)
         // 否则当前工程使用本地定位，不消费外部位姿观测。
         if constexpr (!ProjectParts::EnablePcLocalization)
             break;
+
+        // 定位流连接状态统一通过 Watchdog 判定，单位是 EatAll() 消耗的 tick。
+        lidar_posture_watchdog_.feed(LidarPostureTimeoutTicks);
 
         const chassis::Posture pos = { .x   = to_pos(read_i16(&data[0])),
                                        .y   = to_pos(read_i16(&data[2])),
