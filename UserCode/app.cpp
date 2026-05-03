@@ -16,6 +16,7 @@
 #include "project_parts.hpp"
 #include "protocol.hpp"
 #include "system.hpp"
+#include "tests/tests.hpp"
 #include "tim.h"
 
 void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
@@ -176,11 +177,7 @@ extern "C" void Init(void* argument)
     osDelay(1000);
 
     // 创建其他 tasks
-    // constexpr osThreadAttr_t autoTaskAttr{
-    //     .name       = "auto-task",
-    //     .stack_size = 1024 * 4,
-    //     .priority   = osPriorityNormal,
-    // };
+    Tests::init();
 
     /* 初始化完成后退出线程 */
     osThreadExit();

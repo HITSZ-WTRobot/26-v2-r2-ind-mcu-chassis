@@ -12,6 +12,7 @@ Firmware integration lives at the repository root. `UserCode/` is the only proje
 - `UserCode/grip/` — the grip mechanism entry point, trajectory control, calibration config, and the two grip action modules under `UserCode/grip/actions/`: `SpearGrab` for taking spearheads and `KfsStore` for temporary roller storage.
 - `UserCode/protocol/` — upper-host UART frame parsing and command dispatch.
 - `UserCode/system.hpp` and `UserCode/sync/` — initialization handoff and clock alignment helpers.
+- `UserCode/tests/` — optional bench/debug test entry points; `tests.hpp` centralizes per-file enable macros, and each `*.cpp` under this directory owns one test item.
 - `UserCode/arena.cpp` — the global static-allocation arena backing `new` / `delete`.
 
 `UserCode/grip.hpp` and `UserCode/protocol.hpp` are only umbrella includes; real implementation lives in their subdirectories. `Modules/` holds reusable libraries such as `BasicComponents`, `ChassisController`, `MotorDrivers`, `Sensors`, `TrajectoryControl`, and `VelocityProfile`; each module owns its own `CMakeLists.txt`, and module-local `AGENTS.md` files override this guide when present. `Core/`, `Drivers/`, and `Middlewares/` are STM32CubeMX-generated support code. Generated package indexes live in `index.md` and `cpkg_index.json`.
@@ -97,6 +98,7 @@ When changes touch `UserCode/`, prefer validating the smallest affected behavior
 - For feature-toggle or startup-path changes, rebuild and re-check that the init sequence still matches `ProjectParts` gating.
 - For localization or upper-host protocol changes, verify both the local-init path and the delayed-first-posture path still make sense.
 - For lift, grip, or step-action logic changes, inspect 1 kHz / 500 Hz / 100 Hz update placement before changing control code.
+- For temporary debug tests, keep the on/off switch in `UserCode/tests/tests.hpp`; if one test file covers multiple subsystems, gate the per-subsystem behavior inside that file with `ProjectParts`.
 
 ## Commit & Pull Request Guidelines
 Recent history uses short type prefixes such as `feat:`, `deps:`, `refactor:`, and `ioc:`. Keep commit subjects imperative and specific, for example `feat: adjust lift trajectory parameters`. Pull requests should list touched directories, describe hardware or control-loop impact, and note validation performed. Include plots, logs, or regenerated artifacts when behavior or CubeMX configuration changes.
