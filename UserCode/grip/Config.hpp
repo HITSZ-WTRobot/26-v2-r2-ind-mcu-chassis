@@ -30,11 +30,11 @@ struct JointPose
 namespace Poses
 {
 /// 待机姿态：系统空闲、KFS 释放完成后都应回到这里。
-constexpr JointPose Standby{ -80.0f, 0.0f };
+constexpr JointPose Standby{ 90.0f, 0.0f };
 /// 准备夹取姿态：夹爪张开，等待底盘靠近目标。
 constexpr JointPose PrepareGrab{ 0.0f, 0.0f };
 /// 夹取执行姿态：夹爪闭合，并把大臂推出完成矛头夹取。
-constexpr JointPose Grab{ 20.0f, 0.0f };
+constexpr JointPose Grab{ 45.0f, 0.0f };
 /// 对接姿态：夹取完成后转向对接角度，等待底盘移动到最终位置。
 constexpr JointPose Docking{ 0.0f, -91.0f };
 /// KFS 拾取姿态：吸盘对准取料位置。
