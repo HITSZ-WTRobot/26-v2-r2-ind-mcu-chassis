@@ -271,9 +271,9 @@ void PCProtocol::cmdHandler(Frame& frame)
             if (Device::Sensor::gyro_yaw == nullptr || !Device::Sensor::gyro_yaw->isConnected())
                 return;
 
-            System::Init::posture         = pos;
-            System::Init::postureReceived = true;
+            System::Init::posture = pos;
             System::Init::initPostureReceive();
+            System::Init::postureReceived = true;
             return;
         }
 
