@@ -20,6 +20,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # suitable for bare-metal targets without process exit
 add_compile_options(
         $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
+        $<$<COMPILE_LANGUAGE:C,CXX>:-fstack-usage>
+        $<$<COMPILE_LANGUAGE:C,CXX>:-fcallgraph-info=su>
 )
 
 # Define the build type
