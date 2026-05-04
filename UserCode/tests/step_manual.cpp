@@ -135,7 +135,7 @@ void init()
 
     constexpr osThreadAttr_t attr{
         .name       = "test-step",
-        .stack_size = 512U * 4U,
+        .stack_size = 1024 * 4U,
         .priority   = osPriorityNormal,
     };
 
