@@ -89,7 +89,6 @@ void Step::up(const float     startDistance2Step,
     Chassis::ctrl->setTargetPostureInWorld(
             relativePosture(startDistance2Step_ - HalfChassisDistanceX - SafeDistance));
 
-    osThreadFlagsClear(FlagResume);
     osThreadFlagsSet(task_, FlagStart);
 }
 /**
@@ -422,8 +421,9 @@ void Step::update()
     for (;;)
     {
         osThreadFlagsWait(FlagStart, osFlagsWaitAll, osWaitForever);
+        osThreadFlagsClear(FlagResume);
 
-        while (!isFinished())
+        while (isRunning())
         {
             update();
             osDelay(1);
