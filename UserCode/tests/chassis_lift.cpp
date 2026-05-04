@@ -17,19 +17,27 @@ namespace Tests::ChassisLift
 // 0 stop
 // 1 vel
 // 2 pos
+/// 底盘测试模式选择。Ozone 修改后立即生效。
 size_t s_chassis = 0;
 
 // 0 前后协同
 // 1 控制前腿
 // 2 控制后腿
+/// 升降测试模式选择。0 时使用 `z_pos`，1/2 时分别使用 `z_front_pos` / `z_rear_pos`。
 size_t s_lift      = 0;
+/// 前后协同时的统一升降目标位置，单位 m。
 float  z_pos       = Chassis::Config::Lift::Position::Normal;
+/// 仅控制前腿时的目标位置，单位 m。
 float  z_front_pos = z_pos;
+/// 仅控制后腿时的目标位置，单位 m。
 float  z_rear_pos  = z_pos;
 
+/// 升降动作使用的速度/加速度/加加速度限制。
 Chassis::Config::Limit lift_limit = Chassis::Config::Lift::DefaultLimit;
 
+/// 底盘位置模式目标位姿；仅在 `s_chassis == 2` 且值变化时下发，单位 m / deg。
 chassis::Posture  pos{};
+/// 底盘速度模式目标速度；仅在 `s_chassis == 1` 且值变化时下发，单位 m/s / deg/s。
 chassis::Velocity vel{};
 
 namespace
