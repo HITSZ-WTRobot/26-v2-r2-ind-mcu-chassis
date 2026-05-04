@@ -66,11 +66,15 @@ public:
     bool toKfsStorePose();
     /** @brief 前往 KFS 释放姿态。 */
     bool toKfsReleasePose();
+    /** @brief 不附带夹爪语义，直接规划到指定双轴关节位姿。 */
+    bool toJointPose(const Config::JointPose& pose);
 
     /** @brief 直接控制夹爪 GPIO 打开。 */
     void openClaw();
     /** @brief 直接控制夹爪 GPIO 闭合。 */
     void closeClaw();
+    /** @brief 立即停止当前双轴轨迹。 */
+    void stop();
 
     /** @brief 两轴均校准完成且轨迹都跑完时返回 true。 */
     [[nodiscard]] bool isFinished() const;

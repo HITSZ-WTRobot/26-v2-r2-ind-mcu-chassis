@@ -151,6 +151,11 @@ bool Grip::toKfsReleasePose()
     return planPose(Config::Poses::KfsRelease);
 }
 
+bool Grip::toJointPose(const Config::JointPose& pose)
+{
+    return planPose(pose);
+}
+
 void Grip::openClaw()
 {
     GPIO_ResetPin(&claw_);
@@ -159,6 +164,12 @@ void Grip::openClaw()
 void Grip::closeClaw()
 {
     GPIO_SetPin(&claw_);
+}
+
+void Grip::stop()
+{
+    arm_trajectory_.stop();
+    turn_trajectory_.stop();
 }
 
 bool Grip::isFinished() const
