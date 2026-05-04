@@ -8,6 +8,7 @@
 #include "IChassisDef.hpp"
 #include "RingBuffer.hpp"
 #include "UartRxSync.hpp"
+#include "cmsis_os.h"
 #include "crc.hpp"
 #include "sync/Clock.hpp"
 
@@ -114,9 +115,9 @@ enum class PCCommand : uint8_t
 class PCProtocol final : public protocol::UartRxSync<HeaderLen, FrameLen>
 {
 public:
-    explicit PCProtocol(UART_HandleTypeDef* huart) : UartRxSync(huart) {}
+    explicit PCProtocol(UART_HandleTypeDef* huart);
 
-    static void TaskEntry(void* argument) { static_cast<PCProtocol*>(argument)->loop(); }
+    static void rcvTaskEntry(void* argument) { static_cast<PCProtocol*>(argument)->receiveLoop(); }
     static void FeedbackTaskEntry(void* argument)
     {
         static_cast<PCProtocol*>(argument)->feedbackLoop();
@@ -137,6 +138,8 @@ public:
     void transmitIdentifyByte();
 
     void transmitCallback();
+
+    bool startFeedback();
 
     void errorHandler();
 
@@ -176,7 +179,7 @@ private:
         } lidar;
     } debug_{};
 
-    [[noreturn]] void loop();
+    [[noreturn]] void receiveLoop();
     [[noreturn]] void feedbackLoop();
 
     void cmdHandler(Frame& frame);
@@ -199,6 +202,9 @@ private:
     std::array<uint8_t, 1> identify_tx_buffer_{ IdentifyInitByte };
 
     std::array<uint8_t, FeedbackFrameLen> tx_buffer_{};
+
+    osThreadId_t rcv_task_;
+    osThreadId_t feedback_task_;
 };
 
 inline PCProtocol* pc_rx{};

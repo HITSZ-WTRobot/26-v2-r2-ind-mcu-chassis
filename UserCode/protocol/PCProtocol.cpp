@@ -86,6 +86,10 @@ int16_t to_scaled_i16(const float value, const float scale)
                                            static_cast<long>(std::numeric_limits<int16_t>::min()),
                                            static_cast<long>(std::numeric_limits<int16_t>::max())));
 }
+
+constexpr uint32_t MsgReceived = 1 << 0;
+
+constexpr uint32_t FeedbackStart = 1 << 1;
 } // namespace
 
 bool PCProtocol::decode(const uint8_t data[PayloadLen])
@@ -96,7 +100,7 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
     if (crc != crc_in_data)
         return false;
 
-    return rx_buffer_.push(
+    bool pushed = rx_buffer_.push(
             [&](Frame& frame)
             {
                 frame.rx_timestamp = HAL_GetTick();
@@ -105,6 +109,26 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
                 frame.crc16        = crc_in_data;
                 std::memcpy(frame.data.data(), data + 1, frame.data.size());
             });
+
+    osThreadFlagsSet(rcv_task_, MsgReceived);
+    return pushed;
+}
+
+PCProtocol::PCProtocol(UART_HandleTypeDef* huart) : UartRxSync(huart)
+{
+    constexpr osThreadAttr_t processor_attr{
+        .name       = "pc-cmd-processor",
+        .stack_size = 1024 * 4,
+        .priority   = osPriorityRealtime,
+    };
+
+    constexpr osThreadAttr_t feedback_attr{
+        .name       = "pc-feedback",
+        .stack_size = 512 * 4,
+        .priority   = osPriorityLow,
+    };
+    rcv_task_      = osThreadNew(rcvTaskEntry, this, &processor_attr);
+    feedback_task_ = osThreadNew(FeedbackTaskEntry, this, &feedback_attr);
 }
 
 bool PCProtocol::isLidarPostureConnected() const
@@ -431,6 +455,16 @@ void PCProtocol::transmitCallback()
     tx_state_ = TxState::Idle;
 }
 
+bool PCProtocol::startFeedback()
+{
+    if (huart()->hdmatx == nullptr || huart()->hdmatx->Init.Mode != DMA_NORMAL)
+    {
+        return false;
+    }
+    osThreadFlagsSet(feedback_task_, FeedbackStart);
+    return true;
+}
+
 void PCProtocol::errorHandler()
 {
     const bool has_tx_dma_error = (huart()->ErrorCode & HAL_UART_ERROR_DMA) != 0U &&
@@ -447,7 +481,7 @@ void PCProtocol::errorHandler()
     protocol::UartRxSync<HeaderLen, FrameLen>::errorHandler();
 }
 
-[[noreturn]] void PCProtocol::loop()
+[[noreturn]] void PCProtocol::receiveLoop()
 {
     for (;;)
     {
@@ -458,12 +492,13 @@ void PCProtocol::errorHandler()
                 cmdHandler(*frame);
         }
 
-        osDelay(1);
+        osThreadFlagsWait(1, osFlagsWaitAny, osWaitForever);
     }
 }
 
 [[noreturn]] void PCProtocol::feedbackLoop()
 {
+    osThreadFlagsWait(FeedbackStart, osFlagsWaitAny, osWaitForever);
     for (;;)
     {
         if (tx_state_ != TxState::DMAActive && huart()->gState == HAL_UART_STATE_READY)
@@ -484,18 +519,6 @@ void PCProtocol::errorHandler()
         osDelay(1);
     }
 }
-
-constexpr osThreadAttr_t processor_attr{
-    .name       = "pc-cmd-processor",
-    .stack_size = 1024 * 4,
-    .priority   = osPriorityRealtime,
-};
-
-constexpr osThreadAttr_t feedback_attr{
-    .name       = "pc-feedback",
-    .stack_size = 512 * 4,
-    .priority   = osPriorityLow,
-};
 
 bool isPcLocalizationConnected()
 {
@@ -527,11 +550,8 @@ void init()
     if (!pc_rx->startReceive())
         Error_Handler();
 
-    if (pc_rx->huart()->hdmatx == nullptr || pc_rx->huart()->hdmatx->Init.Mode != DMA_NORMAL)
+    if (!pc_rx->startFeedback())
         Error_Handler();
-
-    osThreadNew(PCProtocol::TaskEntry, pc_rx, &processor_attr);
-    osThreadNew(PCProtocol::FeedbackTaskEntry, pc_rx, &feedback_attr);
 }
 
 } // namespace Protocol
