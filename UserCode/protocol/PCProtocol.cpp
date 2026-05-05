@@ -118,7 +118,7 @@ PCProtocol::PCProtocol(UART_HandleTypeDef* huart) : UartRxSync(huart)
 {
     constexpr osThreadAttr_t processor_attr{
         .name       = "pc-cmd-processor",
-        .stack_size = 1024 * 4,
+        .stack_size = 2048 * 4,
         .priority   = osPriorityRealtime,
     };
 
