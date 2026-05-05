@@ -24,7 +24,7 @@ using chassis::controller::Master;
 Step::Step()
 {
     constexpr osThreadAttr_t attr{
-        .stack_size = 256 * 4,
+        .stack_size = 1024 * 4,
         .priority   = osPriorityNormal,
     };
     task_ = osThreadNew(TaskEntry, this, &attr);
@@ -188,7 +188,8 @@ void Step::update()
         {
             // lift 已经到达过渡高度，此时允许底盘跳过前导目标，直接切到正式的下台阶位移目标。
             Chassis::ctrl->setTargetPostureInWorld(
-                    relativePosture(startDistance2Step_ - AbsAuxInnerWheelX - 3 * SafeDistance));
+                    relativePosture(startDistance2Step_ - AbsAuxInnerWheelX - 3 * SafeDistance),
+                    Master::TrajectoryLinkMode::PreviousCurve);
             chassis_state_ = ChassisState::Down1_前进使中前辅助轮到达台阶边缘_等待前轮放下;
         }
         break;
