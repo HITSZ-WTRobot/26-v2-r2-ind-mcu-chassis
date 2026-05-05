@@ -49,6 +49,7 @@
 | `0x12` | `SlavePushChassisTrajectory` | `x(int16), y(int16), yaw(int16), vx(int16), vy(int16), wz(int16)` | 当前固件已保留格式，但处理逻辑仍为空。 |
 | `0x13` | `SetMasterChassisTargetCurrentState` | `x(int16), y(int16), yaw(int16), xy_vmax(uint12), xy_amax(uint12), yaw_vmax(uint12), yaw_amax(uint12)` | Master 模式目标位姿，轨迹从当前状态衔接。 |
 | `0x14` | `SetMasterChassisTargetPreviousCurve` | 与 `0x13` 相同 | Master 模式目标位姿，轨迹沿上一条曲线衔接。 |
+| `0x15` | `SetMasterChassisVelocity` | `vx(int16), vy(int16), wz(int16), reserve(uint16), reserve(uint16), reserve(uint16)` | Master 模式车体系速度指令。 |
 | `0x21` | `LidarPosture` | `x(int16), y(int16), yaw(int16), lidarTimestamp(uint32)` | 上位机定位位姿输入。 |
 | `0x30` | `StepUp` | `startDistance(int16), endDistance(int16), direction(uint16), willTake(uint16)` | 上台阶动作组。 |
 | `0x31` | `StepUpResume` | 无 | 恢复此前因 `willTake=1` 暂停的上台阶流程。 |
@@ -100,12 +101,28 @@
 [a11:a4] [a3:a0|b11:b8] [b7:b0] [c11:c4] [c3:c0|d11:d8] [d7:d0]
 ```
 
-### 5.3 `0x21 LidarPosture`
+### 5.3 `0x15 SetMasterChassisVelocity`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `vx` | `int16` | 车体系前向速度，编码为 `m/s * 2000` |
+| `vy` | `int16` | 车体系左向速度，编码为 `m/s * 2000` |
+| `wz` | `int16` | 绕 z 轴角速度，编码为 `deg/s * 100` |
+| `reserve0` | `uint16` | 预留，当前忽略 |
+| `reserve1` | `uint16` | 预留，当前忽略 |
+| `reserve2` | `uint16` | 预留，当前忽略 |
+
+补充：
+
+- 该命令按车体系解释，等价于下位机内部调用 `setVelocityInBody(body_velocity, false)`。
+- 后 3 个 `reserve` 字段当前保留并忽略。
+
+### 5.4 `0x21 LidarPosture`
 
 - `lidarTimestamp` 为上位机定位数据原始时间戳，单位 ms。
 - 当工程启用了上位机定位模式时，首帧 `LidarPosture` 还承担系统初始位姿的延迟初始化职责。
 
-### 5.4 `0x30 StepUp`
+### 5.5 `0x30 StepUp`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -114,7 +131,7 @@
 | `direction` | `uint16` | `0=Forward`, `1=Backward` |
 | `willTake` | `uint16` | `0=连贯上台阶`, `1=中途停下等待取卷轴` |
 
-### 5.5 `0x32 StepDown`
+### 5.6 `0x32 StepDown`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -123,7 +140,7 @@
 | `direction` | `uint16` | `0=Forward`, `1=Backward` |
 | `shouldReset` | `uint16` | `1=下台阶后恢复正常高度`, `0=最后一步不回收底盘` |
 
-### 5.6 `0x40 TakeSpear`
+### 5.7 `0x40 TakeSpear`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -139,7 +156,7 @@
 - 安全撤离距离固定使用 `Grip::Config::SpearGrab::SafeDistance`，当前值为 `0.20 m`。
 - 若 `end_pos` 相对 `target_pos` 的 `x` 方向距离不大于安全撤离距离，下位机会直接忽略该命令。
 
-### 5.7 `0x41 TakeSpearById`
+### 5.8 `0x41 TakeSpearById`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |

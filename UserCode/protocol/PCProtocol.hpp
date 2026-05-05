@@ -67,6 +67,12 @@ enum class PCCommand : uint8_t
     /// 参数格式与 0x13 完全一致。
     SetMasterChassisTargetPreviousCurve = 0x14,
 
+    /// Master 模式下设置底盘车体系速度
+    /// | int16  | int16  |    int16    |  uint16 |  uint16 |  uint16 |
+    /// | vx*2000| vy*2000| wz(deg)*100 | reserve | reserve | reserve |
+    /// @note 速度按车体系解释，内部调用 `setVelocityInBody(..., false)`。
+    SetMasterChassisVelocity = 0x15,
+
     /// 雷达位姿
     /// | int16  | int16  |     int16    |       uint32       |
     /// | x*2000 | y*2000 | yaw(deg)*100 | lidarTimestamp(ms) |

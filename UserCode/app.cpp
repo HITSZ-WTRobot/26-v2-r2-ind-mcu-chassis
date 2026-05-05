@@ -44,6 +44,11 @@ void TIM_Callback_1kHz_2(TIM_HandleTypeDef* htim)
 
     Connection::updateTable();
     service::Watchdog::EatAll();
+
+    if (Protocol::pc_rx != nullptr && Chassis::ctrl != nullptr && !Protocol::pc_rx->isConnected())
+    {
+        Chassis::ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
+    }
 }
 
 void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)

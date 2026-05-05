@@ -208,7 +208,6 @@ void PCProtocol::cmdHandler(Frame& frame)
         {
             if (Chassis::ctrl == nullptr)
                 break;
-
             const chassis::Posture target = { .x   = to_pos(read_i16(&data[0])),
                                               .y   = to_pos(read_i16(&data[2])),
                                               .yaw = to_angle(read_i16(&data[4])) };
@@ -255,6 +254,19 @@ void PCProtocol::cmdHandler(Frame& frame)
                             : Chassis::ChassisController::TrajectoryLinkMode::PreviousCurve;
 
             Chassis::ctrl->setTargetPostureInWorld(target, link_mode, limit);
+        }
+        break;
+    case PCCommand::SetMasterChassisVelocity:
+        if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableWheelChassis)
+        {
+            if (Chassis::ctrl == nullptr)
+                break;
+
+            const chassis::Velocity target = { .vx = to_pos(read_i16(&data[0])),
+                                               .vy = to_pos(read_i16(&data[2])),
+                                               .wz = to_angle(read_i16(&data[4])) };
+
+            Chassis::ctrl->setVelocityInBody(target, false);
         }
         break;
     case PCCommand::LidarPosture:
