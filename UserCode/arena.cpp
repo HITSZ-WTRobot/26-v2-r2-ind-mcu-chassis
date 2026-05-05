@@ -10,6 +10,14 @@
 // 放在静态区 (.bss)
 static StaticArena<72 * 1024> g_boot_arena;
 
+namespace Arena
+{
+double get_usage_ratio()
+{
+    return g_boot_arena.usage_ratio();
+}
+} // namespace Arena
+
 // 2. 覆盖全局 operator new
 void* operator new(const std::size_t size)
 {

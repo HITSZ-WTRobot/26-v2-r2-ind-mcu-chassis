@@ -54,6 +54,12 @@ void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
         Grip::grip->update_100Hz();
 }
 
+namespace Arena
+{
+double get_usage_ratio();
+}
+double usage = 0;
+
 /**
  * @brief Function implementing the initTask thread.
  * @param argument: Not used
@@ -178,6 +184,8 @@ extern "C" void Init(void* argument)
 
     // 创建其他 tasks
     Tests::init();
+
+    usage = Arena::get_usage_ratio();
 
     /* 初始化完成后退出线程 */
     osThreadExit();
