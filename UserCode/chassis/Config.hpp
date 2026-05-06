@@ -162,9 +162,9 @@ constexpr chassis::controller::Master::Config masterCfg = {
         // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
         // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
         // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
-        .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 80.0f },
-        .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 80.0f },
-        .yaw = { .max_spd = 360, .max_acc = 90, .max_jerk = 1080 }
+        .x = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
+        .y   = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
+        .yaw = { .max_spd = 460, .max_acc = 170, .max_jerk = 170 * 50 }
     }
 };
 
