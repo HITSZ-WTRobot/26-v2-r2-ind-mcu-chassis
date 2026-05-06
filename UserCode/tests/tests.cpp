@@ -24,6 +24,11 @@ namespace Tests::SpearGrabManual
 void init();
 }
 
+namespace Tests::AutoMapping
+{
+void init();
+}
+
 namespace Tests
 {
 
@@ -33,6 +38,7 @@ void init()
     GripStandalone::init();
     StepManual::init();
     SpearGrabManual::init();
+    AutoMapping::init();
 }
 
 } // namespace Tests

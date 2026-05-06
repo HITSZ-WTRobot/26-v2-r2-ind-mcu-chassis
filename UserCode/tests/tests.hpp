@@ -26,6 +26,10 @@
 #    define TEST_ENABLE_SPEAR_GRAB_MANUAL 0
 #endif
 
+#ifndef TEST_ENABLE_AUTO_MAPPING
+#    define TEST_ENABLE_AUTO_MAPPING 0
+#endif
+
 namespace Tests
 {
 
@@ -33,6 +37,7 @@ inline constexpr bool EnableChassisLift     = TEST_ENABLE_CHASSIS_LIFT != 0;
 inline constexpr bool EnableGripStandalone  = TEST_ENABLE_GRIP_STANDALONE != 0;
 inline constexpr bool EnableStepManual      = TEST_ENABLE_STEP_MANUAL != 0;
 inline constexpr bool EnableSpearGrabManual = TEST_ENABLE_SPEAR_GRAB_MANUAL != 0;
+inline constexpr bool EnableAutoMapping     = TEST_ENABLE_AUTO_MAPPING != 0;
 
 void init();
 

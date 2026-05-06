@@ -11,6 +11,7 @@
 #include "pid_motor.hpp"
 #include "pid_pd.hpp"
 #include "s_curve.hpp"
+#include "tests/tests.hpp"
 
 #ifndef M_PI
 #    define M_PI 3.14159265358979323846f
@@ -53,10 +54,16 @@ constexpr float chassisHeightToLiftPosition(const float chassis_height)
 
 // TODO: 将回程差纳入考虑
 
+#if TEST_ENABLE_AUTO_MAPPING
+constexpr float MaxSpeed       = 0.18f; // unit: m/s
+constexpr float MaxOnloadAccel = 0.35f; // unit: m/s^2
+constexpr float MaxNoloadAccel = 0.60f; // unit: m/s^2
+#else
 constexpr float MaxSpeed       = 1.178; // unit: m/s
 constexpr float MaxOnloadAccel = 3.0;   // unit: m/s^2， 对车先好一点
 // constexpr float MaxOnloadAccel = 5.5;   // unit: m/s^2
 constexpr float MaxNoloadAccel = 100; // unit: m/s^2
+#endif
 
 constexpr Limit OnloadLimit{ MaxSpeed, MaxOnloadAccel, MaxOnloadAccel * 50 };
 
@@ -152,20 +159,30 @@ constexpr float SafeDistance = 0.01; // 1cm 安全距离（底盘方向）
  */
 namespace Control
 {
+#if TEST_ENABLE_AUTO_MAPPING
+constexpr chassis::controller::Master::TrajectoryLimit DefaultTrajectoryLimit = {
+    .x   = { .max_spd = 0.60f, .max_acc = 0.60f, .max_jerk = 12.0f },
+    .y   = { .max_spd = 0.60f, .max_acc = 0.60f, .max_jerk = 12.0f },
+    .yaw = { .max_spd = 45.0f, .max_acc = 60.0f, .max_jerk = 1200.0f }
+};
+#else
+constexpr chassis::controller::Master::TrajectoryLimit DefaultTrajectoryLimit = {
+    // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
+    // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
+    // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
+    .x = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
+    .y   = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
+    .yaw = { .max_spd = 460, .max_acc = 170, .max_jerk = 170 * 50 }
+};
+#endif
+
 constexpr chassis::controller::Master::Config masterCfg = {
     .posture_error_pd_cfg = {
         .vx = { .Kp = 0.2, .Kd = 0.15f, .abs_output_max = 0.2f },
         .vy = { .Kp = 0.2, .Kd = 0.15f, .abs_output_max = 0.2f },
         .wz = { .Kp = 1.0, .Kd = 0.5f, .abs_output_max = 45.0f },
     },
-    .limit = {
-        // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
-        // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
-        // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
-        .x = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
-        .y   = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
-        .yaw = { .max_spd = 460, .max_acc = 170, .max_jerk = 170 * 50 }
-    }
+    .limit = DefaultTrajectoryLimit,
 };
 
 }
