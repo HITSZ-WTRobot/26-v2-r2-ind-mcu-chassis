@@ -165,6 +165,20 @@ inline constexpr bool EnableEkfLocalization = EnableChassisLocalization && Enabl
 inline constexpr bool NeedUpperHostInitPosture = EnablePcLocalization;
 
 /**
+ * 台阶动作链是否具备本地执行条件。
+ *
+ * 这里不包含“上位机命令入口”本身，供本地测试 / 直接调用复用。
+ */
+inline constexpr bool EnableStepWorkflow = EnableWheelChassis && EnableLift;
+
+/**
+ * 取矛头动作链是否具备本地执行条件。
+ *
+ * 这里同样不包含“上位机命令入口”本身，供本地测试 / 直接调用复用。
+ */
+inline constexpr bool EnableSpearGrabWorkflow = EnableGrip && EnableWheelChassis && EnableLift;
+
+/**
  * 台阶动作组是否可用。
  *
  * `StepUp/StepDown` 同时依赖：
@@ -174,7 +188,7 @@ inline constexpr bool NeedUpperHostInitPosture = EnablePcLocalization;
  *
  * 三者缺一都无法形成完整动作链，因此统一派生成一个能力开关。
  */
-inline constexpr bool EnableStepAction = EnablePcControl && EnableWheelChassis && EnableLift;
+inline constexpr bool EnableStepAction = EnablePcControl && EnableStepWorkflow;
 
 /**
  * 卷轴暂存 / 释放动作组是否可用。
@@ -197,8 +211,7 @@ inline constexpr bool EnableKfsAction = EnablePcControl && EnableGrip && EnableG
  * - 底盘平面运动
  * - 升降机构
  */
-inline constexpr bool EnableSpearGrabAction = EnablePcControl && EnableGrip && EnableWheelChassis &&
-                                              EnableLift;
+inline constexpr bool EnableSpearGrabAction = EnablePcControl && EnableSpearGrabWorkflow;
 
 /**
  * 编译期配置约束：
