@@ -2,6 +2,8 @@
 
 本文档面向上位机开发，描述当前串口上行反馈帧的结构、缩放规则以及 `ActionState` / `Connection::table` 的解码方法。
 
+当前实现中，反馈帧由协议层统一构造。主上位机链路在串口辨识阶段完成前仍只发送原始 `0xAA`，辅控制链路则不参与该辨识门控。
+
 ## 1. 通用帧格式
 
 下位机当前使用固定长度反馈帧：
@@ -156,7 +158,7 @@ grip_suction_has_object  = (table >> 10) & 0x1
 补充：
 
 - `bit14` 表示“定位流在线”，不是单纯“UART 收到过数据”。
-- 当前实现中，只有收到合法 `LidarPosture` 帧后才会喂定位流 watchdog；watchdog 超时后 `bit14` 会自动清零。
+- 当前实现中，只有收到来自主上位机链路且当前对时已稳定的合法 `LidarPosture` 帧后才会喂定位流 watchdog；watchdog 超时后 `bit14` 会自动清零。
 - 当前定位流 watchdog 超时时间为收到最后一帧合法 `LidarPosture` 后 `200` 个 watchdog tick。
 - `bit15` 表示上位机串口链路本身在线。
 

@@ -38,10 +38,10 @@
  *   `GRIP=1`，`GRIP_SUCTION=0/1` 视当前调试对象而定，其余可全关
  * - 底盘 + 陀螺仪：
  *   `WHEEL_CHASSIS=1, GYRO=1, PC_LOCALIZATION=0`
- *   => 使用下位机本地 EKF，不等待上位机首帧位姿
+ *   => 使用下位机本地 EKF，不等待上位机初始位姿
  * - 底盘 + 陀螺仪 + 上位机定位包：
  *   `WHEEL_CHASSIS=1, GYRO=1, PC_LOCALIZATION=1`
- *   => 使用上下位机融合定位，并等待上位机首帧初始位姿
+ *   => 使用上下位机融合定位，并等待满足接入条件的上位机初始位姿
  * - 完整项目：
  *   全部置 1
  */
@@ -69,7 +69,7 @@
 
 /// 启用挂在 grip suction 上的气压计；关闭时吸盘仍可开关，但不再提供是否吸住的判断能力。
 #ifndef PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR
-#    define PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR 1
+#    define PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR 0
 #endif
 
 /// 启用陀螺仪输入。关闭时底盘定位退化为 JustEncoder。
@@ -156,11 +156,11 @@ inline constexpr bool EnableJustEncoderLocalization = EnableChassisLocalization 
 inline constexpr bool EnableEkfLocalization = EnableChassisLocalization && EnableGyro;
 
 /**
- * 是否必须等待上位机首帧位姿后，才允许系统认为“初始化完成”。
+ * 是否必须等待上位机初始位姿后，才允许系统认为“初始化完成”。
  *
  * 仅在 `PC_LOCALIZATION` 打开时需要等待：
  * - 关闭时：说明使用本地下位机定位，不需要外部初始位姿；
- * - 打开时：需要把首帧上位机位姿作为 EKF 初始参考。
+ * - 打开时：需要把满足接入条件的上位机位姿作为 EKF 初始参考。
  */
 inline constexpr bool NeedUpperHostInitPosture = EnablePcLocalization;
 

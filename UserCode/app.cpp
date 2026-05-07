@@ -163,14 +163,14 @@ extern "C" void Init(void* argument)
 
     // TODO: 向上位机返回校准结果
 
-    // 若当前不依赖上位机首帧位姿，则在这里直接构造 Loc / Controller：
+    // 若当前不依赖上位机初始位姿，则在这里直接构造 Loc / Controller：
     // - 无陀螺仪：构造 JustEncoder
     // - 有陀螺仪但无上位机定位包：构造本地下位机 EKF
     Chassis::initStandaloneLocCtrl();
 
     // 这里统一等待“系统初始化完成”：
     // - 若启用了上位机串口辨识初始化，则必须先收到任意合法上位机帧；
-    // - 若启用了上位机定位包，则还必须等待首帧位姿。
+    // - 若启用了上位机定位包，则还必须等待首个满足当前接入条件的位姿。
     while (!System::Init::inited())
         osDelay(1);
 
