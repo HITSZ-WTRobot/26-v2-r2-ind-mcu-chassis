@@ -19,6 +19,7 @@
 #include "system.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -92,6 +93,113 @@ constexpr uint32_t MsgReceived = 1 << 0;
 constexpr uint32_t FeedbackStart = 1 << 1;
 
 constexpr uint32_t FeedbackPeriodMs = 5U;
+
+constexpr uint32_t LidarPostureTimeoutTicks = 200U;
+
+constexpr std::array<uint8_t, HeaderLen> FeedbackHeader = { 0xAA, 0xBB };
+
+libs::RingBuffer<Frame, 10> command_buffer_{};
+
+std::array<PCProtocol*, MaxPCProtocolCount> protocols_{};
+std::array<uint8_t, FeedbackFrameLen>       feedback_frame_buffer_{};
+
+uint32_t protocol_count_{ 0 };
+
+osThreadId_t command_handler_task_{};
+osThreadId_t transmit_task_{};
+
+Sync::Clock global_clock_{};
+
+service::Watchdog lidar_posture_watchdog_{};
+
+struct
+{
+    struct
+    {
+        chassis::Posture last_received_posture{};
+        uint32_t         last_received_posture_timestamp{};
+        uint32_t         last_received_timestamp{};
+        int32_t          last_received_delay{};
+    } lidar;
+} debug_{};
+
+void register_protocol(PCProtocol* protocol)
+{
+    assert(protocol_count_ < protocols_.size());
+    protocols_[protocol_count_++] = protocol;
+}
+
+void buildFeedbackFrame(std::array<uint8_t, FeedbackFrameLen>& frame)
+{
+    chassis::Posture posture{ .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
+    if (Chassis::loc != nullptr)
+        posture = Chassis::loc->postureInWorld();
+
+    float front_height = Chassis::Config::Lift::GroundingChassisHeight;
+    float rear_height  = Chassis::Config::Lift::GroundingChassisHeight;
+    if constexpr (ProjectParts::EnableLift)
+    {
+        if (Chassis::motion != nullptr && Chassis::motion->isReady())
+        {
+            front_height +=
+                    Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front).getPosition();
+            rear_height +=
+                    Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear).getPosition();
+        }
+    }
+
+    auto* payload = frame.data() + HeaderLen;
+
+    frame[0] = FeedbackHeader[0];
+    frame[1] = FeedbackHeader[1];
+
+    write_u32(&payload[0], HAL_GetTick());
+    write_u16(&payload[4], static_cast<uint16_t>(to_scaled_i16(posture.x, 2000.0f)));
+    write_u16(&payload[6], static_cast<uint16_t>(to_scaled_i16(posture.y, 2000.0f)));
+    write_u16(&payload[8], static_cast<uint16_t>(to_scaled_i16(posture.yaw, 100.0f)));
+    write_u16(&payload[10], static_cast<uint16_t>(to_scaled_i16(front_height, 2000.0f)));
+    write_u16(&payload[12], static_cast<uint16_t>(to_scaled_i16(rear_height, 2000.0f)));
+    write_u16(&payload[14], ActionState::table);
+    write_u16(&payload[16], Connection::table);
+
+    const uint16_t crc = CRC16Modbus::calc(payload, FeedbackPayloadLen - 2);
+    write_u16(&payload[18], crc);
+}
+
+[[noreturn]] void PCCommandHandlerTask(void* argument)
+{
+    (void)argument;
+
+    for (;;)
+    {
+        Frame frame{};
+        while (command_buffer_.pop(frame))
+        {
+            handleCommand(frame);
+        }
+        osThreadFlagsWait(MsgReceived, osFlagsWaitAny, osWaitForever);
+    }
+}
+
+[[noreturn]] void TransmitTask(void* argument)
+{
+    (void)argument;
+
+    osThreadFlagsWait(FeedbackStart, osFlagsWaitAny, osWaitForever);
+    for (;;)
+    {
+        buildFeedbackFrame(feedback_frame_buffer_);
+
+        for (uint32_t i = 0; i < protocol_count_; ++i)
+        {
+            auto* protocol = protocols_[i];
+            if (protocol != nullptr)
+                protocol->transmitTaskStep(feedback_frame_buffer_);
+        }
+
+        osDelay(FeedbackPeriodMs);
+    }
+}
 } // namespace
 
 bool PCProtocol::decode(const uint8_t data[PayloadLen])
@@ -102,61 +210,54 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
     if (crc != crc_in_data)
         return false;
 
-    bool pushed = rx_buffer_.push(
+    const bool pushed = command_buffer_.push(
             [&](Frame& frame)
             {
-                frame.rx_timestamp = HAL_GetTick();
-                frame.cmd          = static_cast<PCCommand>(data[0]);
-                frame.tx_timestamp = read_u32(&data[13]);
-                frame.crc16        = crc_in_data;
+                frame.protocol           = this;
+                frame.from_main_protocol = isMainProtocol();
+                frame.rx_timestamp       = HAL_GetTick();
+                frame.cmd                = static_cast<PCCommand>(data[0]);
+                frame.tx_timestamp       = read_u32(&data[13]);
+                frame.crc16              = crc_in_data;
                 std::memcpy(frame.data.data(), data + 1, frame.data.size());
             });
 
-    osThreadFlagsSet(rcv_task_, MsgReceived);
+    if (pushed && command_handler_task_ != nullptr)
+        osThreadFlagsSet(command_handler_task_, MsgReceived);
+
     return pushed;
 }
 
-PCProtocol::PCProtocol(UART_HandleTypeDef* huart) : UartRxSync(huart)
+PCProtocol::PCProtocol(UART_HandleTypeDef* huart, const bool is_main_protocol) :
+    UartRxSync(huart), is_main_protocol_(is_main_protocol)
 {
-    constexpr osThreadAttr_t processor_attr{
-        .name       = "pc-cmd-processor",
-        .stack_size = 544 * 4,
-        .priority   = osPriorityRealtime,
-    };
-
-    constexpr osThreadAttr_t feedback_attr{
-        .name       = "pc-feedback",
-        .stack_size = 104 * 4,
-        .priority   = osPriorityLow,
-    };
-    rcv_task_      = osThreadNew(rcvTaskEntry, this, &processor_attr);
-    feedback_task_ = osThreadNew(FeedbackTaskEntry, this, &feedback_attr);
+    register_protocol(this);
 }
 
-bool PCProtocol::isLidarPostureConnected() const
+const Sync::Clock& clock()
 {
-    return lidar_posture_watchdog_.isFed();
+    return global_clock_;
 }
 
-bool PCProtocol::isUpperHostIdentified() const
+void handleCommand(const Frame& frame)
 {
-    return upper_host_identified_.load(std::memory_order_relaxed);
-}
+    if (frame.protocol == nullptr)
+        return;
 
-void PCProtocol::cmdHandler(Frame& frame)
-{
-    clock_.align(static_cast<float>(frame.rx_timestamp),
-                 static_cast<float>(frame.tx_timestamp) + transitionDelayMS());
-
-    if constexpr (ProjectParts::NeedUpperHostIdentifyInit)
+    if (frame.from_main_protocol)
     {
-        upper_host_identified_.store(true, std::memory_order_relaxed);
-        System::Init::upperHostIdentified = true;
+        const auto  self_time      = static_cast<float>(frame.rx_timestamp);
+        const float target_pc_time = static_cast<float>(frame.tx_timestamp) +
+                                     frame.protocol->transitionDelayMS();
+
+        global_clock_.align(self_time, target_pc_time);
     }
 
-    ++msg_cnt_;
-    if (msg_cnt_ < 50)
-        return;
+    if constexpr (ProjectParts::NeedUpperHostIdentifyInit && ProjectParts::EnableUpperHostProtocol)
+    {
+        if (frame.from_main_protocol)
+            System::Init::upperHostIdentified = true;
+    }
 
     constexpr auto to_pos = [](const int16_t value) { return static_cast<float>(value) / 2000.0f; };
     constexpr auto to_angle = [](const int16_t v) { return static_cast<float>(v) / 100.0f; };
@@ -278,6 +379,9 @@ void PCProtocol::cmdHandler(Frame& frame)
         if constexpr (!ProjectParts::EnablePcLocalization)
             break;
 
+        if (!frame.from_main_protocol || !global_clock_.isStable())
+            break;
+
         // 定位流连接状态统一通过 Watchdog 判定，单位是 EatAll() 消耗的 tick。
         lidar_posture_watchdog_.feed(LidarPostureTimeoutTicks);
 
@@ -288,7 +392,7 @@ void PCProtocol::cmdHandler(Frame& frame)
         debug_.lidar.last_received_posture = pos;
 
         const uint32_t lidar_time      = read_u32(data.data() + 6);
-        const uint32_t lidar_self_time = clock_.pcTime2SelfTime(lidar_time);
+        const uint32_t lidar_self_time = global_clock_.pcTime2SelfTime(lidar_time);
 
         debug_.lidar.last_received_posture_timestamp = lidar_self_time;
         debug_.lidar.last_received_timestamp         = HAL_GetTick();
@@ -415,43 +519,9 @@ void PCProtocol::cmdHandler(Frame& frame)
     }
 }
 
-void PCProtocol::transmitFeedbackFrame()
+void PCProtocol::transmitFeedbackFrame(const std::array<uint8_t, FeedbackFrameLen>& frame)
 {
-    chassis::Posture posture{ .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
-    if (Chassis::loc != nullptr)
-        posture = Chassis::loc->postureInWorld();
-
-    float front_height = Chassis::Config::Lift::GroundingChassisHeight;
-    float rear_height  = Chassis::Config::Lift::GroundingChassisHeight;
-    if constexpr (ProjectParts::EnableLift)
-    {
-        if (Chassis::motion != nullptr && Chassis::motion->isReady())
-        {
-            front_height +=
-                    Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front).getPosition();
-            rear_height +=
-                    Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear).getPosition();
-        }
-    }
-
-    auto* payload = tx_buffer_.data() + HeaderLen;
-
-    tx_buffer_[0] = HEADER[0];
-    tx_buffer_[1] = HEADER[1];
-
-    write_u32(&payload[0], HAL_GetTick());
-    write_u16(&payload[4], static_cast<uint16_t>(to_scaled_i16(posture.x, 2000.0f)));
-    write_u16(&payload[6], static_cast<uint16_t>(to_scaled_i16(posture.y, 2000.0f)));
-    write_u16(&payload[8], static_cast<uint16_t>(to_scaled_i16(posture.yaw, 100.0f)));
-    write_u16(&payload[10], static_cast<uint16_t>(to_scaled_i16(front_height, 2000.0f)));
-    write_u16(&payload[12], static_cast<uint16_t>(to_scaled_i16(rear_height, 2000.0f)));
-    write_u16(&payload[14], ActionState::table);
-    write_u16(&payload[16], Connection::table);
-
-    const uint16_t crc = CRC16Modbus::calc(payload, FeedbackPayloadLen - 2);
-    write_u16(&payload[18], crc);
-
-    if (HAL_UART_Transmit_DMA(huart(), tx_buffer_.data(), tx_buffer_.size()) == HAL_OK)
+    if (HAL_UART_Transmit_DMA(huart(), frame.data(), frame.size()) == HAL_OK)
         tx_state_ = TxState::DMAActive;
 }
 
@@ -469,13 +539,31 @@ void PCProtocol::transmitCallback()
     tx_state_ = TxState::Idle;
 }
 
-bool PCProtocol::startFeedback()
+void PCProtocol::transmitTaskStep(const std::array<uint8_t, FeedbackFrameLen>& feedback_frame)
+{
+    if (tx_state_ == TxState::Stopped || tx_state_ == TxState::DMAActive ||
+        huart()->gState != HAL_UART_STATE_READY)
+        return;
+
+    if constexpr (ProjectParts::NeedUpperHostIdentifyInit)
+    {
+        if (isMainProtocol() && !isUpperHostIdentified())
+            transmitIdentifyByte();
+        else
+            transmitFeedbackFrame(feedback_frame);
+    }
+    else
+    {
+        transmitFeedbackFrame(feedback_frame);
+    }
+}
+
+bool PCProtocol::startTransmit()
 {
     if (huart()->hdmatx == nullptr || huart()->hdmatx->Init.Mode != DMA_NORMAL)
-    {
         return false;
-    }
-    osThreadFlagsSet(feedback_task_, FeedbackStart);
+
+    tx_state_ = TxState::Idle;
     return true;
 }
 
@@ -495,48 +583,14 @@ void PCProtocol::errorHandler()
     protocol::UartRxSync<HeaderLen, FrameLen>::errorHandler();
 }
 
-[[noreturn]] void PCProtocol::receiveLoop()
-{
-    for (;;)
-    {
-        while (!rx_buffer_.empty())
-        {
-            auto* frame = rx_buffer_.pop();
-            if (frame != nullptr)
-                cmdHandler(*frame);
-        }
-
-        osThreadFlagsWait(1, osFlagsWaitAny, osWaitForever);
-    }
-}
-
-[[noreturn]] void PCProtocol::feedbackLoop()
-{
-    osThreadFlagsWait(FeedbackStart, osFlagsWaitAny, osWaitForever);
-    for (;;)
-    {
-        if (tx_state_ != TxState::DMAActive && huart()->gState == HAL_UART_STATE_READY)
-        {
-            if constexpr (ProjectParts::NeedUpperHostIdentifyInit)
-            {
-                if (!isUpperHostIdentified())
-                    transmitIdentifyByte();
-                else
-                    transmitFeedbackFrame();
-            }
-            else
-            {
-                transmitFeedbackFrame();
-            }
-        }
-
-        osDelay(FeedbackPeriodMs);
-    }
-}
-
 bool isPcLocalizationConnected()
 {
-    return pc_rx != nullptr && pc_rx->isLidarPostureConnected();
+    return lidar_posture_watchdog_.isFed();
+}
+
+bool isUpperHostIdentified()
+{
+    return !ProjectParts::NeedUpperHostIdentifyInit || System::Init::upperHostIdentified;
 }
 
 void init()
@@ -550,7 +604,23 @@ void init()
 
     assert(config::uart::UpperHost->Init.BaudRate == 230400);
 
-    pc_rx = new PCProtocol(config::uart::UpperHost);
+    constexpr osThreadAttr_t processor_attr{
+        .name       = "pc-cmd-processor",
+        .stack_size = 544 * 4,
+        .priority   = osPriorityRealtime,
+    };
+
+    constexpr osThreadAttr_t feedback_attr{
+        .name       = "pc-feedback",
+        .stack_size = 104 * 4,
+        .priority   = osPriorityLow,
+    };
+
+    command_handler_task_ = osThreadNew(PCCommandHandlerTask, nullptr, &processor_attr);
+    transmit_task_        = osThreadNew(TransmitTask, nullptr, &feedback_attr);
+
+    pc_rx = new PCProtocol(config::uart::UpperHost, true);
+
     HAL_UART_RegisterCallback(config::uart::UpperHost,
                               HAL_UART_RX_COMPLETE_CB_ID,
                               [](UART_HandleTypeDef* huart) { pc_rx->receiveCallback(); });
@@ -564,8 +634,28 @@ void init()
     if (!pc_rx->startReceive())
         Error_Handler();
 
-    if (!pc_rx->startFeedback())
+    if (!pc_rx->startTransmit())
         Error_Handler();
+
+    static PCProtocol ctrl_rx{ config::uart::AuxControllerHost, false };
+
+    HAL_UART_RegisterCallback(config::uart::AuxControllerHost,
+                              HAL_UART_RX_COMPLETE_CB_ID,
+                              [](UART_HandleTypeDef* huart) { ctrl_rx.receiveCallback(); });
+    HAL_UART_RegisterCallback(config::uart::AuxControllerHost,
+                              HAL_UART_ERROR_CB_ID,
+                              [](UART_HandleTypeDef* huart) { ctrl_rx.errorHandler(); });
+    HAL_UART_RegisterCallback(config::uart::AuxControllerHost,
+                              HAL_UART_TX_COMPLETE_CB_ID,
+                              [](UART_HandleTypeDef* huart) { ctrl_rx.transmitCallback(); });
+
+    if (!ctrl_rx.startReceive())
+        Error_Handler();
+
+    if (!ctrl_rx.startTransmit())
+        Error_Handler();
+
+    osThreadFlagsSet(transmit_task_, FeedbackStart);
 }
 
 } // namespace Protocol

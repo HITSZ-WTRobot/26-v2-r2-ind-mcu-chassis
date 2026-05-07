@@ -13,7 +13,6 @@
 #include "sync/Clock.hpp"
 
 #include <array>
-#include <atomic>
 #include <cstdint>
 
 namespace Protocol
@@ -118,16 +117,25 @@ enum class PCCommand : uint8_t
     ReleaseKFS = 0x43,
 };
 
+class PCProtocol;
+
+struct Frame
+{
+    PCProtocol*                protocol{};
+    bool                       from_main_protocol{ false };
+    uint32_t                   rx_timestamp{};
+    PCCommand                  cmd{};
+    std::array<uint8_t, 2 * 6> data{};
+    uint32_t                   tx_timestamp{};
+    uint16_t                   crc16{};
+};
+
+constexpr uint32_t MaxPCProtocolCount = 2;
+
 class PCProtocol final : public protocol::UartRxSync<HeaderLen, FrameLen>
 {
 public:
-    explicit PCProtocol(UART_HandleTypeDef* huart);
-
-    static void rcvTaskEntry(void* argument) { static_cast<PCProtocol*>(argument)->receiveLoop(); }
-    static void FeedbackTaskEntry(void* argument)
-    {
-        static_cast<PCProtocol*>(argument)->feedbackLoop();
-    }
+    explicit PCProtocol(UART_HandleTypeDef* huart, bool is_main_protocol = false);
 
     [[nodiscard]] float transitionDelayMS() const
     {
@@ -135,17 +143,15 @@ public:
                static_cast<float>(huart()->Init.BaudRate);
     }
 
-    [[nodiscard]] const Sync::Clock& clock() const { return clock_; }
+    [[nodiscard]] bool isMainProtocol() const { return is_main_protocol_; }
 
-    [[nodiscard]] bool isLidarPostureConnected() const;
-    [[nodiscard]] bool isUpperHostIdentified() const;
-
-    void transmitFeedbackFrame();
+    void transmitFeedbackFrame(const std::array<uint8_t, FeedbackFrameLen>& frame);
     void transmitIdentifyByte();
+    void transmitTaskStep(const std::array<uint8_t, FeedbackFrameLen>& feedback_frame);
 
     void transmitCallback();
 
-    bool startFeedback();
+    bool startTransmit();
 
     void errorHandler();
 
@@ -159,43 +165,6 @@ protected:
     [[nodiscard]] uint32_t timeout() const override { return 250; }
 
 private:
-    static constexpr uint32_t LidarPostureTimeoutTicks = 200;
-
-    struct Frame
-    {
-        uint32_t                   rx_timestamp{};
-        PCCommand                  cmd{};
-        std::array<uint8_t, 2 * 6> data{};
-        uint32_t                   tx_timestamp{};
-        uint16_t                   crc16{};
-    };
-
-    libs::RingBuffer<Frame, 10> rx_buffer_{};
-
-    uint32_t msg_cnt_{ 0 };
-
-    struct
-    {
-        struct
-        {
-            chassis::Posture last_received_posture{};
-            uint32_t         last_received_posture_timestamp{};
-            uint32_t         last_received_timestamp{};
-            int32_t          last_received_delay{};
-        } lidar;
-    } debug_{};
-
-    [[noreturn]] void receiveLoop();
-    [[noreturn]] void feedbackLoop();
-
-    void cmdHandler(Frame& frame);
-
-    Sync::Clock clock_{};
-
-    service::Watchdog lidar_posture_watchdog_{};
-
-    std::atomic_bool upper_host_identified_{ false };
-
     enum class TxState
     {
         Stopped,
@@ -203,18 +172,20 @@ private:
         Idle,
     };
 
-    TxState tx_state_{ TxState::Stopped };
+    volatile TxState tx_state_{ TxState::Stopped };
+
+    bool is_main_protocol_{ false };
 
     std::array<uint8_t, 1> identify_tx_buffer_{ IdentifyInitByte };
-
-    std::array<uint8_t, FeedbackFrameLen> tx_buffer_{};
-
-    osThreadId_t rcv_task_;
-    osThreadId_t feedback_task_;
 };
 
+/// 当前工程的 Main PCProtocol。
+/// 兼容旧入口名：`pc_rx` 始终指向 main protocol。
 inline PCProtocol* pc_rx{};
 
+[[nodiscard]] const Sync::Clock& clock();
+
+void handleCommand(const Frame& frame);
 bool isPcLocalizationConnected();
 bool isUpperHostIdentified();
 

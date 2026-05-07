@@ -7,6 +7,7 @@
 
 #include "stm32f4xx_hal.h"
 
+#include <cmath>
 #include <cstdint>
 
 namespace Sync
@@ -30,18 +31,31 @@ public:
     [[nodiscard]] float selfTime2PCTime(const float self_time) const { return self_time + offset_; }
 
     [[nodiscard]] uint32_t getPCTime() const { return selfTime2PCTime(HAL_GetTick()); }
+    [[nodiscard]] bool     isStable() const { return stable_; }
+    [[nodiscard]] float lastResidualBeforeAlignMS() const { return last_residual_before_align_ms_; }
+    [[nodiscard]] float lastResidualAfterAlignMS() const { return last_residual_after_align_ms_; }
 
     void align(const float self_time, const float pc_time)
     {
-        const float delta = pc_time - self_time;
+        last_residual_before_align_ms_ = pc_time - self_time;
+
+        const float delta = last_residual_before_align_ms_;
 
         offset_ = offset_ * (1.0f - alpha) + delta * alpha;
+
+        last_residual_after_align_ms_ = pc_time - selfTime2PCTime(self_time);
+
+        stable_ = std::fabs(last_residual_after_align_ms_) <= stable_threshold_ms_;
     }
 
 private:
     float offset_{ 0.0f };
+    float last_residual_before_align_ms_{ 0.0f };
+    float last_residual_after_align_ms_{ 0.0f };
+    bool  stable_{ false };
 
-    constexpr static float alpha = 0.2f;
+    constexpr static float alpha                = 0.2f;
+    constexpr static float stable_threshold_ms_ = 20.0f;
 };
 
 } // namespace Sync
