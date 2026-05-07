@@ -19,7 +19,7 @@ KfsStore::KfsStore() :
 {
     // 与 SpearGrab 一样，KFS 使用独立后台线程管理分阶段流程。
     constexpr osThreadAttr_t attr{
-        .stack_size = 256 * 4,
+        .stack_size = 152 * 4,
         .priority   = osPriorityNormal,
     };
 

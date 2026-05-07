@@ -12,7 +12,7 @@ namespace
 constexpr auto                     Bus2Handle = &hi2c2;
 constexpr I2CUpdateManager::Config Bus2ManagerConfig{
     .task_name        = "i2c2-mgr",
-    .stack_size_bytes = 384U * sizeof(uint32_t),
+    .stack_size_bytes = 120U * sizeof(uint32_t),
     .priority         = osPriorityLow,
     .max_sleep_ms     = 500U,
 };

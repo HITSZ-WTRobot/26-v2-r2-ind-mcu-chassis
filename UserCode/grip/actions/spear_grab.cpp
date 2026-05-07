@@ -21,7 +21,7 @@ SpearGrab::SpearGrab()
 {
     // 独立线程使 SpearGrab 可以与主控线程解耦，避免在协议或主循环里手写阶段推进。
     constexpr osThreadAttr_t attr{
-        .stack_size = 256 * 4,
+        .stack_size = 352 * 4,
         .priority   = osPriorityNormal,
     };
     task_ = osThreadNew(TaskEntry, this, &attr);

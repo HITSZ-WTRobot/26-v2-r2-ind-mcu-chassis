@@ -24,7 +24,7 @@ using chassis::controller::Master;
 Step::Step()
 {
     constexpr osThreadAttr_t attr{
-        .stack_size = 1024 * 4,
+        .stack_size = 352 * 4,
         .priority   = osPriorityNormal,
     };
     task_ = osThreadNew(TaskEntry, this, &attr);

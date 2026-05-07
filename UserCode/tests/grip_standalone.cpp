@@ -171,7 +171,7 @@ void init()
 
     constexpr osThreadAttr_t attr{
         .name       = "test-grip",
-        .stack_size = 512U * 4U,
+        .stack_size = 168U * 4U,
         .priority   = osPriorityNormal,
     };
 

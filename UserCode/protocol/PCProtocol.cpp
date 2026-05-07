@@ -90,6 +90,8 @@ int16_t to_scaled_i16(const float value, const float scale)
 constexpr uint32_t MsgReceived = 1 << 0;
 
 constexpr uint32_t FeedbackStart = 1 << 1;
+
+constexpr uint32_t FeedbackPeriodMs = 5U;
 } // namespace
 
 bool PCProtocol::decode(const uint8_t data[PayloadLen])
@@ -118,13 +120,13 @@ PCProtocol::PCProtocol(UART_HandleTypeDef* huart) : UartRxSync(huart)
 {
     constexpr osThreadAttr_t processor_attr{
         .name       = "pc-cmd-processor",
-        .stack_size = 2048 * 4,
+        .stack_size = 544 * 4,
         .priority   = osPriorityRealtime,
     };
 
     constexpr osThreadAttr_t feedback_attr{
         .name       = "pc-feedback",
-        .stack_size = 512 * 4,
+        .stack_size = 104 * 4,
         .priority   = osPriorityLow,
     };
     rcv_task_      = osThreadNew(rcvTaskEntry, this, &processor_attr);
@@ -528,7 +530,7 @@ void PCProtocol::errorHandler()
             }
         }
 
-        osDelay(1);
+        osDelay(FeedbackPeriodMs);
     }
 }
 
