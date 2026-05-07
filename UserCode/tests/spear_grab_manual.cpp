@@ -93,7 +93,7 @@ void init()
 
     constexpr osThreadAttr_t attr{
         .name       = "test-spear",
-        .stack_size = 320U * 4U,
+        .stack_size = 512U * 4U,
         .priority   = osPriorityNormal,
     };
 

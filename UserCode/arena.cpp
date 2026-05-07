@@ -6,9 +6,9 @@
 #include "static_arena.hpp"
 #include <cstdio>
 
-// 按当前 full-feature + test 线程全开构建的静态高水位 30108 B 取 10% 余量后，
-// 将 Arena 收敛到 33 KiB。
-static StaticArena<33 * 1024> g_boot_arena;
+// 1. 定义一个足够大的静态分配器（例如 64KB）
+// 放在静态区 (.bss)
+static StaticArena<72 * 1024> g_boot_arena;
 
 namespace Arena
 {

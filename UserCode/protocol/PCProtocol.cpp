@@ -606,13 +606,13 @@ void init()
 
     constexpr osThreadAttr_t processor_attr{
         .name       = "pc-cmd-processor",
-        .stack_size = 544 * 4,
+        .stack_size = 4096 * 4,
         .priority   = osPriorityRealtime,
     };
 
     constexpr osThreadAttr_t feedback_attr{
         .name       = "pc-feedback",
-        .stack_size = 104 * 4,
+        .stack_size = 512 * 4,
         .priority   = osPriorityLow,
     };
 

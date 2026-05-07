@@ -261,7 +261,7 @@ void init()
 
     constexpr osThreadAttr_t attr{
         .name       = "test-map",
-        .stack_size = 336U * 4U,
+        .stack_size = 1024U * 4U,
         .priority   = osPriorityNormal,
     };
 

@@ -21,7 +21,7 @@ namespace
 constexpr uint32_t       ActionStateUpdatePeriodMs = 20U;
 constexpr osThreadAttr_t ActionStateTaskAttr{
     .name       = "action-state",
-    .stack_size = 88U * sizeof(uint32_t),
+    .stack_size = 256U * sizeof(uint32_t),
     .priority   = osPriorityLow,
 };
 
