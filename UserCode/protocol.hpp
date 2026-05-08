@@ -6,4 +6,6 @@
 #pragma once
 
 #include "protocol/ActionState.hpp"
+#include "protocol/PCCommandHandler.hpp"
+#include "protocol/PCFeedback.hpp"
 #include "protocol/PCProtocol.hpp"

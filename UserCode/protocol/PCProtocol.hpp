@@ -5,10 +5,7 @@
  */
 #pragma once
 
-#include "IChassisDef.hpp"
-#include "RingBuffer.hpp"
 #include "UartRxSync.hpp"
-#include "cmsis_os.h"
 #include "crc.hpp"
 #include "sync/Clock.hpp"
 
@@ -185,7 +182,6 @@ inline PCProtocol* pc_rx{};
 
 [[nodiscard]] const Sync::Clock& clock();
 
-void handleCommand(const Frame& frame);
 bool isPcLocalizationConnected();
 bool isUpperHostIdentified();
 

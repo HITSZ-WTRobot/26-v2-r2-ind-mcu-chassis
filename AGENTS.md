@@ -10,7 +10,10 @@ Firmware integration lives at the repository root. `UserCode/` is the only proje
 - `UserCode/project_parts.hpp` — the single source of truth for compile-time feature toggles and derived capabilities.
 - `UserCode/chassis/` — the combined wheel-chassis + lift motion object, localization/controller setup, and step action state machine under `UserCode/chassis/actions/`.
 - `UserCode/grip/` — the grip mechanism entry point, trajectory control, calibration config, and the two grip action modules under `UserCode/grip/actions/`: `SpearGrab` for taking spearheads and `KfsStore` for temporary roller storage.
-- `UserCode/protocol/` — upper-host UART frame parsing and command dispatch.
+- `UserCode/protocol/` — upper-host protocol modules: `PCProtocol.*` owns UART RX
+  synchronization, CRC validation, frame buffering, and DMA TX state; `PCCommandHandler.*`
+  owns buffered CMD consumption and dispatch; `PCFeedback.*` owns feedback-frame building and
+  periodic feedback transmission.
 - `UserCode/system.hpp` and `UserCode/sync/` — initialization handoff and clock alignment helpers.
 - `UserCode/tests/` — optional bench/debug test entry points; `tests.hpp` centralizes per-file enable macros, and each `*.cpp` under this directory owns one test item. `auto_mapping.cpp` is the scripted low-speed automatic-mapping test flow.
 - `UserCode/arena.cpp` — the global static-allocation arena backing `new` / `delete`.
