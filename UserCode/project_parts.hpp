@@ -89,7 +89,7 @@
 
 /// 启用上位机串口辨识初始化；开启后，下位机会持续发送 0xAA，直到收到任意合法上位机帧。
 #ifndef PROJECT_PART_ENABLE_UPPER_HOST_IDENTIFY_INIT
-#    define PROJECT_PART_ENABLE_UPPER_HOST_IDENTIFY_INIT 1
+#    define PROJECT_PART_ENABLE_UPPER_HOST_IDENTIFY_INIT 0
 #endif
 
 /// 启用 connection table 的 I2C 周期发送。
