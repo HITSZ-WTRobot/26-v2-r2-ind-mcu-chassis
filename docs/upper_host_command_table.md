@@ -28,6 +28,7 @@
 | --- | --- |
 | 位置 `x/y` | `int16 = value_m * 2000` |
 | 偏航 `yaw` | `int16 = value_deg * 100` |
+| Grip 关节角 `arm_pos/turn_pos` | `int16 = value_deg * 100` |
 | 线速度 `vx/vy` | `int16 = value_mps * 2000` |
 | 角速度 `wz` | `int16 = value_degps * 100` |
 | 底盘高度 | `int16 = chassis_height_m * 2000` |
@@ -51,6 +52,8 @@
 | `0x13` | `SetMasterChassisTargetCurrentState` | `x(int16), y(int16), yaw(int16), xy_vmax(uint12), xy_amax(uint12), yaw_vmax(uint12), yaw_amax(uint12)` | Master 模式目标位姿，轨迹从当前状态衔接。 |
 | `0x14` | `SetMasterChassisTargetPreviousCurve` | 与 `0x13` 相同 | Master 模式目标位姿，轨迹沿上一条曲线衔接。 |
 | `0x15` | `SetMasterChassisVelocity` | `vx(int16), vy(int16), wz(int16), reserve(uint16), reserve(uint16), reserve(uint16)` | Master 模式车体系速度指令。 |
+| `0x16` | `SetGripPose` | `arm_pos(int16), turn_pos(int16), clawMode(uint16), reserve(uint16), reserve(uint16), reserve(uint16)` | 设置 Grip 双轴关节目标和可选夹爪状态。 |
+| `0x17` | `SetGripPresetPose` | `presetId(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16)` | 设置 Grip 到预设姿态。 |
 | `0x21` | `LidarPosture` | `x(int16), y(int16), yaw(int16), lidarTimestamp(uint32)` | 上位机定位位姿输入。 |
 | `0x30` | `StepUp` | `startDistance(int16), endDistance(int16), direction(uint16), willTake(uint16)` | 上台阶动作组。 |
 | `0x31` | `StepUpResume` | 无 | 恢复此前因 `willTake=1` 暂停的上台阶流程。 |
@@ -118,14 +121,64 @@
 - 该命令按车体系解释，等价于下位机内部调用 `setVelocityInBody(body_velocity, false)`。
 - 后 3 个 `reserve` 字段当前保留并忽略。
 
-### 5.4 `0x21 LidarPosture`
+### 5.4 `0x16 SetGripPose`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `arm_pos` | `int16` | Grip 大臂目标角，单位 deg，编码为 `deg * 100` |
+| `turn_pos` | `int16` | Grip 转向目标角，单位 deg，编码为 `deg * 100` |
+| `clawMode` | `uint16` | `0=保持当前夹爪状态`, `1=张开夹爪`, `2=闭合夹爪` |
+| `reserve0` | `uint16` | 预留，当前忽略 |
+| `reserve1` | `uint16` | 预留，当前忽略 |
+| `reserve2` | `uint16` | 预留，当前忽略 |
+
+补充：
+
+- 该命令仅在 `PROJECT_PART_ENABLE_PC_CONTROL=1` 且 `PROJECT_PART_ENABLE_GRIP=1` 时生效。
+- 下位机要求 `Grip::grip` 已创建且已经 `enable()`；未完成回零校准或未使能时会忽略该命令。
+- 内部等价于调用 `Grip::grip->toJointPose({arm_pos, turn_pos})`，使用 grip 本地轨迹限幅参数。
+- `clawMode` 为 `0` 或非 `1/2` 值时不会改变当前夹爪状态。
+- 这是低层直接姿态命令；若高层 Grip 动作组仍在运行，后续动作阶段可能再次下发自己的姿态目标，上位机应避免混用。
+
+### 5.5 `0x17 SetGripPresetPose`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `presetId` | `uint16` | 预设姿态编号，见下表 |
+| `reserve0` | `uint16` | 预留，当前忽略 |
+| `reserve1` | `uint16` | 预留，当前忽略 |
+| `reserve2` | `uint16` | 预留，当前忽略 |
+| `reserve3` | `uint16` | 预留，当前忽略 |
+| `reserve4` | `uint16` | 预留，当前忽略 |
+
+预设姿态：
+
+| `presetId` | 预设名 | 下位机调用 |
+| --- | --- | --- |
+| `0` | `Standby` | `Grip::grip->toStandbyPose()` |
+| `1` | `PrepareGrab` | `Grip::grip->toPrepareGrabPose()` |
+| `2` | `Grab` | `Grip::grip->toGrabPose()` |
+| `3` | `Docking` | `Grip::grip->toDockingPose()` |
+| `4` | `KfsPickup` | `Grip::grip->toKfsPickupPose()` |
+| `5` | `KfsStore` | `Grip::grip->toKfsStorePose()` |
+| `6` | `KfsRelease` | `Grip::grip->toKfsReleasePose()` |
+
+补充：
+
+- 该命令仅在 `PROJECT_PART_ENABLE_PC_CONTROL=1` 且 `PROJECT_PART_ENABLE_GRIP=1` 时生效。
+- 下位机要求 `Grip::grip` 已创建且已经 `enable()`；未完成回零校准或未使能时会忽略该命令。
+- 非法 `presetId` 会被忽略。
+- 预设命令走现有语义姿态接口；例如 `Standby/PrepareGrab` 会张开夹爪，`Grab` 会闭合夹爪。
+- 这是低层直接姿态命令；若高层 Grip 动作组仍在运行，后续动作阶段可能再次下发自己的姿态目标，上位机应避免混用。
+
+### 5.6 `0x21 LidarPosture`
 
 - `lidarTimestamp` 为上位机定位数据原始时间戳，单位 ms。
 - 该命令仅在启用了上位机定位模式时参与处理。
 - 当前实现只接受来自主上位机链路、且对时已稳定的 `LidarPosture`；未满足这两个条件时，该帧不会喂定位 watchdog，也不会进入定位更新。
 - 当工程启用了上位机定位模式时，首个满足上述接入条件的 `LidarPosture` 会承担系统初始位姿的延迟初始化职责。
 
-### 5.5 `0x30 StepUp`
+### 5.7 `0x30 StepUp`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -134,7 +187,7 @@
 | `direction` | `uint16` | `0=Forward`, `1=Backward` |
 | `willTake` | `uint16` | `0=连贯上台阶`, `1=中途停下等待取卷轴` |
 
-### 5.6 `0x32 StepDown`
+### 5.8 `0x32 StepDown`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -143,7 +196,7 @@
 | `direction` | `uint16` | `0=Forward`, `1=Backward` |
 | `shouldReset` | `uint16` | `1=下台阶后恢复正常高度`, `0=最后一步不回收底盘` |
 
-### 5.7 `0x40 TakeSpear`
+### 5.9 `0x40 TakeSpear`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -159,7 +212,7 @@
 - 安全撤离距离固定使用 `Grip::Config::SpearGrab::SafeDistance`，当前值为 `0.20 m`。
 - 若 `end_pos` 相对 `target_pos` 的 `x` 方向距离不大于安全撤离距离，下位机会直接忽略该命令。
 
-### 5.8 `0x41 TakeSpearById`
+### 5.10 `0x41 TakeSpearById`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |

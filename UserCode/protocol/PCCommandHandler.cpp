@@ -14,6 +14,7 @@
 #include "grip/Config.hpp"
 #include "grip/actions/roller_store.hpp"
 #include "grip/actions/spear_grab.hpp"
+#include "grip/grip.hpp"
 #include "motor_trajectory.hpp"
 #include "project_parts.hpp"
 #include "system.hpp"
@@ -83,6 +84,32 @@ struct
         int32_t          last_received_delay{};
     } lidar;
 } debug_{};
+
+bool to_grip_preset_pose(const uint16_t preset_id)
+{
+    if (Grip::grip == nullptr || !Grip::grip->enabled())
+        return false;
+
+    switch (preset_id)
+    {
+    case 0:
+        return Grip::grip->toStandbyPose();
+    case 1:
+        return Grip::grip->toPrepareGrabPose();
+    case 2:
+        return Grip::grip->toGrabPose();
+    case 3:
+        return Grip::grip->toDockingPose();
+    case 4:
+        return Grip::grip->toKfsPickupPose();
+    case 5:
+        return Grip::grip->toKfsStorePose();
+    case 6:
+        return Grip::grip->toKfsReleasePose();
+    default:
+        return false;
+    }
+}
 
 void handleCommand(const Frame& frame)
 {
@@ -215,6 +242,38 @@ void handleCommand(const Frame& frame)
                                                .wz = to_angle(read_i16(&data[4])) };
 
             Chassis::ctrl->setVelocityInBody(target, false);
+        }
+        break;
+    case PCCommand::SetGripPose:
+        if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableGrip)
+        {
+            if (Grip::grip == nullptr || !Grip::grip->enabled())
+                break;
+
+            const Grip::Config::JointPose pose{ .arm_pos  = to_angle(read_i16(&data[0])),
+                                                .turn_pos = to_angle(read_i16(&data[2])) };
+
+            switch (read_u16(&data[4]))
+            {
+            case 0:
+                break;
+            case 1:
+                Grip::grip->openClaw();
+                break;
+            case 2:
+                Grip::grip->closeClaw();
+                break;
+            default:
+                break;
+            }
+
+            Grip::grip->toJointPose(pose);
+        }
+        break;
+    case PCCommand::SetGripPresetPose:
+        if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableGrip)
+        {
+            to_grip_preset_pose(read_u16(&data[0]));
         }
         break;
     case PCCommand::LidarPosture:
