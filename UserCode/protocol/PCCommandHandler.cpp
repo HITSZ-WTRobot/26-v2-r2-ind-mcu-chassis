@@ -65,6 +65,7 @@ trajectory::LinkMode read_lift_link_mode(const uint8_t* data)
 constexpr uint32_t MsgReceived = 1 << 0;
 
 constexpr uint32_t LidarPostureTimeoutTicks = 200U;
+constexpr uint32_t VisionPostureTimeoutTicks = 200U;
 
 libs::RingBuffer<Frame, 10> command_buffer_{};
 
@@ -73,6 +74,7 @@ osThreadId_t command_handler_task_{};
 Sync::Clock global_clock_{};
 
 service::Watchdog lidar_posture_watchdog_{};
+service::Watchdog vision_posture_watchdog_{};
 
 struct
 {
@@ -83,6 +85,13 @@ struct
         uint32_t         last_received_timestamp{};
         int32_t          last_received_delay{};
     } lidar;
+    struct
+    {
+        chassis::Posture last_received_posture{};
+        uint32_t         last_received_posture_timestamp{};
+        uint32_t         last_received_timestamp{};
+        int32_t          last_received_delay{};
+    } vision;
 } debug_{};
 
 bool to_grip_preset_pose(const uint16_t preset_id)
@@ -109,6 +118,30 @@ bool to_grip_preset_pose(const uint16_t preset_id)
     default:
         return false;
     }
+}
+
+void handle_external_posture(const Chassis::ExternalSource source,
+                             const chassis::Posture&       posture,
+                             const uint32_t                self_time)
+{
+    if (Chassis::motion == nullptr || !Chassis::motion->isReady())
+        return;
+
+    if (Chassis::externalSource() != source)
+        return;
+
+    if (!System::Init::postureReceived)
+    {
+        if (Device::Sensor::gyro_yaw == nullptr || !Device::Sensor::gyro_yaw->isConnected())
+            return;
+
+        System::Init::posture = Chassis::externalObservationToWorldForInit(source, posture);
+        System::Init::initPostureReceive();
+        System::Init::postureReceived = true;
+        return;
+    }
+
+    Chassis::updateExternalObservation(source, posture, self_time);
 }
 
 void handleCommand(const Frame& frame)
@@ -276,6 +309,32 @@ void handleCommand(const Frame& frame)
             to_grip_preset_pose(read_u16(&data[0]));
         }
         break;
+    case PCCommand::SetLocalizationSource:
+        if constexpr (ProjectParts::EnablePcLocalization)
+        {
+            const uint16_t mode = read_u16(&data[0]);
+            Chassis::ExternalSource source = Chassis::ExternalSource::None;
+            bool valid = true;
+            switch (mode)
+            {
+            case 0:
+                source = Chassis::ExternalSource::None;
+                break;
+            case 1:
+                source = Chassis::ExternalSource::Lidar;
+                break;
+            case 2:
+                source = Chassis::ExternalSource::Vision;
+                break;
+            default:
+                valid = false;
+                break;
+            }
+
+            if (valid)
+                Chassis::switchExternalSource(source);
+        }
+        break;
     case PCCommand::LidarPosture:
     {
         // LidarPosture 只在“上位机定位包”能力启用时才参与处理。
@@ -304,26 +363,36 @@ void handleCommand(const Frame& frame)
         debug_.lidar.last_received_delay = static_cast<int32_t>(
                                                    debug_.lidar.last_received_timestamp) -
                                            static_cast<int32_t>(lidar_self_time);
+        // 原本的updateLidar()被封装为 handle_external_posture()中的updateExternalObservation
+        handle_external_posture(Chassis::ExternalSource::Lidar, pos, lidar_self_time);
+        break;
+    }
+    case PCCommand::VisionPosture:
+    {
+        if constexpr (!ProjectParts::EnablePcLocalization)
+            break;
 
-        if (Chassis::motion == nullptr || !Chassis::motion->isReady())
-            return;
+        if (!frame.from_main_protocol || !global_clock_.isStable())
+            break;
 
-        // 第一帧外部位姿的职责是“定义系统初值”：
-        // - 记录 posture
-        // - 触发 `System::Init::initPostureReceive()`
-        // - 完成 Loc / Controller 的延迟构造
-        if (!System::Init::postureReceived)
-        {
-            if (Device::Sensor::gyro_yaw == nullptr || !Device::Sensor::gyro_yaw->isConnected())
-                return;
+        vision_posture_watchdog_.feed(VisionPostureTimeoutTicks);
 
-            System::Init::posture = pos;
-            System::Init::initPostureReceive();
-            System::Init::postureReceived = true;
-            return;
-        }
+        const chassis::Posture pos = { .x   = to_pos(read_i16(&data[0])),
+                                       .y   = to_pos(read_i16(&data[2])),
+                                       .yaw = to_angle(read_i16(&data[4])) };
 
-        Chassis::updateLidar(pos, lidar_self_time);
+        debug_.vision.last_received_posture = pos;
+
+        const uint32_t vision_time      = read_u32(data.data() + 6);
+        const uint32_t vision_self_time = global_clock_.pcTime2SelfTime(vision_time);
+
+        debug_.vision.last_received_posture_timestamp = vision_self_time;
+        debug_.vision.last_received_timestamp         = HAL_GetTick();
+        debug_.vision.last_received_delay = static_cast<int32_t>(
+                                                    debug_.vision.last_received_timestamp) -
+                                            static_cast<int32_t>(vision_self_time);
+
+        handle_external_posture(Chassis::ExternalSource::Vision, pos, vision_self_time);
         break;
     }
     case PCCommand::StepUp:
@@ -446,7 +515,16 @@ const Sync::Clock& clock()
 
 bool isPcLocalizationConnected()
 {
-    return lidar_posture_watchdog_.isFed();
+    switch (Chassis::externalSource())
+    {
+    case Chassis::ExternalSource::Lidar:
+        return lidar_posture_watchdog_.isFed();
+    case Chassis::ExternalSource::Vision:
+        return vision_posture_watchdog_.isFed();
+    case Chassis::ExternalSource::None:
+    default:
+        return false;
+    }
 }
 
 bool isUpperHostIdentified()

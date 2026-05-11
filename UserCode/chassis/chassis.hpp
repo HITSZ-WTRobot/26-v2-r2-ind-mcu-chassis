@@ -27,12 +27,27 @@ inline ChassisLocEncoder* loc_encoder{};
 inline ChassisController* ctrl{};
 inline ChassisMotion*     motion{};
 
+enum class ExternalSource : uint8_t
+{
+    None   = 0,
+    Lidar  = 1,
+    Vision = 2,
+};
+
 void init();
 
 void initLocCtrl(const chassis::Posture& init_posture);
 void initStandaloneLocCtrl();
 
-void updateLidar(const chassis::Posture& posture, uint32_t ticks);
+ExternalSource externalSource();
+void           switchExternalSource(ExternalSource source);
+bool           needsExternalInitPosture();
+
+chassis::Posture externalObservationToWorldForInit(ExternalSource        source,
+												   const chassis::Posture& posture);
+void updateExternalObservation(ExternalSource source,
+							   const chassis::Posture& posture,
+							   uint32_t                ticks);
 
 void enable();
 

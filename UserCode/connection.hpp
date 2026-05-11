@@ -44,7 +44,7 @@ enum class Bit : uint8_t
  * - bit10 : gyro_yaw
  * - bit11 : grip suction pressure（仅在启用吸盘气压计编译开关时有效）
  * - bit12~13: 预留
- * - bit14 : upper_host_localization
+ * - bit14 : upper_host_localization（当前激活外部定位流）
  * - bit15 : upper_host
  */
 inline volatile uint16_t table{};

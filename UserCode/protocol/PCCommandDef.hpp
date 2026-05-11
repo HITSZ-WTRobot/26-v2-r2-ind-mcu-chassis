@@ -78,6 +78,17 @@ enum class PCCommand : uint8_t
     /// | x*2000 | y*2000 | yaw(deg)*100 | lidarTimestamp(ms) |
     LidarPosture = 0x21,
 
+    /// 视觉位姿（机器人在目标系中的位姿）
+    /// | int16  | int16  |     int16    |        uint32        |
+    /// | x*2000 | y*2000 | yaw(deg)*100 | visionTimestamp(ms) |
+    VisionPosture = 0x22,
+
+    /// 选择外部定位源
+    /// |  uint16  | uint16 | uint16 | uint16 | uint16 | uint16 |
+    /// |   mode   | reserve| reserve| reserve| reserve| reserve|
+    /// @param mode: 0=None, 1=Lidar, 2=Vision
+    SetLocalizationSource = 0x23,
+
     /* 动作组 */
     /// 上台阶
     /// |        int16       |      int16       |   uint16  |  uint16  |

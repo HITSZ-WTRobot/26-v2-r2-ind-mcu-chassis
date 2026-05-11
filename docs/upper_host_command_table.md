@@ -55,6 +55,8 @@
 | `0x16` | `SetGripPose` | `arm_pos(int16), turn_pos(int16), clawMode(uint16), reserve(uint16), reserve(uint16), reserve(uint16)` | 设置 Grip 双轴关节目标和可选夹爪状态。 |
 | `0x17` | `SetGripPresetPose` | `presetId(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16)` | 设置 Grip 到预设姿态。 |
 | `0x21` | `LidarPosture` | `x(int16), y(int16), yaw(int16), lidarTimestamp(uint32)` | 上位机定位位姿输入。 |
+| `0x22` | `VisionPosture` | `x(int16), y(int16), yaw(int16), visionTimestamp(uint32)` | 视觉定位位姿输入（机器人在目标系中的位姿）。 |
+| `0x23` | `SetLocalizationSource` | `mode(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16)` | 切换外部定位源。 |
 | `0x30` | `StepUp` | `startDistance(int16), endDistance(int16), direction(uint16), willTake(uint16)` | 上台阶动作组。 |
 | `0x31` | `StepUpResume` | 无 | 恢复此前因 `willTake=1` 暂停的上台阶流程。 |
 | `0x32` | `StepDown` | `startDistance(int16), endDistance(int16), direction(uint16), shouldReset(uint16)` | 下台阶动作组。 |
@@ -178,7 +180,27 @@
 - 当前实现只接受来自主上位机链路、且对时已稳定的 `LidarPosture`；未满足这两个条件时，该帧不会喂定位 watchdog，也不会进入定位更新。
 - 当工程启用了上位机定位模式时，首个满足上述接入条件的 `LidarPosture` 会承担系统初始位姿的延迟初始化职责。
 
-### 5.7 `0x30 StepUp`
+### 5.7 `0x22 VisionPosture`
+
+- 视觉输入语义为“机器人在目标系中的位姿”。
+- 坐标轴方向与世界系一致（x 前、y 左、yaw 逆时针为正）。
+- 该命令与 `LidarPosture` 一样，只接受来自主上位机链路且对时稳定的帧。
+- 当外部定位源切换为 Vision 后，首个满足接入条件的 `VisionPosture`
+  将完成目标系到当前世界系的对齐，并作为后续 EKF 外部观测输入。
+
+### 5.8 `0x23 SetLocalizationSource`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `mode` | `uint16` | `0=None, 1=Lidar, 2=Vision` |
+| `reserve0..4` | `uint16` | 预留，当前忽略 |
+
+补充：
+
+- 切换过程中下位机会短暂将底盘速度置零（不使用 Stop）。
+- 当 `mode=0` 时，下位机仍保持陀螺仪高频更新与底盘预测，但不再接收外部观测。
+
+### 5.9 `0x30 StepUp`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -187,7 +209,7 @@
 | `direction` | `uint16` | `0=Forward`, `1=Backward` |
 | `willTake` | `uint16` | `0=连贯上台阶`, `1=中途停下等待取卷轴` |
 
-### 5.8 `0x32 StepDown`
+### 5.10 `0x32 StepDown`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -196,7 +218,7 @@
 | `direction` | `uint16` | `0=Forward`, `1=Backward` |
 | `shouldReset` | `uint16` | `1=下台阶后恢复正常高度`, `0=最后一步不回收底盘` |
 
-### 5.9 `0x40 TakeSpear`
+### 5.11 `0x40 TakeSpear`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -212,7 +234,7 @@
 - 安全撤离距离固定使用 `Grip::Config::SpearGrab::SafeDistance`，当前值为 `0.20 m`。
 - 若 `end_pos` 相对 `target_pos` 的 `x` 方向距离不大于安全撤离距离，下位机会直接忽略该命令。
 
-### 5.10 `0x41 TakeSpearById`
+### 5.12 `0x41 TakeSpearById`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |

@@ -10,6 +10,8 @@
 #include "project_parts.hpp"
 #include "system.hpp"
 
+#include <cmath>
+
 namespace Chassis
 {
 namespace
@@ -18,6 +20,65 @@ constexpr float sq(const float value)
 {
     return value * value;
 }
+
+constexpr float kPi = 3.14159265358979323846f;
+
+constexpr float deg2rad(const float deg)
+{
+    return deg * kPi / 180.0f;
+}
+
+struct SourceFrame
+{
+    bool            valid{ false };
+    chassis::Posture origin{};
+};
+
+constexpr uint32_t SourceFrameCount = 2U;
+
+constexpr uint32_t source_index(const ExternalSource source)
+{
+    return (source == ExternalSource::Vision) ? 1U : 0U;
+}
+
+[[nodiscard]] chassis::Posture source_to_world(const chassis::Posture& origin,
+                                               const chassis::Posture& posture_in_source)
+{
+    const float yaw_rad = deg2rad(origin.yaw);
+    const float cos_yaw = cosf(yaw_rad);
+    const float sin_yaw = sinf(yaw_rad);
+
+    return {
+        .x   = origin.x + posture_in_source.x * cos_yaw - posture_in_source.y * sin_yaw,
+        .y   = origin.y + posture_in_source.x * sin_yaw + posture_in_source.y * cos_yaw,
+        .yaw = origin.yaw + posture_in_source.yaw,
+    };
+}
+
+[[nodiscard]] chassis::Posture make_origin_from_world(const chassis::Posture& world,
+                                                      const chassis::Posture& posture_in_source)
+{
+    const float yaw     = world.yaw - posture_in_source.yaw;
+    const float yaw_rad = deg2rad(yaw);
+    const float cos_yaw = cosf(yaw_rad);
+    const float sin_yaw = sinf(yaw_rad);
+
+    return {
+        .x   = world.x - (posture_in_source.x * cos_yaw - posture_in_source.y * sin_yaw),
+        .y   = world.y - (posture_in_source.x * sin_yaw + posture_in_source.y * cos_yaw),
+        .yaw = yaw,
+    };
+}
+
+ExternalSource active_source = ProjectParts::EnablePcLocalization ? ExternalSource::Lidar
+                                                                   : ExternalSource::None;
+
+SourceFrame source_frames[SourceFrameCount] = {
+    { true, { 0.0f, 0.0f, 0.0f } },     // Lidar 作为默认的外部定位源，初始时有效，且原点在世界坐标系下的 (0, 0, 0)。Vision 作为后续可选的外部定位源，初始时无效。
+    { false, { 0.0f, 0.0f, 0.0f } },    // Vision 作为后续可选的外部定位源，初始时无效。
+};
+
+uint32_t switch_hold_ticks = 0U;
 
 ChassisLocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
 {
@@ -59,6 +120,13 @@ void update_1kHz()
         loc_ekf->update();
     else if (loc_encoder != nullptr)
         loc_encoder->update(0.001f);
+    // 停止底盘动作，保持当前速度为零，持续一段时间以确保切换外部定位源时底盘稳定，避免因突变的位姿观测引起的控制器过度反应。
+    if (switch_hold_ticks > 0U && ctrl != nullptr)
+    {
+        const chassis::Velocity zero{ .vx = 0.0f, .vy = 0.0f, .wz = 0.0f };
+        ctrl->setVelocityInBody(zero, false);
+        switch_hold_ticks--;
+    }
 
     if (ctrl != nullptr)
     {
@@ -132,11 +200,74 @@ void initStandaloneLocCtrl()
 
     initLocCtrl(default_init_posture());
 }
-
-void updateLidar(const chassis::Posture& posture, const uint32_t ticks)
+ExternalSource externalSource()
 {
-    if (loc_ekf != nullptr)
-        loc_ekf->updateLidar(posture, ticks);
+    return active_source;
+}
+
+void switchExternalSource(const ExternalSource source)
+{
+    if constexpr (!ProjectParts::EnablePcLocalization)
+        return;
+
+    if (source == active_source)
+        return;
+
+    active_source      = source;
+    switch_hold_ticks  = Config::Control::ExternalSourceSwitchHoldTicks;    // 切换外部定位源后保持底盘静止的时间，单位是 1 kHz tick。
+
+    if (source == ExternalSource::Lidar || source == ExternalSource::Vision)
+    {
+        // 切换到新源时，当前源的位姿框架不再有效，需要重置。（在updateExternalObservation中重置）
+        source_frames[source_index(source)].valid = false;
+    }
+}
+
+bool needsExternalInitPosture()
+{
+    if constexpr (!ProjectParts::NeedUpperHostInitPosture)
+        return false;
+
+    return active_source != ExternalSource::None;
+}
+
+chassis::Posture externalObservationToWorldForInit(const ExternalSource source,
+                                                   const chassis::Posture& posture)
+{
+    if (source == ExternalSource::None)
+        return posture;
+
+    if (source == ExternalSource::Lidar || source == ExternalSource::Vision)
+    {
+        auto& frame = source_frames[source_index(source)];
+        frame.origin = { .x = 0.0f, .y = 0.0f, .yaw = 0.0f };  // 传感器坐标系原点在世界坐标系下的位姿，初始时假设与世界坐标系重合（Lidar）。后续会在 updateExternalObservation 中根据首帧观测更新为正确的位姿。
+        frame.valid  = true;
+        return source_to_world(frame.origin, posture);
+    }
+
+    return posture;
+}
+
+void updateExternalObservation(const ExternalSource source,
+                               const chassis::Posture& posture,
+                               const uint32_t ticks)
+{
+    if (loc_ekf == nullptr)
+        return;
+
+    if (source == ExternalSource::None)
+        return;
+
+    auto& frame = source_frames[source_index(source)];
+    if (!frame.valid)
+    {
+        // 如果当前源的位姿框架无效，说明这是切换到该源后的首帧观测。使用该观测和当前世界坐标系下的位姿计算出该源的位姿框架，使后续观测能够正确转换到世界坐标系。
+        frame.origin = make_origin_from_world(loc->postureInWorld(), posture);
+        frame.valid  = true;
+    }
+
+    const chassis::Posture posture_in_world = source_to_world(frame.origin, posture);
+    loc_ekf->updateLidar(posture_in_world, ticks);
 }
 
 void enable()

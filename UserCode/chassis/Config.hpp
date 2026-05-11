@@ -185,5 +185,7 @@ constexpr chassis::controller::Master::Config masterCfg = {
     .limit = DefaultTrajectoryLimit,
 };
 
+constexpr uint32_t ExternalSourceSwitchHoldTicks = 50U; // 1 kHz tick count
+
 }
 } // namespace Chassis::Config

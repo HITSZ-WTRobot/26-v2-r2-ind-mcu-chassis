@@ -2,6 +2,11 @@
 #include "IChassisDef.hpp"
 #include "project_parts.hpp"
 
+namespace Chassis
+{
+bool needsExternalInitPosture();
+}
+
 namespace System
 {
 
@@ -35,7 +40,10 @@ inline bool inited()
     }
 
     if constexpr (ProjectParts::NeedUpperHostInitPosture)
-        return postureReceived;
+    {
+        if (Chassis::needsExternalInitPosture())
+            return postureReceived;
+    }
 
     return true;
 }
