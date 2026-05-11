@@ -513,18 +513,21 @@ const Sync::Clock& clock()
     return global_clock_;
 }
 
+bool isPcLidarLocalizationConnected()
+{
+    return Chassis::externalSource() == Chassis::ExternalSource::Lidar &&
+           lidar_posture_watchdog_.isFed();
+}
+
+bool isPcVisionLocalizationConnected()
+{
+    return Chassis::externalSource() == Chassis::ExternalSource::Vision &&
+           vision_posture_watchdog_.isFed();
+}
+
 bool isPcLocalizationConnected()
 {
-    switch (Chassis::externalSource())
-    {
-    case Chassis::ExternalSource::Lidar:
-        return lidar_posture_watchdog_.isFed();
-    case Chassis::ExternalSource::Vision:
-        return vision_posture_watchdog_.isFed();
-    case Chassis::ExternalSource::None:
-    default:
-        return false;
-    }
+    return isPcLidarLocalizationConnected() || isPcVisionLocalizationConnected();
 }
 
 bool isUpperHostIdentified()

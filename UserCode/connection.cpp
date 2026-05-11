@@ -200,7 +200,14 @@ void updateTable()
         set_bit(current, Bit::GyroYaw, is_connected(Device::Sensor::gyro_yaw));
 
     if constexpr (ProjectParts::EnablePcLocalization)
-        set_bit(current, Bit::UpperHostLocalization, Protocol::isPcLocalizationConnected());
+    {
+        set_bit(current,
+                Bit::UpperHostVisionLocalization,
+                Protocol::isPcVisionLocalizationConnected());
+        set_bit(current,
+                Bit::UpperHostLidarLocalization,
+                Protocol::isPcLidarLocalizationConnected());
+    }
 
     if constexpr (ProjectParts::EnableUpperHostProtocol)
         set_bit(current, Bit::UpperHost, is_connected(Protocol::pc_rx));
