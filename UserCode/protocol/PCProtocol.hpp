@@ -81,6 +81,8 @@ inline PCProtocol* pc_rx{};
 
 [[nodiscard]] const Sync::Clock& clock();
 
+bool isPcLidarLocalizationConnected();
+bool isPcVisionLocalizationConnected();
 bool isPcLocalizationConnected();
 bool isUpperHostIdentified();
 

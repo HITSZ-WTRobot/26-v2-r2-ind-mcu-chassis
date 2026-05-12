@@ -10,6 +10,8 @@
 #include "project_parts.hpp"
 #include "system.hpp"
 
+#include <cmath>
+
 namespace Chassis
 {
 namespace
@@ -18,6 +20,33 @@ constexpr float sq(const float value)
 {
     return value * value;
 }
+
+struct SourceFrame
+{
+    bool            valid{ false };
+    chassis::Posture origin{};
+};
+
+constexpr uint32_t SourceFrameCount = 2U;
+
+constexpr uint32_t source_index(const ExternalSource source)
+{
+    return (source == ExternalSource::Vision) ? 1U : 0U;
+}
+
+[[nodiscard]] chassis::Posture source_to_world(const chassis::Posture& origin,
+                                               const chassis::Posture& posture_in_source)
+{
+    return ChassisLoc::RelativePosture2WorldPosture(origin, posture_in_source);
+}
+
+ExternalSource active_source = ProjectParts::EnablePcLocalization ? ExternalSource::Lidar
+                                                                   : ExternalSource::None;
+
+SourceFrame source_frames[SourceFrameCount] = {
+    { true, { 0.0f, 0.0f, 0.0f } },     // Lidar 作为默认的外部定位源，初始时有效，且原点在世界坐标系下的 (0, 0, 0)。Vision 作为后续可选的外部定位源，初始时无效。
+    { false, { 0.0f, 0.0f, 0.0f } },    // Vision 作为后续可选的外部定位源，初始时无效。
+};
 
 ChassisLocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
 {
@@ -59,7 +88,6 @@ void update_1kHz()
         loc_ekf->update();
     else if (loc_encoder != nullptr)
         loc_encoder->update(0.001f);
-
     if (ctrl != nullptr)
     {
         prescaler_500Hz++;
@@ -132,11 +160,87 @@ void initStandaloneLocCtrl()
 
     initLocCtrl(default_init_posture());
 }
-
-void updateLidar(const chassis::Posture& posture, const uint32_t ticks)
+ExternalSource externalSource()
 {
-    if (loc_ekf != nullptr)
-        loc_ekf->updateLidar(posture, ticks);
+    return active_source;
+}
+
+void switchExternalSource(const ExternalSource source)
+{
+    if constexpr (!ProjectParts::EnablePcLocalization)
+        return;
+
+    if (source == active_source)
+        return;
+
+    active_source = source;
+    if (ctrl != nullptr)
+        ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
+
+    if (source == ExternalSource::Lidar || source == ExternalSource::Vision)
+    {
+        // 切换到新源时，首帧观测（此刻还未观测，因此设0占位）将重建该源的参考系并重置 EKF 状态。
+        auto& frame = source_frames[source_index(source)];
+        frame.origin = { .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
+        frame.valid  = false;
+    }
+}
+
+bool needsExternalInitPosture()
+{
+    if constexpr (!ProjectParts::NeedUpperHostInitPosture)
+        return false;
+
+    return active_source != ExternalSource::None;
+}
+
+chassis::Posture externalObservationToWorldForInit(const ExternalSource source,
+                                                   const chassis::Posture& posture)
+{
+    if (source == ExternalSource::None)
+        return posture;
+
+    if (source == ExternalSource::Lidar || source == ExternalSource::Vision)
+    {
+        auto& frame = source_frames[source_index(source)];
+        frame.origin = { .x = 0.0f, .y = 0.0f, .yaw = 0.0f };  // 传感器坐标系原点在世界坐标系下的位姿，初始时假设与世界坐标系重合（Lidar）。后续会在 updateExternalObservation 中根据首帧观测更新为正确的位姿。
+        frame.valid  = true;
+        return source_to_world(frame.origin, posture);
+    }
+
+    return posture;
+}
+
+void updateExternalObservation(const ExternalSource source,
+                               const chassis::Posture& posture,
+                               const uint32_t ticks)
+{
+    if (loc_ekf == nullptr)
+        return;
+
+    if (source == ExternalSource::None)
+        return;
+
+    auto& frame = source_frames[source_index(source)];
+    if (!frame.valid)
+    {
+        // 切换后首帧观测：用外部位姿直接重置 EKF，并同步更新协方差。
+        frame.valid = true;
+        if (source == ExternalSource::Vision && loc != nullptr)
+        {
+            // Vision 输入是“机器人在目标系中的位姿”，首帧对齐目标系到当前世界系。
+            const chassis::Posture world_origin{ .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
+            const auto world_now   = loc->postureInWorld();
+            const auto inv_posture = ChassisLoc::WorldPosture2RelativePosture(posture, world_origin);
+            frame.origin = ChassisLoc::RelativePosture2WorldPosture(world_now, inv_posture);
+        }
+        const chassis::Posture posture_in_world = source_to_world(frame.origin, posture);       // 获取body在world下的坐标
+        loc_ekf->resetToPosture(posture_in_world, Config::Control::ExternalSourceSwitchCovScale);
+        return;
+    }
+
+    const chassis::Posture posture_in_world = source_to_world(frame.origin, posture);
+    loc_ekf->updateLidar(posture_in_world, ticks);
 }
 
 void enable()

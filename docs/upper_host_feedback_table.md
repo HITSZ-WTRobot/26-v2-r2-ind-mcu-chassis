@@ -152,14 +152,14 @@ grip_suction_has_object  = (table >> 10) & 0x1
 | `11` | `0x0800` | Reserved | 预留 |
 | `12` | `0x1000` | Reserved | 预留 |
 | `13` | `0x2000` | Reserved | 预留 |
-| `14` | `0x4000` | `upper_host_localization` | 上位机定位流在线 |
+| `14` | `0x4000` | `upper_host_localization` | 当前外部定位流在线（Lidar/Vision/None 取决于当前模式） |
 | `15` | `0x8000` | `upper_host` | 上位机串口链路在线 |
 
 补充：
 
-- `bit14` 表示“定位流在线”，不是单纯“UART 收到过数据”。
-- 当前实现中，只有收到来自主上位机链路且当前对时已稳定的合法 `LidarPosture` 帧后才会喂定位流 watchdog；watchdog 超时后 `bit14` 会自动清零。
-- 当前定位流 watchdog 超时时间为收到最后一帧合法 `LidarPosture` 后 `200` 个 watchdog tick。
+- `bit14` 表示“当前激活定位流在线”，不是单纯“UART 收到过数据”。
+- 当前实现中，只有收到来自主上位机链路且当前对时已稳定的合法外部位姿帧后才会喂定位流 watchdog；watchdog 超时后 `bit14` 会自动清零。
+- 定位流 watchdog 超时时间为收到最后一帧合法外部位姿后 `200` 个 watchdog tick。
 - `bit15` 表示上位机串口链路本身在线。
 
 ## 5. 当前反馈字段与上位机建议

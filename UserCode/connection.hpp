@@ -23,7 +23,8 @@ enum class Bit : uint8_t
     GripTurn              = 9,
     GyroYaw               = 10,
     GripSuctionPressure   = 11,
-    UpperHostLocalization = 14,
+    UpperHostVisionLocalization = 13,
+    UpperHostLidarLocalization  = 14,
     UpperHost             = 15,
 };
 
@@ -43,8 +44,9 @@ enum class Bit : uint8_t
  * - bit9  : grip_turn
  * - bit10 : gyro_yaw
  * - bit11 : grip suction pressure（仅在启用吸盘气压计编译开关时有效）
- * - bit12~13: 预留
- * - bit14 : upper_host_localization
+ * - bit12 : 预留
+ * - bit13 : upper_host_vision_localization（视觉定位流在线）
+ * - bit14 : upper_host_lidar_localization（激光定位流在线）
  * - bit15 : upper_host
  */
 inline volatile uint16_t table{};

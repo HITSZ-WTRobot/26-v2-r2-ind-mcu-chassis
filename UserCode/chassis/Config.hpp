@@ -185,5 +185,7 @@ constexpr chassis::controller::Master::Config masterCfg = {
     .limit = DefaultTrajectoryLimit,
 };
 
+constexpr float ExternalSourceSwitchCovScale = 4.0f; // EKF切换外部源时，状态协方差放大倍数
+
 }
 } // namespace Chassis::Config
