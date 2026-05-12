@@ -104,20 +104,28 @@ void turnInBody(const chassis::Posture& target)
     settle();
 }
 
-void stepUp()
+void reanchorInWorld(const chassis::Posture& target)
+{
+    (void)Chassis::ctrl->setTargetPostureInWorld(target);
+    Chassis::ctrl->waitTrajectoryFinish();
+    settle();
+}
+
+void stepUp(const chassis::Posture& expected_posture)
 {
     auto& step = Action::Step::inst();
     step.up(kStepDistanceToStep, kStepDistanceAfter);
     step.waitForFinish();
-    settle();
+    // 台阶动作结束后立刻把世界位姿重新锚定到脚本预期点，避免后续转向沿着漂移位姿继续走。
+    reanchorInWorld(expected_posture);
 }
 
-void stepDown()
+void stepDown(const chassis::Posture& expected_posture)
 {
     auto& step = Action::Step::inst();
     step.down(kStepDistanceToStep, kStepDistanceAfter);
     step.waitForFinish();
-    settle();
+    reanchorInWorld(expected_posture);
 }
 
 bool runAutoMapping()
@@ -149,72 +157,72 @@ bool runAutoMapping()
     toInWorld({ 2.600f, 3.000f, kFront });
 
     stage_index = 11U;
-    stepUp();
+    stepUp({ 3.800f, 3.000f, kFront });
     stage_index = 12U;
     turnInBody({ 0.0f, 0.0f, turnRight }); // 到达1.2
 
     stage_index = 13U;
-    stepUp();
+    stepUp({ 3.800f, 1.800f, kRight });
     stage_index = 14U;
     turnInBody({ 0.0f, 0.0f, turnLeft }); // 到达1.1
 
     stage_index = 15U;
-    stepUp();
+    stepUp({ 5.000f, 1.800f, kFront });
     stage_index = 16U;
     turnInBody({ 0.0f, 0.0f, turnStay }); // 到达2.1
 
     stage_index = 17U;
-    stepDown();
+    stepDown({ 6.200f, 1.800f, kFront });
     stage_index = 18U;
     turnInBody({ 0.0f, 0.0f, turnStay }); // 到达3.1
 
     stage_index = 19U;
-    stepDown();
+    stepDown({ 7.400f, 1.800f, kFront });
     stage_index = 20U;
     turnInBody({ 0.0f, 0.0f, turnLeft }); // 到达4.1
 
     stage_index = 21U;
-    stepUp();
+    stepUp({ 7.400f, 3.000f, kLeft });
     stage_index = 22U;
     turnInBody({ 0.0f, 0.0f, turnStay }); // 到达4.2
 
     stage_index = 23U;
-    stepDown();
+    stepDown({ 7.400f, 4.200f, kLeft });
     stage_index = 24U;
     turnInBody({ 0.0f, 0.0f, turnLeft }); // 到达4.3
 
     stage_index = 25U;
-    stepUp();
+    stepUp({ 6.200f, 4.200f, kRear });
     stage_index = 26U;
     turnInBody({ 0.0f, 0.0f, turnLeft }); // 到达3.3
 
     stage_index = 27U;
-    stepUp();
+    stepUp({ 6.200f, 3.000f, 270.0f });
     stage_index = 28U;
     turnInBody({ 0.0f, 0.0f, turnRight }); // 到达3.2
 
     stage_index = 29U;
-    stepDown();
+    stepDown({ 5.000f, 3.000f, kRear });
     stage_index = 30U;
     turnInBody({ 0.0f, 0.0f, turnRight }); // 到达2.2
 
     stage_index = 31U;
-    stepDown();
+    stepDown({ 5.000f, 4.200f, kLeft });
     stage_index = 32U;
     turnInBody({ 0.0f, 0.0f, turnLeft }); // 到达2.3
 
     stage_index = 33U;
-    stepUp();
+    stepUp({ 3.800f, 4.200f, kRear });
     stage_index = 34U;
     turnInBody({ 0.0f, 0.0f, turnLeft }); // 到达1.3
 
     stage_index = 35U;
-    stepDown();
+    stepDown({ 3.800f, 3.000f, 270.0f });
     stage_index = 36U;
     turnInBody({ 0.0f, 0.0f, turnRight }); // 到达1.2
 
     stage_index = 37U;
-    stepDown();
+    stepDown({ 2.600f, 3.000f, kRear });
 
     stage_index = 38U;
     toInWorld({ 0.400f, 1.400f, kFront });
