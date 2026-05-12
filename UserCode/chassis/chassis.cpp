@@ -179,7 +179,7 @@ void switchExternalSource(const ExternalSource source)
 
     if (source == ExternalSource::Lidar || source == ExternalSource::Vision)
     {
-        // 切换到新源时，首帧观测将重建该源的参考系并重置 EKF 状态。
+        // 切换到新源时，首帧观测（此刻还未观测，因此设0占位）将重建该源的参考系并重置 EKF 状态。
         auto& frame = source_frames[source_index(source)];
         frame.origin = { .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
         frame.valid  = false;
@@ -211,7 +211,7 @@ chassis::Posture externalObservationToWorldForInit(const ExternalSource source,
     return posture;
 }
 
-void (const ExternalSource source,
+void updateExternalObservation(const ExternalSource source,
                                const chassis::Posture& posture,
                                const uint32_t ticks)
 {
@@ -226,6 +226,14 @@ void (const ExternalSource source,
     {
         // 切换后首帧观测：用外部位姿直接重置 EKF，并同步更新协方差。
         frame.valid = true;
+        if (source == ExternalSource::Vision && loc != nullptr)
+        {
+            // Vision 输入是“机器人在目标系中的位姿”，首帧对齐目标系到当前世界系。
+            const chassis::Posture world_origin{ .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
+            const auto world_now   = loc->postureInWorld();
+            const auto inv_posture = ChassisLoc::WorldPosture2RelativePosture(posture, world_origin);
+            frame.origin = ChassisLoc::RelativePosture2WorldPosture(world_now, inv_posture);
+        }
         const chassis::Posture posture_in_world = source_to_world(frame.origin, posture);       // 获取body在world下的坐标
         loc_ekf->resetToPosture(posture_in_world, Config::Control::ExternalSourceSwitchCovScale);
         return;
