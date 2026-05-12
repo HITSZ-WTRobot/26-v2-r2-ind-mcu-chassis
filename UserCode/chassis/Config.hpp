@@ -170,7 +170,7 @@ constexpr chassis::controller::Master::TrajectoryLimit DefaultTrajectoryLimit = 
     // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
     // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
     // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
-    .x = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
+    .x   = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
     .y   = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
     .yaw = { .max_spd = 460, .max_acc = 170, .max_jerk = 170 * 50 }
 };
@@ -178,12 +178,12 @@ constexpr chassis::controller::Master::TrajectoryLimit DefaultTrajectoryLimit = 
 
 constexpr chassis::controller::Master::Config masterCfg = {
     .posture_error_pd_cfg = {
-        .vx = { .Kp = 0.2, .Kd = 0.15f, .abs_output_max = 0.2f },
-        .vy = { .Kp = 0.2, .Kd = 0.15f, .abs_output_max = 0.2f },
-        .wz = { .Kp = 1.0, .Kd = 0.5f, .abs_output_max = 45.0f },
+        .vx = { .Kp = 0.5, .Kd = 0.3f, .abs_output_max = 0.6f },
+        .vy = { .Kp = 0.5, .Kd = 0.3f, .abs_output_max = 0.6f },
+        .wz = { .Kp = 1.0, .Kd = 0.5f, .abs_output_max = 135.0f },
     },
     .limit = DefaultTrajectoryLimit,
 };
 
-}
+} // namespace Control
 } // namespace Chassis::Config
