@@ -36,7 +36,7 @@ constexpr JointPose PrepareGrab{ 0.0f, 0.0f };
 /// 夹取执行姿态：夹爪闭合，并把大臂推出完成矛头夹取。
 constexpr JointPose Grab{ 45.0f, 0.0f };
 /// 对接姿态：夹取完成后转向对接角度，等待底盘移动到最终位置。
-constexpr JointPose Docking{ 0.0f, -91.0f };
+constexpr JointPose Docking{ 0.0f, -90.0f };
 /// KFS 拾取姿态：吸盘对准取料位置。
 constexpr JointPose KfsPickup{ 90.0f, 0.0f };
 /// KFS 暂存姿态：吸住卷轴后转到暂存朝向。
@@ -83,25 +83,25 @@ namespace Motor
 {
 /// 大臂速度环参数
 constexpr controllers::MotorVelController::Config ArmVelControllerCfg{
-    .pid = { .Kp = 370.0f, .Ki = 5.0f, .Kd = 0.0f, .abs_output_max = 12000.0f },
+    .pid = { .Kp = 100.0f, .Ki = 3.0f, .Kd = 0.0f, .abs_output_max = 10000.0f },
 };
 
 /// 转向电机速度环参数
 constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
-    .pid = { .Kp = 500.0f, .Ki = 5.0f, .Kd = 0.0f, .abs_output_max = 4000.0f },
+    .pid = { .Kp = 70.0f, .Ki = 1.0f, .Kd = 0.0f, .abs_output_max = 4000.0f },
 };
 
 } // namespace Motor
 
 namespace Calibration
 {
-constexpr float ArmLockCurrent  = 2000.0f;
+constexpr float ArmLockCurrent  = 8000.0f;
 constexpr float TurnLockCurrent = 2000.0f;
 
 constexpr float    deadAngle   = 0.1f;
 constexpr uint32_t lockedTicks = 1000;
 
-constexpr float ArmCalibVel  = -30.0f;
+constexpr float ArmCalibVel  = 15.0f;
 constexpr float TurnCalibVel = -30.0f;
 
 constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig ArmCalibCfg = { //
@@ -116,7 +116,7 @@ constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg =
     .speed               = TurnCalibVel,
     .max_current         = TurnLockCurrent, //
     .min_ticks           = lockedTicks,
-    .offset              = 200.0f, //
+    .offset              = 205.0f, //
     .target_after_homing = 0.0f,
     .dead_angle          = deadAngle
 };
@@ -132,8 +132,9 @@ constexpr velocity_profile::SCurveProfile::Config ArmCfg{
 };
 
 constexpr PD::Config ArmPDCfg{
-    .Kp = 50.0f,
-    .Kd = 5.0f,
+    .Kp = 2.0f,
+    .Kd = 0.5f,
+    .abs_output_max = 60.0f,
 };
 
 constexpr velocity_profile::SCurveProfile::Config TurnCfg{
@@ -143,8 +144,9 @@ constexpr velocity_profile::SCurveProfile::Config TurnCfg{
 };
 
 constexpr PD::Config TurnPDCfg{
-    .Kp = 50.0f,
-    .Kd = 1.0f,
+    .Kp = 2.0f,
+    .Kd = 0.5f,
+    .abs_output_max = 60.0f,
 };
 } // namespace Trajectory
 
