@@ -157,9 +157,13 @@ void SpearGrab::update()
             std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold &&
             is_lift_finished() && ::Grip::grip->isFinished())
         {
-            // TODO: 不同运行阶段应使用不同的底盘速度限制，而不是沿用同一套默认轨迹参数。
             Chassis::ctrl->setTargetPostureInWorld(target_pos_,
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+                                                   Master::TrajectoryLinkMode::PreviousCurve,
+                                                   {
+                                                           { 2, 0.8, 50.0 },
+                                                           { 2, 0.8, 50.0 },
+                                                           { 100, 50.0, 50.0 },
+                                                   });
             state_ = State::MovingToTarget;
         }
         break;
