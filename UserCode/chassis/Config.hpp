@@ -30,7 +30,7 @@ constexpr PIDMotor::Config PIDCfg{
     .Kp = 450.0f, .Ki = 1.0f, .Kd = 0.00f, .abs_output_max = 16384 * 0.75
 };
 
-constexpr PD::Config PDErrorCfg{ .Kp = 0.3, .Kd = 0.2, .abs_output_max = 60 };
+constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
 
 constexpr float MinToLimitMM = 1.25f;  /// 辅助轮接地时离下限位距离
 constexpr float RangeMM      = 410.0f; ///  到上限位时离下限位
@@ -178,9 +178,9 @@ constexpr chassis::controller::Master::TrajectoryLimit DefaultTrajectoryLimit = 
 
 constexpr chassis::controller::Master::Config masterCfg = {
     .posture_error_pd_cfg = {
-        .vx = { .Kp = 0.5, .Kd = 0.3f, .abs_output_max = 0.6f },
-        .vy = { .Kp = 0.5, .Kd = 0.3f, .abs_output_max = 0.6f },
-        .wz = { .Kp = 1.0, .Kd = 0.5f, .abs_output_max = 135.0f },
+        .vx = { .Kp = 3.0, .Kd = 0.3f, .abs_output_max = 0.6f },
+        .vy = { .Kp = 3.0, .Kd = 0.3f, .abs_output_max = 0.6f },
+        .wz = { .Kp = 3.0, .Kd = 0.3f, .abs_output_max = 135.0f },
     },
     .limit = DefaultTrajectoryLimit,
 };

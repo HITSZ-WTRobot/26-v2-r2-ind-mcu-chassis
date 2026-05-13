@@ -95,13 +95,13 @@ constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
 
 namespace Calibration
 {
-constexpr float ArmLockCurrent  = 2000.0f;
+constexpr float ArmLockCurrent  = 8000.0f;
 constexpr float TurnLockCurrent = 2000.0f;
 
 constexpr float    deadAngle   = 0.1f;
 constexpr uint32_t lockedTicks = 1000;
 
-constexpr float ArmCalibVel  = -30.0f;
+constexpr float ArmCalibVel  = 15.0f;
 constexpr float TurnCalibVel = -30.0f;
 
 constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig ArmCalibCfg = { //
@@ -131,10 +131,7 @@ constexpr velocity_profile::SCurveProfile::Config ArmCfg{
     .max_jerk = 1440.0f,
 };
 
-constexpr PD::Config ArmPDCfg{
-    .Kp = 50.0f,
-    .Kd = 5.0f,
-};
+constexpr PD::Config ArmPDCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
 
 constexpr velocity_profile::SCurveProfile::Config TurnCfg{
     .max_spd  = 360.0f,
@@ -142,10 +139,8 @@ constexpr velocity_profile::SCurveProfile::Config TurnCfg{
     .max_jerk = 1440.0f,
 };
 
-constexpr PD::Config TurnPDCfg{
-    .Kp = 50.0f,
-    .Kd = 1.0f,
-};
+constexpr PD::Config TurnPDCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
+
 } // namespace Trajectory
 
 } // namespace Grip::Config
