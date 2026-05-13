@@ -83,12 +83,12 @@ namespace Motor
 {
 /// 大臂速度环参数
 constexpr controllers::MotorVelController::Config ArmVelControllerCfg{
-    .pid = { .Kp = 100.0f, .Ki = 3.0f, .Kd = 0.0f, .abs_output_max = 10000.0f },
+    .pid = { .Kp = 370.0f, .Ki = 5.0f, .Kd = 0.0f, .abs_output_max = 12000.0f },
 };
 
 /// 转向电机速度环参数
 constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
-    .pid = { .Kp = 70.0f, .Ki = 1.0f, .Kd = 0.0f, .abs_output_max = 4000.0f },
+    .pid = { .Kp = 500.0f, .Ki = 5.0f, .Kd = 0.0f, .abs_output_max = 4000.0f },
 };
 
 } // namespace Motor
@@ -131,11 +131,7 @@ constexpr velocity_profile::SCurveProfile::Config ArmCfg{
     .max_jerk = 1440.0f,
 };
 
-constexpr PD::Config ArmPDCfg{
-    .Kp = 2.0f,
-    .Kd = 0.5f,
-    .abs_output_max = 60.0f,
-};
+constexpr PD::Config ArmPDCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
 
 constexpr velocity_profile::SCurveProfile::Config TurnCfg{
     .max_spd  = 360.0f,
@@ -143,11 +139,8 @@ constexpr velocity_profile::SCurveProfile::Config TurnCfg{
     .max_jerk = 1440.0f,
 };
 
-constexpr PD::Config TurnPDCfg{
-    .Kp = 2.0f,
-    .Kd = 0.5f,
-    .abs_output_max = 60.0f,
-};
+constexpr PD::Config TurnPDCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
+
 } // namespace Trajectory
 
 } // namespace Grip::Config

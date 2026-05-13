@@ -20,6 +20,17 @@
 #include "system.hpp"
 #include "watchdog.hpp"
 
+struct Debug
+{
+    struct
+    {
+        chassis::Posture last_received_posture{};
+        uint32_t         last_received_posture_timestamp{};
+        uint32_t         last_received_timestamp{};
+        int32_t          last_received_delay{};
+    } lidar;
+} debug_{};
+
 namespace Protocol
 {
 namespace
@@ -73,17 +84,6 @@ osThreadId_t command_handler_task_{};
 Sync::Clock global_clock_{};
 
 service::Watchdog lidar_posture_watchdog_{};
-
-struct
-{
-    struct
-    {
-        chassis::Posture last_received_posture{};
-        uint32_t         last_received_posture_timestamp{};
-        uint32_t         last_received_timestamp{};
-        int32_t          last_received_delay{};
-    } lidar;
-} debug_{};
 
 bool to_grip_preset_pose(const uint16_t preset_id)
 {
