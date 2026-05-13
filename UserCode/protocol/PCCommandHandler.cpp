@@ -391,7 +391,7 @@ void handleCommand(const Frame& frame)
                                           .y   = to_pos(read_i16(&data[8])),
                                           .yaw = to_angle(read_i16(&data[10])) };
 
-        Grip::Action::SpearGrab::inst().grab(target, end);
+        Grip::Action::SpearGrab::inst().grab(target, end, Grip::Config::SpearGrab::LiftExecute);
         break;
     }
     case PCCommand::TakeSpearById:
@@ -407,7 +407,9 @@ void handleCommand(const Frame& frame)
                                        .y   = to_pos(read_i16(&data[4])),
                                        .yaw = to_angle(read_i16(&data[6])) };
 
-        Grip::Action::SpearGrab::inst().grab(Grip::Config::SpearGrab::TargetPoses[spear_id], end);
+        Grip::Action::SpearGrab::inst().grab(Grip::Config::SpearGrab::TargetPoses[spear_id],
+                                             end,
+                                             Grip::Config::SpearGrab::LiftExecute);
         break;
     }
     case PCCommand::StoreKFS:

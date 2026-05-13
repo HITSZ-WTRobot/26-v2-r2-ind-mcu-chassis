@@ -69,7 +69,7 @@ void TestTask(void* argument)
             {
                 const chassis::Posture target{ .x = target_x, .y = target_y, .yaw = target_yaw };
                 const chassis::Posture end{ .x = end_x, .y = end_y, .yaw = end_yaw };
-                spear.grab(target, end);
+                spear.grab(target, end, Grip::Config::SpearGrab::LiftExecute);
                 last_command_ok = spear.isRunning();
             }
         }

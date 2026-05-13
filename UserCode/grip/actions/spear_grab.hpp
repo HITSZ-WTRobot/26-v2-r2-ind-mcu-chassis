@@ -14,7 +14,7 @@ namespace Grip::Action
 /**
  * @brief 矛头夹取动作
  *
- * 负责：底盘切入 prepare 区 -> 夹爪进入 ready -> 到 target_pos 夹取 ->
+ * 负责：底盘切入 prepare 区 -> 夹爪进入 ready -> 到 target_pos 合爪并抬升 ->
  *      先沿 target_pos 的 x 方向离开危险区 -> 再移动到 end_pos 并对接。
  *
  * 该类只编排高层状态机，不直接实现底层闭环：
@@ -35,8 +35,11 @@ public:
      *
      * @param target_pos 待取矛头所在的世界系绝对位姿
      * @param end_pos 动作完成后的世界系绝对位姿，需保证其位于安全区内
+     * @param lift_execute 夹取前 lift 执行高度，单位 m
      */
-    void grab(const chassis::Posture& target_pos, const chassis::Posture& end_pos);
+    void grab(const chassis::Posture& target_pos,
+              const chassis::Posture& end_pos,
+              float                   lift_execute);
 
     /** @brief 是否为空闲状态，表示尚未接收动作或已被复位。 */
     [[nodiscard]] bool isIdle() const;
@@ -57,7 +60,8 @@ private:
         Idle,                 ///< 空闲，尚未开始。
         MovingToPrepare,      ///< 底盘切入 prepare 区，同时 lift / grip 调整到预备状态。
         MovingToTarget,       ///< 由 prepare 区继续切入目标位姿。
-        Grabbing,             ///< 底盘已到位，机械臂执行夹取。
+        WaitingClawClose,     ///< 底盘已到位，合爪并等待夹紧。
+        RaisingLiftAfterGrab, ///< 合爪后继续抬升 lift，等待矛头脱离。
         LeavingTargetToSafeX, ///< 沿目标 x 方向先脱离危险区。
         MovingToEnd,          ///< 从安全 x 位置移动到最终结束位姿。
         Done                  ///< 全流程结束，或因失败中止。
@@ -98,6 +102,12 @@ private:
     chassis::Posture prepare_pos_{};
     /// 仅沿目标 x 方向先撤离后的中间位姿。
     chassis::Posture leave_target_x_only_pos_{};
+    /// 本轮动作传入的 lift 执行高度。
+    float lift_execute_{};
+    /// 本轮合爪后继续抬升的 lift 目标高度。
+    float post_grab_lift_pos_{};
+    /// 进入合爪等待阶段时的时间戳。
+    uint32_t wait_state_since_ms_{};
 };
 
 } // namespace Grip::Action

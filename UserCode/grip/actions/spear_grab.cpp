@@ -2,6 +2,7 @@
 
 #include "grip/Config.hpp"
 #include "grip/grip.hpp"
+#include "main.h"
 #include "project_parts.hpp"
 
 #include <cassert>
@@ -57,7 +58,9 @@ void SpearGrab::abort()
     state_ = State::Done;
 }
 
-void SpearGrab::grab(const chassis::Posture& target_pos, const chassis::Posture& end_pos)
+void SpearGrab::grab(const chassis::Posture& target_pos,
+                     const chassis::Posture& end_pos,
+                     const float             lift_execute)
 {
     // 若上次已结束，则允许复位到 Idle 重新启动一轮动作。
     if (!canStart())
@@ -71,6 +74,8 @@ void SpearGrab::grab(const chassis::Posture& target_pos, const chassis::Posture&
 
     target_pos_            = target_pos;
     end_pos_               = end_pos;
+    lift_execute_          = lift_execute;
+    post_grab_lift_pos_    = lift_execute_ + ::Grip::Config::SpearGrab::PostGrabLiftRaise;
     end_pos_rel_to_target_ = Chassis::ChassisLoc::WorldPosture2RelativePosture(target_pos_,
                                                                                end_pos_);
     if (end_pos_rel_to_target_.x <= safe_distance)
@@ -92,8 +97,7 @@ void SpearGrab::grab(const chassis::Posture& target_pos, const chassis::Posture&
     if constexpr (ProjectParts::EnableLift)
     {
         // 夹取前先把 lift 提到执行高度，为后续靠近目标留出机构空间。
-        Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftExecute,
-                                   Chassis::Config::Lift::OnloadLimit);
+        Chassis::motion->liftAllTo(lift_execute_, Chassis::Config::Lift::OnloadLimit);
     }
 
     state_ = State::MovingToPrepare;
@@ -151,11 +155,20 @@ void SpearGrab::update()
     {
         const auto rel_pos = currentRelativeToTarget();
 
+        const auto lift_settled = [&](const Lift::LiftSide& l)
+        {
+            return std::fabs(l.getPosition() - lift_execute_) <
+                   Config::SpearGrab::PrepareLiftZThreshold;
+        };
+
         // prepare 阶段关注横向与朝向误差，而非要求底盘完全停在 prepare 点。
-        // 一旦侧向 / 偏航收敛，且 lift / grip 都已到位，就可以直接衔接目标轨迹。
-        if (std::fabs(rel_pos.y) < ::Grip::Config::SpearGrab::PrepareYThreshold &&
-            std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold &&
-            is_lift_finished() && ::Grip::grip->isFinished())
+        // 一旦侧向 / 偏航 / lift 高度收敛，且 grip 已到位，就可以直接衔接目标轨迹。
+        if (std::fabs(rel_pos.y) < ::Grip::Config::SpearGrab::PrepareYThreshold &&     // y 方向就位
+            std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold && // yaw 就位
+            is_lift_finished() &&
+            lift_settled(Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front)) &&
+            lift_settled(Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear)) &&
+            ::Grip::grip->isFinished())
         {
             Chassis::ctrl->setTargetPostureInWorld(target_pos_,
                                                    Master::TrajectoryLinkMode::PreviousCurve,
@@ -169,33 +182,40 @@ void SpearGrab::update()
         break;
     }
     case State::MovingToTarget:
-        // 底盘到达目标位后，再让机械臂执行最终夹取，避免提早闭合或推进。
+        // 底盘到达目标位后先合爪，避免行进中提前夹住矛头。
         if (Chassis::ctrl->isTrajectoryFinished())
         {
-            if (!::Grip::grip->toGrabPose())
-            {
-                abort();
-                break;
-            }
-            state_ = State::Grabbing;
+            ::Grip::grip->closeClaw();
+            wait_state_since_ms_ = HAL_GetTick();
+            state_               = State::WaitingClawClose;
         }
         break;
-    case State::Grabbing:
-        if (::Grip::grip->isFinished())
+    case State::WaitingClawClose:
+        if (HAL_GetTick() - wait_state_since_ms_ >= ::Grip::Config::SpearGrab::ClawCloseDelayMs)
         {
-            // 夹取完成后先切到对接姿态；若姿态切换失败，整套动作立即中止。
+            // 合爪夹紧后先上抬，让矛头脱离取料位置，再进入撤离轨迹。
+            Chassis::motion->liftAllTo(post_grab_lift_pos_, Chassis::Config::Lift::OnloadLimit);
+            state_ = State::RaisingLiftAfterGrab;
+        }
+        break;
+    case State::RaisingLiftAfterGrab:
+        if (is_lift_finished())
+        {
+            // 合爪和抬升完成后先切到对接姿态；若姿态切换失败，整套动作立即中止。
             if (!::Grip::grip->toDockingPose())
             {
                 abort();
                 break;
             }
 
-            if constexpr (ProjectParts::EnableLift && (::Grip::Config::SpearGrab::LiftDocking >
-                                                       ::Grip::Config::SpearGrab::LiftExecute))
+            if constexpr (ProjectParts::EnableLift)
             {
-                // 如果对接高度高于夹取高度，则在撤离前就先抬升，减少后续碰撞风险。
-                Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftDocking,
-                                           Chassis::Config::Lift::OnloadLimit);
+                if (::Grip::Config::SpearGrab::LiftDocking > post_grab_lift_pos_)
+                {
+                    // 如果对接高度高于夹后抬升高度，则在撤离前就先抬升
+                    Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftDocking,
+                                               Chassis::Config::Lift::OnloadLimit);
+                }
             }
 
             // 第一段撤离只放开 x 方向，尽快离开危险区，再进入最终轨迹。
@@ -210,12 +230,14 @@ void SpearGrab::update()
 
         if (rel_pos.x > ::Grip::Config::SpearGrab::SafeDistance)
         {
-            if constexpr (ProjectParts::EnableLift && (::Grip::Config::SpearGrab::LiftDocking <=
-                                                       ::Grip::Config::SpearGrab::LiftExecute))
+            if constexpr (ProjectParts::EnableLift)
             {
-                // 若对接高度不高于夹取高度，则等撤到安全 x 之后再调整 lift。
-                Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftDocking,
-                                           Chassis::Config::Lift::OnloadLimit);
+                if (::Grip::Config::SpearGrab::LiftDocking <= post_grab_lift_pos_)
+                {
+                    // 若对接高度不高于夹后抬升高度，则等撤到安全 x 之后再调整 lift。
+                    Chassis::motion->liftAllTo(::Grip::Config::SpearGrab::LiftDocking,
+                                               Chassis::Config::Lift::OnloadLimit);
+                }
             }
             // 到达安全区后再切终点轨迹，避免在目标附近做大幅横移。
             Chassis::ctrl->setTargetPostureInWorld(end_pos_,
