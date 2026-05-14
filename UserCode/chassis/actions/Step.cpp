@@ -59,31 +59,46 @@ void Step::prepare(const float     startDistance2Step,
     }
 }
 
+float Step::stepUpPosition() const
+{
+    switch (height_)
+    {
+    case Height::Step400:
+        return Position::StepUp400;
+    case Height::Step200:
+    default:
+        return Position::StepUp200;
+    }
+}
+
 /**
  * 上台阶
  * @param startDistance2Step 开始时车体中心距离台阶的距离 unit: m
  * @param endDistance2Step 结束时车体中心距离台阶的距离 unit: m
  * @param dir 上台阶方向
  * @param willTake 中间是否会停下来取卷轴
+ * @param height 台阶高度
  *
  */
 void Step::up(const float     startDistance2Step,
               const float     endDistance2Step,
               const Direction dir,
-              const bool      willTake)
+              const bool      willTake,
+              const Height    height)
 {
     if (isRunning())
         return;
 
     prepare(startDistance2Step, endDistance2Step, dir);
     will_take_ = willTake;
+    height_    = height;
 
     chassis_state_ = ChassisState::Up1_等待底盘到达台阶高度_同时往台阶位移;
     front_state_   = LiftState::Up1_抬升ing;
     rear_state_    = LiftState::Up1_抬升ing;
 
-    front_->to(Position::UpStep, OnloadLimit);
-    rear_->to(Position::UpStep, OnloadLimit);
+    front_->to(stepUpPosition(), OnloadLimit);
+    rear_->to(stepUpPosition(), OnloadLimit);
 
     // 第一个坐标点为 车体前边缘贴着台阶
     Chassis::ctrl->setTargetPostureInWorld(
@@ -97,18 +112,21 @@ void Step::up(const float     startDistance2Step,
  * @param endDistance2Step 结束时车体中心距离台阶的距离 unit: m
  * @param dir 下台阶方向
  * @param shouldReset 最后是否复位底盘高度
+ * @param height 台阶高度
  *
  */
 void Step::down(const float     startDistance2Step,
                 const float     endDistance2Step,
                 const Direction dir,
-                const bool      shouldReset)
+                const bool      shouldReset,
+                const Height    height)
 {
     if (isRunning())
         return;
 
     prepare(startDistance2Step, endDistance2Step, dir);
     should_reset_ = shouldReset;
+    height_       = height;
 
     chassis_state_ = ChassisState::Down0_前进使前轮前边缘到达台阶边缘_等待底盘降为过渡高度;
     front_state_   = LiftState::Down1_等待放下;
@@ -282,7 +300,7 @@ void Step::update()
         }
         if (currentRelativeX() > startDistance2Step_ - AbsWheelInnerEdgeX + SafeDistance)
         {
-            front_->to(Position::UpStep, NoloadLimit);
+            front_->to(stepUpPosition(), NoloadLimit);
             front_state_ = LiftState::Down2_放下ing;
         }
         break;
@@ -377,7 +395,7 @@ void Step::update()
         }
         if (currentRelativeX() > startDistance2Step_ + AbsWheelOuterEdgeX + SafeDistance)
         {
-            rear_->to(Position::UpStep, NoloadLimit);
+            rear_->to(stepUpPosition(), NoloadLimit);
             rear_state_ = LiftState::Down2_放下ing;
         }
         break;

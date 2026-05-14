@@ -79,7 +79,7 @@ enum class PCCommand : uint8_t
     LidarPosture = 0x21,
 
     /* 动作组 */
-    /// 上台阶
+    /// 上 200mm 台阶
     /// |        int16       |      int16       |   uint16  |  uint16  |
     /// | startDistance*2000 | endDistance*2000 | direction | willTake |
     /// @param startDistance: 开始时车体中心距离台阶边缘的距离
@@ -88,10 +88,10 @@ enum class PCCommand : uint8_t
     ///                   1 Backward，车头朝后上台阶
     /// @param willTake: 0 连贯上台阶;
     ///                  1 中途将停下来取卷轴，发送 StepUpResume 指令后继续执行上台阶动作
-    StepUp = 0x30,
-    /// 继续上台阶动作
+    StepUp200 = 0x30,
+    /// 继续上台阶动作，200mm / 400mm 共用
     StepUpResume = 0x31,
-    /// 下台阶
+    /// 下 200mm 台阶
     /// |        int16       |      int16       |   uint16  |    uint16   |
     /// | startDistance*2000 | endDistance*2000 | direction | shouldReset |
     /// @param startDistance: 开始时车体中心距离台阶边缘的距离
@@ -100,7 +100,11 @@ enum class PCCommand : uint8_t
     ///                   1 Backward，车头朝后下台阶
     /// @param shouldReset: 1 下台阶之后底盘恢复到正常高度
     ///                     0 下台阶最后一步不回收底盘，底盘仍处于比台阶高的状态
-    StepDown = 0x32,
+    StepDown200 = 0x32,
+    /// 上 400mm 台阶，数据格式与 StepUp200 相同
+    StepUp400 = 0x33,
+    /// 下 400mm 台阶，数据格式与 StepDown200 相同
+    StepDown400 = 0x34,
 
     /// 取矛头
     /// |     int16   |     int16   |        int16      |   int16  |   int16  |      int16     |

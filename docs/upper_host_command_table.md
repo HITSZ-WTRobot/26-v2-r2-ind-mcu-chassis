@@ -55,9 +55,11 @@
 | `0x16` | `SetGripPose` | `arm_pos(int16), turn_pos(int16), clawMode(uint16), reserve(uint16), reserve(uint16), reserve(uint16)` | 设置 Grip 双轴关节目标和可选夹爪状态。 |
 | `0x17` | `SetGripPresetPose` | `presetId(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16)` | 设置 Grip 到预设姿态。 |
 | `0x21` | `LidarPosture` | `x(int16), y(int16), yaw(int16), lidarTimestamp(uint32)` | 上位机定位位姿输入。 |
-| `0x30` | `StepUp` | `startDistance(int16), endDistance(int16), direction(uint16), willTake(uint16)` | 上台阶动作组。 |
-| `0x31` | `StepUpResume` | 无 | 恢复此前因 `willTake=1` 暂停的上台阶流程。 |
-| `0x32` | `StepDown` | `startDistance(int16), endDistance(int16), direction(uint16), shouldReset(uint16)` | 下台阶动作组。 |
+| `0x30` | `StepUp200` | `startDistance(int16), endDistance(int16), direction(uint16), willTake(uint16)` | 上 200mm 台阶动作组。 |
+| `0x31` | `StepUpResume` | 无 | 恢复此前因 `willTake=1` 暂停的上台阶流程，200mm / 400mm 共用。 |
+| `0x32` | `StepDown200` | `startDistance(int16), endDistance(int16), direction(uint16), shouldReset(uint16)` | 下 200mm 台阶动作组。 |
+| `0x33` | `StepUp400` | 与 `StepUp200` 相同 | 上 400mm 台阶动作组。 |
+| `0x34` | `StepDown400` | 与 `StepDown200` 相同 | 下 400mm 台阶动作组。 |
 | `0x40` | `TakeSpear` | `target_x(int16), target_y(int16), target_yaw(int16), end_x(int16), end_y(int16), end_yaw(int16)` | 直接指定待取矛头位姿和结束位姿。 |
 | `0x41` | `TakeSpearById` | `spearId(uint16), end_x(int16), end_y(int16), end_yaw(int16), reserve(uint16), reserve(uint16)` | 通过固定矛位索引启动取矛头。 |
 | `0x42` | `StoreKFS` | 无 | 卷轴临时存放动作组。 |
@@ -178,7 +180,7 @@
 - 当前实现只接受来自主上位机链路、且对时已稳定的 `LidarPosture`；未满足这两个条件时，该帧不会喂定位 watchdog，也不会进入定位更新。
 - 当工程启用了上位机定位模式时，首个满足上述接入条件的 `LidarPosture` 会承担系统初始位姿的延迟初始化职责。
 
-### 5.7 `0x30 StepUp`
+### 5.7 `0x30 StepUp200 / 0x33 StepUp400`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -187,7 +189,13 @@
 | `direction` | `uint16` | `0=Forward`, `1=Backward` |
 | `willTake` | `uint16` | `0=连贯上台阶`, `1=中途停下等待取卷轴` |
 
-### 5.8 `0x32 StepDown`
+补充：
+
+- `0x30 StepUp200` 使用 200mm 台阶高度配置。
+- `0x33 StepUp400` 使用 400mm 台阶高度配置。
+- `0x31 StepUpResume` 对两种上台阶动作共用，只恢复当前正在等待取件的上台阶流程。
+
+### 5.8 `0x32 StepDown200 / 0x34 StepDown400`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -195,6 +203,11 @@
 | `endDistance` | `int16` | 结束时车体中心距离台阶边缘的距离，编码为 `m * 2000` |
 | `direction` | `uint16` | `0=Forward`, `1=Backward` |
 | `shouldReset` | `uint16` | `1=下台阶后恢复正常高度`, `0=最后一步不回收底盘` |
+
+补充：
+
+- `0x32 StepDown200` 使用 200mm 台阶高度配置。
+- `0x34 StepDown400` 使用 400mm 台阶高度配置。
 
 ### 5.9 `0x40 TakeSpear`
 

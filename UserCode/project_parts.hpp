@@ -82,7 +82,7 @@
 #    define PROJECT_PART_ENABLE_PC_LOCALIZATION 1
 #endif
 
-/// 启用上位机控制命令接入，例如 Stop / StepUp / StepDown 等。
+/// 启用上位机控制命令接入，例如 Stop / StepUp200 / StepDown200 等。
 #ifndef PROJECT_PART_ENABLE_PC_CONTROL
 #    define PROJECT_PART_ENABLE_PC_CONTROL 1
 #endif
@@ -181,7 +181,7 @@ inline constexpr bool EnableSpearGrabWorkflow = EnableGrip && EnableWheelChassis
 /**
  * 台阶动作组是否可用。
  *
- * `StepUp/StepDown` 同时依赖：
+ * `StepUp200/400` 和 `StepDown200/400` 同时依赖：
  * - 上位机控制命令入口
  * - 底盘平面运动
  * - 升降机构

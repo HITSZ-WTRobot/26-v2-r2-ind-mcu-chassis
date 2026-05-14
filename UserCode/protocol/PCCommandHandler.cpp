@@ -158,11 +158,11 @@ void handleCommand(const Frame& frame)
             const float                  chassis_height = to_pos(read_i16(&data[0]));
             const Chassis::Config::Limit limit{
                 .max_spd  = read_positive_or_default(&data[2],
-                                                    1000.0f,
-                                                    Chassis::Config::Lift::OnloadLimit.max_spd),
+                                                     1000.0f,
+                                                     Chassis::Config::Lift::OnloadLimit.max_spd),
                 .max_acc  = read_positive_or_default(&data[4],
-                                                    100.0f,
-                                                    Chassis::Config::Lift::OnloadLimit.max_acc),
+                                                     100.0f,
+                                                     Chassis::Config::Lift::OnloadLimit.max_acc),
                 .max_jerk = read_positive_or_default(&data[6],
                                                      1.0f,
                                                      Chassis::Config::Lift::OnloadLimit.max_jerk),
@@ -326,7 +326,8 @@ void handleCommand(const Frame& frame)
         Chassis::updateLidar(pos, lidar_self_time);
         break;
     }
-    case PCCommand::StepUp:
+    case PCCommand::StepUp200:
+    case PCCommand::StepUp400:
     {
         // 台阶动作不是单一协议能力，而是“控制命令 + 底盘 + 升降”的组合能力。
         if constexpr (!ProjectParts::EnableStepAction)
@@ -343,12 +344,16 @@ void handleCommand(const Frame& frame)
             direction = Action::Step::Direction::Backward;
         else
             break;
-        Action::Step::inst().up(startDistance, endDistance, direction, willTake);
+
+        const Action::Step::Height height = frame.cmd == PCCommand::StepUp400
+                                                    ? Action::Step::Height::Step400
+                                                    : Action::Step::Height::Step200;
+        Action::Step::inst().up(startDistance, endDistance, direction, willTake, height);
         break;
     }
     case PCCommand::StepUpResume:
     {
-        // 与 StepUp 相同，只有完整动作链启用时才处理恢复命令。
+        // 与 StepUp200/400 相同，只有完整动作链启用时才处理恢复命令。
         if constexpr (!ProjectParts::EnableStepAction)
             break;
 
@@ -359,9 +364,10 @@ void handleCommand(const Frame& frame)
         }
         break;
     }
-    case PCCommand::StepDown:
+    case PCCommand::StepDown200:
+    case PCCommand::StepDown400:
     {
-        // 与 StepUp 相同，只有完整动作链启用时才处理下台阶命令。
+        // 与 StepUp200/400 相同，只有完整动作链启用时才处理下台阶命令。
         if constexpr (!ProjectParts::EnableStepAction)
             break;
 
@@ -376,7 +382,11 @@ void handleCommand(const Frame& frame)
             direction = Action::Step::Direction::Backward;
         else
             break;
-        Action::Step::inst().down(startDistance, endDistance, direction, shouldReset);
+
+        const Action::Step::Height height = frame.cmd == PCCommand::StepDown400
+                                                    ? Action::Step::Height::Step400
+                                                    : Action::Step::Height::Step200;
+        Action::Step::inst().down(startDistance, endDistance, direction, shouldReset, height);
         break;
     }
     case PCCommand::TakeSpear:

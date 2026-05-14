@@ -16,9 +16,11 @@ namespace Tests::StepManual
 
 // Ozone 触发变量：
 // 0 none
-// 1 step up
+// 1 step up 200
 // 2 step up resume
-// 3 step down
+// 3 step down 200
+// 4 step up 400
+// 5 step down 400
 /// 单次触发命令；测试线程读到非 0 后会执行并自动清零。
 volatile uint32_t trigger = 0U;
 
@@ -90,9 +92,12 @@ void TestTask(void* argument)
                 switch (cmd)
                 {
                 case 1U:
+                case 4U:
                     if (decodeDirection(direction, dir) && !step.isRunning())
                     {
-                        step.up(start_distance2step, end_distance2step, dir, will_take);
+                        const auto height = cmd == 4U ? Action::Step::Height::Step400
+                                                      : Action::Step::Height::Step200;
+                        step.up(start_distance2step, end_distance2step, dir, will_take, height);
                         last_command_ok = true;
                     }
                     break;
@@ -104,9 +109,13 @@ void TestTask(void* argument)
                     }
                     break;
                 case 3U:
+                case 5U:
                     if (decodeDirection(direction, dir) && !step.isRunning())
                     {
-                        step.down(start_distance2step, end_distance2step, dir, should_reset);
+                        const auto height = cmd == 5U ? Action::Step::Height::Step400
+                                                      : Action::Step::Height::Step200;
+                        step.down(
+                                start_distance2step, end_distance2step, dir, should_reset, height);
                         last_command_ok = true;
                     }
                     break;

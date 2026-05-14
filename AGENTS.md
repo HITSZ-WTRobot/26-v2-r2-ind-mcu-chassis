@@ -73,6 +73,10 @@ Upper-host protocol behavior is likewise feature-gated:
 - Treat the first `LidarPosture` frame that satisfies the current intake conditions as the delayed initialization trigger when upper-host localization is enabled.
 - Keep step-action commands gated by `ProjectParts::EnableStepAction`, which currently means PC control + wheel chassis + lift all enabled.
 - When upper-host command IDs, payload layouts, or feedback layouts change, update `docs/upper_host_command_table.md` and `docs/upper_host_feedback_table.md` in the same change.
+- Step action commands occupy `0x30..0x34`: `0x30 StepUp200`, `0x31 StepUpResume`
+  shared by all step-up heights, `0x32 StepDown200`, `0x33 StepUp400`, and
+  `0x34 StepDown400`. `StepUp200/400` share the same payload and differ only by
+  `Action::Step::Height`; `StepDown200/400` do the same.
 - Grip action commands occupy `0x40..0x43`: `0x40 TakeSpear` carries target/end posture as 6 packed `int16` values, `0x41 TakeSpearById` carries `SpearId + endPos`, and `0x42/0x43` trigger `StoreKFS/ReleaseKFS`.
 - The six fixed spear target postures live in `Grip::Config::SpearGrab::TargetPoses`; fill them with calibrated world-frame values before using `TakeSpearById`.
 - `TakeSpear` uses `Grip::Config::SpearGrab::SafeDistance` as a fixed retreat distance and is gated by `ProjectParts::EnableSpearGrabAction`; `StoreKFS/ReleaseKFS` are gated by `ProjectParts::EnableKfsAction`.

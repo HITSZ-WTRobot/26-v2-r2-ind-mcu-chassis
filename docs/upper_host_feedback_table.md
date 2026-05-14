@@ -79,6 +79,10 @@ grip_suction_has_object  = (table >> 10) & 0x1
 | `2` | `Running` | 台阶动作执行中 |
 | `3` | `WaitingTake` | 正在等待取卷轴后恢复 |
 
+补充：
+
+- `StepStatus` 只反馈台阶动作流程状态，不区分当前动作来自 `StepUp200/StepDown200` 还是 `StepUp400/StepDown400`。
+
 ### 3.2 `ChassisMode`
 
 | 值 | 枚举 | 含义 |

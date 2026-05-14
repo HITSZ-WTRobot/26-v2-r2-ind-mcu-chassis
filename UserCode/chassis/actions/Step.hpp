@@ -25,15 +25,23 @@ public:
         Backward
     };
 
+    enum class Height
+    {
+        Step200,
+        Step400
+    };
+
     void up(float     startDistance2Step,
             float     endDistance2Step,
             Direction dir      = Direction::Forward,
-            bool      willTake = false);
+            bool      willTake = false,
+            Height    height   = Height::Step200);
 
     void down(float     startDistance2Step,
               float     endDistance2Step,
               Direction dir         = Direction::Forward,
-              bool      shouldReset = true);
+              bool      shouldReset = true,
+              Height    height      = Height::Step200);
 
     void resume_up();
 
@@ -132,6 +140,8 @@ private:
     // 下台阶是否复位底盘
     bool should_reset_ = true;
 
+    Height height_ = Height::Step200;
+
     Direction direction_ = Direction::Forward;
 
     // 统一表示车体中心到台阶的距离。
@@ -158,6 +168,8 @@ private:
     {
         return x_sign_ * Chassis::loc->CurrentPostureRelativeTo(start_pos_).x;
     }
+
+    [[nodiscard]] float stepUpPosition() const;
 };
 
 } // namespace Action

@@ -90,7 +90,8 @@ using Lift::LiftMin;
 
 constexpr float Normal         = 0.02f;   // 行进默认保持高度 unit m
 constexpr float StepTransition = 0.01f;   // 上下台阶过程中的过渡高度 unit m
-constexpr float UpStep         = 0.22f;   // 比台阶略高 unit m
+constexpr float StepUp200      = 0.22f;   // 比 200mm 台阶略高 unit m
+constexpr float StepUp400      = 0.42f;   // 比 400mm 台阶略高 unit m
 constexpr float UpR1           = LiftMax; // 比 R1 的台阶高，在最后阶段 unit m
 } // namespace Position
 
