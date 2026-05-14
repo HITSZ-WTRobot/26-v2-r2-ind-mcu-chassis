@@ -92,7 +92,7 @@ void SpearGrab::grab(const chassis::Posture& target_pos,
         return;
 
     // 底盘先切入 prepare 位；这里不要求先完全到位，状态机后续会边走边判断。
-    Chassis::ctrl->setTargetPostureInWorld(prepare_pos_);
+    Chassis::ctrl->setTargetPostureInWorld(prepare_pos_, Config::SpearGrab::PrepareGrabLimit);
 
     if constexpr (ProjectParts::EnableLift)
     {
@@ -172,11 +172,7 @@ void SpearGrab::update()
         {
             Chassis::ctrl->setTargetPostureInWorld(target_pos_,
                                                    Master::TrajectoryLinkMode::PreviousCurve,
-                                                   {
-                                                           { 2, 0.8, 50.0 },
-                                                           { 2, 0.8, 50.0 },
-                                                           { 100, 50.0, 50.0 },
-                                                   });
+                                                   Config::SpearGrab::GrabLimit);
             state_ = State::MovingToTarget;
         }
         break;

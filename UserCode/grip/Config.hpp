@@ -70,6 +70,20 @@ constexpr chassis::Posture TargetPoses[] = {
     { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f },
 };
 
+using TrajectoryLimit = chassis::controller::Master::TrajectoryLimit;
+
+constexpr TrajectoryLimit PrepareGrabLimit = {
+    { 3, 1.2, 30 },
+    { 3, 1.2, 30 },
+    { 360, 180, 2500 },
+};
+
+constexpr TrajectoryLimit GrabLimit = {
+    { 0.8, 0.6, 30 },
+    { 0.8, 0.6, 30 },
+    { 100, 50, 2500 },
+};
+
 constexpr uint16_t TargetPosCount = std::size(TargetPoses);
 
 constexpr float SafeDistance = 0.25f; // 夹取后沿目标 x 方向先撤离的安全距离 unit m
