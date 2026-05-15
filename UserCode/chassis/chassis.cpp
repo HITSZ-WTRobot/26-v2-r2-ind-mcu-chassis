@@ -103,9 +103,11 @@ void initLocCtrl(const chassis::Posture& init_posture)
         if (Device::Sensor::gyro_yaw == nullptr)
             return;
 
-        loc_ekf = new ChassisLocEKF(*motion, make_loc_ekf_config(init_posture),
-                                    *Device::Sensor::gyro_yaw, 1);
-        loc = loc_ekf;
+        loc_ekf = new ChassisLocEKF(*motion,
+                                    make_loc_ekf_config(init_posture),
+                                    *Device::Sensor::gyro_yaw,
+                                    1);
+        loc     = loc_ekf;
     }
     else if constexpr (ProjectParts::EnableJustEncoderLocalization)
     {
