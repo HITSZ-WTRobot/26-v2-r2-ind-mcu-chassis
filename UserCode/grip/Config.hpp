@@ -37,7 +37,7 @@ constexpr JointPose PrepareGrab{ 0.0f, 0.0f };
 /// 夹取执行姿态：夹爪闭合，并把大臂推出完成矛头夹取。
 constexpr JointPose Grab{ 45.0f, 0.0f };
 /// 对接姿态：夹取完成后转向对接角度，等待底盘移动到最终位置。
-constexpr JointPose Docking{ 0.0f, -90.0f };
+constexpr JointPose Docking{ 60.0f, -100.0f };
 /// KFS 拾取姿态：吸盘对准取料位置。
 constexpr JointPose KfsPickup{ 90.0f, 0.0f };
 /// KFS 暂存姿态：吸住卷轴后转到暂存朝向。
