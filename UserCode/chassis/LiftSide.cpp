@@ -21,11 +21,13 @@ using namespace Chassis::Config::Lift;
 
 constexpr float toMotorSpeed(const float m)
 {
+    // 线速度 -> 电机角速度，轨迹库内部使用 deg/s。
     return m / GearRadius / M_PI * 180.0f;
 }
 
 constexpr Limit toMotorLimit(const Limit& limit)
 {
+    // 把工程上更直观的 m/s、m/s^2、m/s^3 换成电机角度单位。
     return { .max_spd  = toMotorSpeed(limit.max_spd),
              .max_acc  = toMotorSpeed(limit.max_acc),
              .max_jerk = toMotorSpeed(limit.max_jerk) };
@@ -37,11 +39,13 @@ static_assert(max_motor_limit.max_spd <= 2700.0f);
 
 static constexpr float toTrajectoryTarget(const float z_pos)
 {
+    // 目标高度先限制在机械允许范围内，再转成电机角度。
     return std::clamp(z_pos, LiftMin, LiftMax) / GearRadius / M_PI * 180.0f;
 }
 
 static constexpr float toPosition(const float motor_angle)
 {
+    // 电机角度 -> lift 高度，并扣除辅助轮接地时到机械限位的偏移。
     return motor_angle / 180.0f * M_PI * GearRadius - LiftOffset;
 }
 
@@ -106,11 +110,13 @@ float LiftSide::getPosition() const
 
 void LiftSide::startCalibration()
 {
+    // 实际的堵转判定和归零流程由 HomingMotorTrajectory 管理。
     traj_.startCalibration();
 }
 
 void LiftSide::update_1kHz()
 {
+    // 最快的速度环更新必须放在 1 kHz 控制链里。
     traj_.controllerUpdate();
 }
 

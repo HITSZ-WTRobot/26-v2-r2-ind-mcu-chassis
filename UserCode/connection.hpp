@@ -9,6 +9,12 @@
 
 namespace Connection
 {
+/**
+ * 连接状态位分配。
+ *
+ * 这张表是对外协议的一部分，新增 / 删除设备时必须同步更新这里、
+ * connection.cpp 的刷新逻辑，以及对应的协议文档。
+ */
 enum class Bit : uint8_t
 {
     Wheel0                = 0,
@@ -46,11 +52,17 @@ enum class Bit : uint8_t
  * - bit12~13: 预留
  * - bit14 : upper_host_localization
  * - bit15 : upper_host
+ *
+ * 注意：上位机相关 bit 只用于观测，不参与 Connection::waitAll() 的本地硬件等待。
  */
 inline volatile uint16_t table{};
 
+/** @brief 刷新一次连接表，并按配置注册 I2C 周期发送设备。 */
 void init();
+/** @brief 从各设备对象读取当前连接状态，更新 table。 */
 void updateTable();
+/** @brief 当前编译形态要求的本地硬件是否都在线。 */
 bool isAllConnected();
+/** @brief 阻塞等待本地硬件连接完成。 */
 void waitAll();
 } // namespace Connection

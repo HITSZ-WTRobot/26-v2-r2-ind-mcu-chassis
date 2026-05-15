@@ -4,6 +4,9 @@
  */
 #pragma once
 
+// 吸盘模块只保留“可复用的物理参数”和“通用迟滞阈值”。
+// Owner-specific 的 GPIO、时序策略和状态机延时都放在调用方配置里。
+
 #include <cstdint>
 
 namespace Suction::Config

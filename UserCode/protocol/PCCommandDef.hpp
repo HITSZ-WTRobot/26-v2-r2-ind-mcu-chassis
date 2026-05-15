@@ -8,10 +8,12 @@
 
 using CRC16Modbus = crc::CRCX<16, 0x8005, 0xFFFF, true, true, 0x0000>;
 
+// 所有上位机协议帧都用同一个二字节帧头。
 constexpr uint32_t HeaderLen  = 2;
 constexpr uint32_t PayloadLen = 1 + 2 * 6 + 4 + 2;
 constexpr uint32_t FrameLen   = HeaderLen + PayloadLen;
 
+// 辨识阶段只发送单字节 0xAA。
 constexpr uint8_t IdentifyInitByte = 0xAA;
 
 /// 反馈帧：
@@ -23,6 +25,9 @@ constexpr uint32_t FeedbackFrameLen   = HeaderLen + FeedbackPayloadLen;
 
 enum class PCCommand : uint8_t
 {
+    // 这里定义的是稳定的二进制协议编号，不是普通 C++ 枚举用法。
+    // 一旦修改，必须同步上位机解析端和文档。
+
     /// 上位机对时信号
     /// TODO: 返回 Pong
     Ping = 0x01,

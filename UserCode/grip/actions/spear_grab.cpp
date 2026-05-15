@@ -157,6 +157,7 @@ void SpearGrab::update()
 
         const auto lift_settled = [&](const Lift::LiftSide& l)
         {
+            // 准备阶段要求 lift 已经收敛到执行高度附近。
             return std::fabs(l.getPosition() - lift_execute_) <
                    Config::SpearGrab::PrepareLiftZThreshold;
         };

@@ -4,6 +4,9 @@
  */
 #pragma once
 
+// KFS 动作组只负责“暂存 / 释放卷轴”这一条业务线。
+// 它内部持有一只吸盘，并通过独立线程推进状态机。
+
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
 #include "suction/SuctionCup.hpp"

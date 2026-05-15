@@ -2,6 +2,8 @@
  * @file    auto_mapping.cpp
  * @brief   自动建图流程测试
  */
+// 这不是普通单元测试，而是一段可脚本化的联调流程。
+// 所有参数都集中在文件顶部，方便 Ozone 或调试器直接改变量。
 /**
  *      梅林坐标
  *      ---------------------------------
@@ -79,6 +81,7 @@ constexpr uint32_t kAutoStartDelayMs   = 10'000U;
 
 [[nodiscard]] bool canRunAutoMapping()
 {
+    // 自动建图依赖本地底盘、定位和控制器全部就绪。
     return Chassis::motion != nullptr && Chassis::motion->isReady() && Chassis::ctrl != nullptr &&
            Chassis::loc != nullptr;
 }
@@ -113,6 +116,7 @@ void reanchorInWorld(const chassis::Posture& target)
 
 void stepUp(const chassis::Posture& expected_posture)
 {
+    // Step 动作结束后立刻重新锚定世界位姿，避免累计漂移影响后续路径。
     auto& step = Action::Step::inst();
     step.up(kStepDistanceToStep, kStepDistanceAfter);
     step.waitForFinish();
@@ -130,6 +134,7 @@ void stepDown(const chassis::Posture& expected_posture)
 
 bool runAutoMapping()
 {
+    // 路径脚本按固定阶段编号推进，方便 Ozone 与日志对照。
     if (!canRunAutoMapping())
         return false;
 

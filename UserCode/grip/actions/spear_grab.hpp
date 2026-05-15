@@ -4,6 +4,9 @@
  */
 #pragma once
 
+// 这个动作组只编排高层状态机，不直接做底层闭环。
+// 底盘轨迹、lift 高度和 grip 姿态都由各自的执行层对象完成。
+
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
 #include "traits.hpp"

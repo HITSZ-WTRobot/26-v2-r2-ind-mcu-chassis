@@ -47,6 +47,7 @@ void KfsStore::store()
     if (!canStart())
         return;
 
+    // 有气压计时直接读当前判定；无气压计时则依赖动作内部锁存状态。
     // 有气压计时以实时检测为准；无气压计时退化为流程内的默认持物状态。
     if (kfs_suction_cup_.canDetectObject())
     {
@@ -121,6 +122,7 @@ bool KfsStore::isRunning() const
 
 bool KfsStore::hasDetectedObject()
 {
+    // 反馈层只需要知道“当前是否有物体”，不关心是否处于动作流程中。
     return kfs_suction_cup_.canDetectObject() && kfs_suction_cup_.hasObject();
 }
 
@@ -154,6 +156,7 @@ void KfsStore::update()
         }
         else
         {
+            // 无气压计时用固定延时兜底，避免动作永远卡在等待判定。
             attached = HAL_GetTick() - wait_state_since_ms_ >=
                        ::Grip::Config::KfsStore::AttachConfirmDelayMs;
         }
@@ -189,6 +192,7 @@ void KfsStore::update()
         }
         else
         {
+            // 同样地，无气压计时通过固定延时确认释放完成。
             released = HAL_GetTick() - wait_state_since_ms_ >=
                        ::Grip::Config::KfsStore::ReleaseConfirmDelayMs;
         }

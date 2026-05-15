@@ -31,6 +31,7 @@ uint16_t read_u16(const uint8_t* data)
 
 bool PCProtocol::decode(const uint8_t data[PayloadLen])
 {
+    // 先校验 CRC，再把命令打包交给命令处理线程。
     const uint16_t crc_in_data = read_u16(&data[PayloadLen - 2]);
     const uint16_t crc         = CRC16Modbus::calc(data, PayloadLen - 2);
 
@@ -53,6 +54,7 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
 PCProtocol::PCProtocol(UART_HandleTypeDef* huart, const bool is_main_protocol) :
     UartRxSync(huart), is_main_protocol_(is_main_protocol)
 {
+    // 每个协议实例创建时都要注册到反馈系统，方便反馈任务统一轮询发送。
     Feedback::registerProtocol(this);
 }
 
@@ -78,6 +80,7 @@ void PCProtocol::transmitCallback()
 
 void PCProtocol::transmitTaskStep(const std::array<uint8_t, FeedbackFrameLen>& feedback_frame)
 {
+    // 只有空闲时才允许发下一帧，避免和 DMA 中断并发。
     if (tx_state_ == TxState::Stopped || tx_state_ == TxState::DMAActive ||
         huart()->gState != HAL_UART_STATE_READY)
         return;
@@ -97,6 +100,7 @@ void PCProtocol::transmitTaskStep(const std::array<uint8_t, FeedbackFrameLen>& f
 
 bool PCProtocol::startTransmit()
 {
+    // 本实现依赖 DMA_NORMAL 模式；配置不符时直接拒绝启动。
     if (huart()->hdmatx == nullptr || huart()->hdmatx->Init.Mode != DMA_NORMAL)
         return false;
 
@@ -106,6 +110,7 @@ bool PCProtocol::startTransmit()
 
 void PCProtocol::errorHandler()
 {
+    // 只对 TX DMA 异常做主动恢复，其余错误交给基类处理。
     const bool has_tx_dma_error = (huart()->ErrorCode & HAL_UART_ERROR_DMA) != 0U &&
                                   huart()->hdmatx != nullptr &&
                                   huart()->hdmatx->ErrorCode != HAL_DMA_ERROR_NONE;
@@ -131,6 +136,7 @@ void init()
     if (pc_rx != nullptr)
         return;
 
+    // 主上位机链路的波特率是协议约定的一部分。
     assert(config::uart::UpperHost->Init.BaudRate == 230400);
 
     pc_rx = new PCProtocol(config::uart::UpperHost, true);
@@ -155,6 +161,7 @@ void init()
                               HAL_UART_TX_COMPLETE_CB_ID,
                               [](UART_HandleTypeDef* huart) { ctrl_rx.transmitCallback(); });
 
+    // 命令处理和反馈发送都在独立线程里运行。
     CommandHandler::startTask();
     Feedback::startTask();
 

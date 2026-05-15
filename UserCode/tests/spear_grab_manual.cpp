@@ -4,6 +4,8 @@
  */
 #include "tests.hpp"
 
+// 这是一个“一次触发一个动作”的手动测试入口。
+// Ozone 只需要改坐标和 trigger 值，线程会在后台执行完整动作。
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
 #include "grip/actions/spear_grab.hpp"

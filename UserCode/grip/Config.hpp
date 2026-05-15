@@ -4,6 +4,9 @@
  */
 #pragma once
 
+// 这一层集中放 grip 机构的语义姿态、轨迹限幅和校准参数。
+// 上层动作模块只引用这里的命名常量，不在动作代码里散落角度或电流魔法数。
+
 #include "IChassisDef.hpp"
 #include "can.h"
 #include "dji.hpp"
@@ -30,6 +33,7 @@ struct JointPose
 
 namespace Poses
 {
+// 这些姿态是“机械臂语义姿态”，不是底盘世界系位姿。
 /// 待机姿态：系统空闲、KFS 释放完成后都应回到这里。
 constexpr JointPose Standby{ 90.0f, 0.0f };
 /// 准备夹取姿态：夹爪张开，等待底盘靠近目标。
@@ -48,6 +52,7 @@ inline constexpr const JointPose& KfsRelease = KfsPickup;
 
 namespace KfsStore
 {
+// KFS 动作的 owner-side 时序参数都放在这里，动作逻辑只引用这些常量。
 inline constexpr uint32_t SuctionPressureUpdatePhaseMs = 5U;
 /// 无气压计时：到达取料位后，等待负压建立再认为已吸住。
 inline constexpr uint32_t AttachConfirmDelayMs = 150U;
@@ -55,6 +60,7 @@ inline constexpr uint32_t AttachConfirmDelayMs = 150U;
 inline constexpr uint32_t ReleaseConfirmDelayMs = 100U;
 
 inline const Suction::SuctionCup::Config SuctionCupConfig{
+    // 吸盘组件本身不知道自己属于谁，这里只把 owner 的 GPIO 和阈值装配进去。
     .pump_gpio                     = { GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin },
     .pressure_stale_ms             = 120U,
     .object_detect_on_pressure_pa  = Suction::Config::DetectOnPressurePa,
@@ -65,6 +71,7 @@ inline const Suction::SuctionCup::Config SuctionCupConfig{
 namespace SpearGrab
 {
 // TODO: 用实测世界系位姿替换下面 6 个占位矛位。
+// 这个表是固定矛位索引的唯一来源，上位机 TakeSpearById 会直接引用它。
 constexpr chassis::Posture TargetPoses[] = {
     { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f },
     { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f },
@@ -84,6 +91,7 @@ constexpr TrajectoryLimit GrabLimit = {
     { 100, 50, 2500 },
 };
 
+// 目标矛位个数，便于上位机与本地动作层做边界检查。
 constexpr uint16_t TargetPosCount = std::size(TargetPoses);
 
 constexpr float SafeDistance = 0.25f; // 夹取后沿目标 x 方向先撤离的安全距离 unit m
@@ -118,6 +126,7 @@ constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
 
 namespace Calibration
 {
+// 校准相关参数只在回零流程里使用，和正常轨迹参数分开保存。
 constexpr float ArmLockCurrent  = 8000.0f;
 constexpr float TurnLockCurrent = 2000.0f;
 
@@ -148,6 +157,7 @@ constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg =
 
 namespace Trajectory
 {
+// 轨迹层只关心限速、限加速度和 PD 补偿参数。
 constexpr velocity_profile::SCurveProfile::Config ArmCfg{
     .max_spd  = 360.0f,
     .max_acc  = 720.0f,

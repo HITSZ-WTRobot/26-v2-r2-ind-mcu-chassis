@@ -201,6 +201,9 @@ inline constexpr bool EnableStepAction = EnablePcControl && EnableStepWorkflow;
  */
 inline constexpr bool EnableKfsAction = EnablePcControl && EnableGrip && EnableGripSuction &&
                                         EnableGripSuctionPressureSensor;
+// TODO: fixbug 当前动作层已经支持“无气压计时用延时兜底确认”，但这里仍把
+// `EnableKfsAction` 绑定到 `EnableGripSuctionPressureSensor`，会导致无传感器形态下
+// StoreKFS/ReleaseKFS 完全不可启动；后续应确认上位机动作能力是否只依赖吸盘硬件。
 
 /**
  * 取矛头动作组是否可用。

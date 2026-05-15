@@ -4,6 +4,9 @@
  */
 #pragma once
 
+// SuctionCup 只负责吸盘本身，不知道自己属于哪个机构。
+// 它接受一个可选压力传感器指针，并通过迟滞逻辑提供“是否吸住”的判断。
+
 #include "Config.hpp"
 #include "XGZP6847DDevice.hpp"
 #include "gpio_driver.h"
@@ -30,8 +33,11 @@ class SuctionCup : traits::NoCopy, traits::NoDelete
 public:
     struct Config
     {
+        // 气泵 GPIO 的所有权在 owner，SuctionCup 这里只持有一个拷贝。
         GPIO_t   pump_gpio;
+        // 如果样本超过这个时间没刷新，就认为它已经不可靠。
         uint32_t pressure_stale_ms{ 120U };
+        // 低压阈值触发“吸住”，高压阈值触发“释放”，形成迟滞区间。
         float    object_detect_on_pressure_pa;
         float    object_detect_off_pressure_pa;
     };
@@ -48,13 +54,16 @@ public:
      *
      * - 有气压计且当前样本新鲜时：按当前压力和上次判定状态做施密特触发判断；
      * - 没有气压计，或当前拿不到新鲜压力样本时：固定返回 false。
-     */
+    */
     [[nodiscard]] bool hasObject();
+    /** @brief 当前这个吸盘是否具备气压计判定能力。 */
     [[nodiscard]] bool canDetectObject() const { return pressure_sensor_ != nullptr; }
 
 private:
     Config           config_{};
+    // 传感器生命周期由外部管理，这里只保存观察用裸指针。
     XGZP6847DDevice* pressure_sensor_{ nullptr };
+    // 最近一次“是否吸住”的锁存状态。
     std::atomic_bool has_object_{ false };
 };
 

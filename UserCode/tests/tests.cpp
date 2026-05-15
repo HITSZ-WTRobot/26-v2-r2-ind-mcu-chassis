@@ -4,6 +4,7 @@
  */
 #include "tests.hpp"
 
+// 这里只负责聚合各测试入口的 init()，不承载任何具体测试逻辑。
 namespace Tests::ChassisLift
 {
 void init();

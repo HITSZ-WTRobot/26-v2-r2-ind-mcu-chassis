@@ -4,6 +4,9 @@
  */
 #pragma once
 
+// `tests/` 目录下每个 cpp 对应一个独立测试入口。
+// 这样可以按文件启停，而不会把临时调试逻辑揉进正式业务代码。
+
 /**
  * 一份 cpp 对应一项测试。
  *
@@ -33,6 +36,7 @@
 namespace Tests
 {
 
+// 宏开关转成编译期布尔值，便于业务代码里直接做 if constexpr。
 inline constexpr bool EnableChassisLift     = TEST_ENABLE_CHASSIS_LIFT != 0;
 inline constexpr bool EnableGripStandalone  = TEST_ENABLE_GRIP_STANDALONE != 0;
 inline constexpr bool EnableStepManual      = TEST_ENABLE_STEP_MANUAL != 0;

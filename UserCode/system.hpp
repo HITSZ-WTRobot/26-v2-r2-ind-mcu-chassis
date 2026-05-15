@@ -8,14 +8,21 @@ namespace System
 namespace Init
 {
 
-/* 定位初始位置 */
-// 是否已完成上位机串口辨识
+/**
+ * 这里保存的是“最终系统初始化门槛”需要用到的上位机状态。
+ *
+ * 注意它和 Connection::waitAll() 的职责不同：
+ * - Connection 只等本地硬件链路，为 enable / calibration 服务；
+ * - System::Init 负责等上位机辨识、首帧定位等高层条件。
+ */
+
+// 是否已完成上位机串口辨识。
 inline bool upperHostIdentified = false;
-// 是否接收到上位机初始位置数据
+// 是否接收到可用于初始化定位的上位机首帧位置数据。
 inline bool postureReceived = false;
-// 初始位置
+// 上位机给出的初始世界系位置。
 inline chassis::Posture posture;
-// hook
+// 首帧位姿到达后的初始化钩子，由 chassis.cpp 提供实现。
 extern void initPostureReceive();
 
 /**

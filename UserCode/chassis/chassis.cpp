@@ -21,6 +21,8 @@ constexpr float sq(const float value)
 
 ChassisLocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
 {
+    // EKF 初值由上位机位置 + 当前陀螺仪 yaw 组成。
+    // yaw_offset 表示“上位机世界系 yaw”和“陀螺仪本体 yaw”的固定偏差。
     const float init_gyro_yaw = Device::Sensor::gyro_yaw->getYaw();
 
     return {
@@ -38,12 +40,14 @@ ChassisLocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
 }
 [[nodiscard]] chassis::Posture default_init_posture()
 {
+    // 没有上位机定位首帧时，从世界系原点起步。
     return { .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
 }
 } // namespace
 
 void update_100Hz()
 {
+    // 100 Hz 主要推进轨迹曲线；速度环等快速控制不放在这里。
     if (motion != nullptr)
         motion->update_100Hz();
 
@@ -55,6 +59,7 @@ void update_1kHz()
 {
     static uint32_t prescaler_500Hz = 0;
 
+    // 定位先更新，控制器随后使用最新反馈。
     if (loc_ekf != nullptr)
         loc_ekf->update();
     else if (loc_encoder != nullptr)
@@ -62,6 +67,7 @@ void update_1kHz()
 
     if (ctrl != nullptr)
     {
+        // 主控制器的误差修正 500 Hz 即可，输出控制仍保持 1 kHz。
         prescaler_500Hz++;
         if (prescaler_500Hz >= 2)
         {
@@ -118,6 +124,7 @@ void initLocCtrl(const chassis::Posture& init_posture)
     if (loc == nullptr)
         return;
 
+    // 控制器只依赖统一的 motion / loc 接口，因此不关心底层定位实现。
     ctrl = new ChassisController(*motion, *loc, Config::Control::masterCfg);
 }
 
@@ -137,6 +144,7 @@ void initStandaloneLocCtrl()
 
 void updateLidar(const chassis::Posture& posture, const uint32_t ticks)
 {
+    // 只有 EKF 模式才会消费外部位姿观测。
     if (loc_ekf != nullptr)
         loc_ekf->updateLidar(posture, ticks);
 }
@@ -156,5 +164,6 @@ void enable()
 // 系统初始化钩子
 void System::Init::initPostureReceive()
 {
+    // 收到第一帧上位机位姿后才允许创建 EKF / controller。
     Chassis::initLocCtrl(posture);
 }

@@ -4,6 +4,12 @@
  */
 #pragma once
 
+// 这个头文件暴露的是 grip 的“执行层接口”：
+// - 机械臂轨迹控制；
+// - 夹爪 GPIO 开合；
+// - 一组语义姿态快捷入口。
+// 具体参数和曲线配置都放在 `grip/Config.hpp`。
+
 #include "Config.hpp"
 #include "cmsis_os2.h"
 #include "gpio_driver.h"
@@ -84,6 +90,7 @@ public:
 private:
     bool enabled_{ false };
 
+    // 两个关节各自拥有独立速度环控制器。
     /// 大臂电机速度环控制器。
     controllers::MotorVelController arm_vel_controller_;
     /// 转向电机速度环控制器。
@@ -107,7 +114,7 @@ private:
     bool planPose(const Config::JointPose& pose);
 };
 
-/// 全局单例风格 grip 入口，由 Grip::init() 负责创建。
+/// 全局单例风格 grip 入口，由 `Grip::init()` 负责创建。
 inline Grip* grip{};
 
 /** @brief 初始化 grip 单例；重复调用安全。 */

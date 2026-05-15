@@ -4,6 +4,8 @@
  */
 #include "tests.hpp"
 
+// 这是一个给 Ozone 直接调参的联调入口。
+// 它不自动跑流程，只把外部输入映射成一次动作命令。
 #include "chassis/Config.hpp"
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"

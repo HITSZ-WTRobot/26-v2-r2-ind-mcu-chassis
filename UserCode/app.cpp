@@ -3,6 +3,11 @@
  * @author  syhanjin
  * @date    2026-03-02
  */
+// 本文件是整机固件的“调度总入口”：
+// - Init() 负责按依赖顺序创建模块、等待校准并最终 enable；
+// - TIM_Callback_1kHz_1/2() 把高速控制和总线发送拆到两个半拍；
+// - TIM_Callback_100Hz() 推进较慢的轨迹层。
+// 业务模块的具体实现不应塞到这里，只在这里串起生命周期。
 #include "can.h"
 #include "chassis/chassis.hpp"
 #include "chassis/actions/Step.hpp"
@@ -27,6 +32,7 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
     Chassis::update_1kHz();
     if (Grip::grip != nullptr)
     {
+        // grip 的误差修正只需要 500 Hz，因此由 1 kHz 中断简单分频得到。
         grip_prescaler_500Hz++;
         if (grip_prescaler_500Hz >= 2)
         {
@@ -72,7 +78,8 @@ double usage = 0;
  */
 extern "C" void Init(void* argument)
 {
-    /* 初始化代码 */
+    // 1. 创建所有静态生命周期的模块对象。
+    //    这里的 new 来自 UserCode/arena.cpp 的静态 arena，delete 不会真正释放内存。
     Device::init();
 
     Chassis::init();
@@ -103,6 +110,7 @@ extern "C" void Init(void* argument)
 
     Connection::init();
 
+    // 所有共享 I2C2 周期设备都必须先 register，再由这里统一启动 manager。
     if (!AppI2C::start_bus2_manager())
         Error_Handler();
 
@@ -110,7 +118,7 @@ extern "C" void Init(void* argument)
     if (service::Watchdog::isFull())
         Error_Handler();
 
-    // 启动定时器
+    // 2. 启动定时器。
     // 使用 1 kHz 周期中断 + 半周期后比较中断，把“控制计算”和“CAN 发送 / 管理刷新”分到两个半拍。
     HAL_TIM_RegisterCallback(&htim5, HAL_TIM_PERIOD_ELAPSED_CB_ID, TIM_Callback_1kHz_1);
     HAL_TIM_RegisterCallback(&htim5, HAL_TIM_OC_DELAY_ELAPSED_CB_ID, TIM_Callback_1kHz_2);
@@ -122,7 +130,7 @@ extern "C" void Init(void* argument)
     // 这里只等待下位机本地硬件链路在线；上位机辨识/定位首帧等要求统一放到最终初始化完成门槛。
     Connection::waitAll();
 
-    // 等待更新
+    // 给设备连接状态、传感器首帧和周期任务一点收敛时间。
     osDelay(2000);
 
     // Motion 非空表示当前调试形态包含“底盘轮组”或“升降机构”至少一个。
@@ -145,6 +153,7 @@ extern "C" void Init(void* argument)
             Grip::grip->startCalibration(); // 电机堵转到限位处进行初始化
     }
 
+    // 3. 等待当前编译形态中启用的本地机构都完成校准。
     while (true)
     {
         // “底盘 ready”在当前工程里等价为：若启用了升降，则两个 LiftSide 已校准完成；
@@ -168,6 +177,7 @@ extern "C" void Init(void* argument)
     // - 有陀螺仪但无上位机定位包：构造本地下位机 EKF
     Chassis::initStandaloneLocCtrl();
 
+    // 4. 等待上位机相关的最终初始化条件。
     // 这里统一等待“系统初始化完成”：
     // - 若启用了上位机串口辨识初始化，则必须先收到任意合法上位机帧；
     // - 若启用了上位机定位包，则还必须等待首个满足当前接入条件的位姿。
@@ -176,6 +186,7 @@ extern "C" void Init(void* argument)
 
     osDelay(50);
 
+    // 5. 校准和系统初始化都通过后，才允许控制器进入 enable 状态。
     // 仅在底盘轮组启用时，才真正使能底盘控制器。
     Chassis::enable();
     if constexpr (ProjectParts::EnableGrip)

@@ -5,6 +5,9 @@
  */
 #pragma once
 
+// 这个时钟类只做一件事：把上位机时间和本地 HAL tick 做近似对齐。
+// 它不负责网络同步，只负责给协议层一个足够稳定的时间偏移估计。
+
 #include "stm32f4xx_hal.h"
 
 #include <cmath>
@@ -37,6 +40,7 @@ public:
 
     void align(const float self_time, const float pc_time)
     {
+        // 这里不是硬对齐，而是低通更新 offset，减少单帧抖动的影响。
         last_residual_before_align_ms_ = pc_time - self_time;
 
         const float delta = last_residual_before_align_ms_;

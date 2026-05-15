@@ -17,7 +17,7 @@ constexpr float deg2rad(const float deg)
 }
 
 /**
- * rad/s to round/min
+ * rad/s to round/min.
  * @param rps rad/s
  */
 constexpr float rps2rpm(const float rps)
@@ -53,6 +53,7 @@ IndLiftMecanum4::IndLiftMecanum4() :
     lift_{ Lift::LiftSide(Device::Motor::lift[0], Device::Motor::lift[1]),
            Lift::LiftSide(Device::Motor::lift[2], Device::Motor::lift[3]) }
 {
+    // 运动学几何参数统一换算成 SI 单位，后续控制链不再混用 mm。
     wheel_radius_ = Config::Motion::WheelRadiusMM * 1e-3f;
 
     constexpr float half_x = Config::Motion::WheelDistanceXMM * 1e-3f * 0.5f;
@@ -65,6 +66,7 @@ bool IndLiftMecanum4::enable()
 {
     bool enabled = true;
 
+    // 轮组和 lift 任意一个 enable 失败，整个 motion 都回退为 disable。
     if constexpr (ProjectParts::EnableWheelChassis)
         for (auto& w : wheel_)
             enabled &= w.enable();
@@ -87,6 +89,7 @@ bool IndLiftMecanum4::enable()
 
 void IndLiftMecanum4::disable()
 {
+    // 停止时同时关掉所有启用的执行机构，保持 motion 内部状态一致。
     if constexpr (ProjectParts::EnableWheelChassis)
         for (auto& w : wheel_)
             w.disable();
@@ -101,12 +104,14 @@ void IndLiftMecanum4::update_1kHz()
     if (!enabled())
         return;
 
+    // 轮速环每 1 ms 更新一次。
     if constexpr (ProjectParts::EnableWheelChassis)
         for (auto& wheel : wheel_)
             wheel.update();
 
     if constexpr (ProjectParts::EnableLift)
     {
+        // lift 的误差修正 500 Hz；速度环仍保持 1 kHz。
         ++prescaler_;
         if (prescaler_ == 2)
         {
@@ -122,6 +127,7 @@ void IndLiftMecanum4::update_1kHz()
 
 void IndLiftMecanum4::update_100Hz()
 {
+    // lift 的 S 曲线轨迹推进放在 100 Hz。
     if constexpr (ProjectParts::EnableLift)
         for (auto& l : lift_)
             l.update_100Hz();
@@ -136,6 +142,7 @@ chassis::Velocity IndLiftMecanum4::forwardGetVelocity()
 
     if constexpr (!ProjectParts::EnableLift)
     {
+        // 没有 lift 时，四个轮子都默认接地，按标准四麦轮反解。
         vel.vx = wheel(WheelType::FrontRight).getMotor()->getVelocity() +
                  wheel(WheelType::FrontLeft).getMotor()->getVelocity() +
                  wheel(WheelType::RearRight).getMotor()->getVelocity() +
@@ -157,6 +164,8 @@ chassis::Velocity IndLiftMecanum4::forwardGetVelocity()
         return vel;
     }
 
+    // 有 lift 时，某一侧 lift 收起后对应轮组可能离地。
+    // 速度估计只使用 grounding=true 的轮组，并用 factor 做平均。
     float factor = 1.0f;
 
     if (lift(LiftType::Front).isGrounding())

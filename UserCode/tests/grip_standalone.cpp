@@ -4,6 +4,8 @@
  */
 #include "tests.hpp"
 
+// 这个测试入口专门给 grip 单独调参用。
+// 它支持预设姿态和自定义双轴角度 / 夹爪状态。
 #include "cmsis_os2.h"
 #include "grip/Config.hpp"
 #include "grip/grip.hpp"
@@ -62,6 +64,7 @@ namespace
 
 bool applyPreset(const uint32_t preset_id)
 {
+    // 预设编号只是把整数命令翻译成语义姿态。
     if (::Grip::grip == nullptr)
         return false;
 
@@ -88,6 +91,7 @@ bool applyPreset(const uint32_t preset_id)
 
 void applyCustom(const bool claw_close, const float arm_pos, const float turn_pos)
 {
+    // 自定义模式先处理夹爪，再下发双轴目标。
     if (claw_close)
         ::Grip::grip->closeClaw();
     else

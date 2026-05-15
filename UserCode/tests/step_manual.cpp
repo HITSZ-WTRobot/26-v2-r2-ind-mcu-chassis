@@ -4,6 +4,7 @@
  */
 #include "tests.hpp"
 
+// 这个文件把 Step 动作拆成几个可单独触发的按钮，方便观察状态机阶段。
 #include "chassis/actions/Step.hpp"
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
@@ -53,6 +54,7 @@ namespace
 
 bool decodeDirection(const uint32_t raw, Action::Step::Direction& dir)
 {
+    // Ozone 里只允许输入 0 / 1，其他值直接视为非法。
     if (raw == 0U)
     {
         dir = Action::Step::Direction::Forward;

@@ -24,6 +24,7 @@ struct Debug
 {
     struct
     {
+        // 仅供调试观察雷达位姿链路的时间同步和延迟情况。
         chassis::Posture last_received_posture{};
         uint32_t         last_received_posture_timestamp{};
         uint32_t         last_received_timestamp{};
@@ -75,6 +76,7 @@ trajectory::LinkMode read_lift_link_mode(const uint8_t* data)
 
 constexpr uint32_t MsgReceived = 1 << 0;
 
+// LidarPosture watchdog 的超时门槛，单位是 Watchdog::EatAll 消耗的 tick。
 constexpr uint32_t LidarPostureTimeoutTicks = 200U;
 
 libs::RingBuffer<Frame, 10> command_buffer_{};
@@ -87,6 +89,7 @@ service::Watchdog lidar_posture_watchdog_{};
 
 bool to_grip_preset_pose(const uint16_t preset_id)
 {
+    // 预设姿态编号只是把上位机的整数命令翻译成语义姿态。
     if (Grip::grip == nullptr || !Grip::grip->enabled())
         return false;
 
@@ -118,6 +121,7 @@ void handleCommand(const Frame& frame)
 
     if (frame.from_main_protocol)
     {
+        // 主上位机帧带有发送时间戳，可以用来做时钟对齐。
         const auto  self_time      = static_cast<float>(frame.rx_timestamp);
         const float target_pc_time = static_cast<float>(frame.tx_timestamp) +
                                      frame.protocol->transitionDelayMS();
@@ -441,6 +445,7 @@ void handleCommand(const Frame& frame)
 
     for (;;)
     {
+        // 先把缓冲区里积压的帧全部处理完，再阻塞等待新消息。
         Frame frame{};
         while (command_buffer_.pop(frame))
         {
@@ -471,6 +476,7 @@ namespace CommandHandler
 
 bool enqueueFrame(const Frame& frame)
 {
+    // 收包线程只负责入队，真正执行命令的是独立处理线程。
     const bool pushed = command_buffer_.push(frame);
     if (pushed && command_handler_task_ != nullptr)
         osThreadFlagsSet(command_handler_task_, MsgReceived);

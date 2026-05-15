@@ -28,6 +28,7 @@ bool SuctionCup::hasObject()
     if (pressure_sensor_ == nullptr)
         return false;
 
+    // 没有新鲜样本时直接返回 false，不做历史时间补偿。
     const uint32_t now_ms = HAL_GetTick();
 
     const XGZP6847DDevice::Sample sample = pressure_sensor_->snapshot();
@@ -35,6 +36,7 @@ bool SuctionCup::hasObject()
     if (!sample.valid || !pressure_sensor_->isDataFresh(now_ms, config_.pressure_stale_ms))
         return false;
 
+    // 迟滞逻辑：只有跨过相反阈值才翻转状态。
     bool expected = has_object_.load(std::memory_order_relaxed);
     for (;;)
     {

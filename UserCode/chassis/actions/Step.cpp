@@ -10,6 +10,7 @@ namespace Action
 {
 namespace
 {
+// 这两个 flag 只用于唤醒 / 恢复后台线程，不承载业务状态。
 constexpr uint32_t FlagStart  = 1 << 0;
 constexpr uint32_t FlagResume = 1 << 1;
 
@@ -27,6 +28,7 @@ Step::Step()
         .stack_size = 1024 * 4,
         .priority   = osPriorityNormal,
     };
+    // 独立线程让 Step 可以与协议处理、底盘控制解耦。
     task_ = osThreadNew(TaskEntry, this, &attr);
 }
 
@@ -40,6 +42,7 @@ void Step::prepare(const float     startDistance2Step,
                    const float     endDistance2Step,
                    const Direction dir)
 {
+    // 这里把动作坐标系、车头朝向和 front / rear 的逻辑含义一次性确定下来。
     direction_          = dir;
     x_sign_             = dir == Direction::Forward ? 1 : -1;
     startDistance2Step_ = startDistance2Step;
@@ -61,6 +64,7 @@ void Step::prepare(const float     startDistance2Step,
 
 float Step::stepUpPosition() const
 {
+    // 200 mm 和 400 mm 台阶对应不同的最终 lift 高度。
     switch (height_)
     {
     case Height::Step400:
@@ -89,6 +93,7 @@ void Step::up(const float     startDistance2Step,
     if (isRunning())
         return;
 
+    // 先准备内部坐标和 lift 角色，再发出第一段底盘 / lift 目标。
     prepare(startDistance2Step, endDistance2Step, dir);
     will_take_ = willTake;
     height_    = height;
@@ -100,7 +105,7 @@ void Step::up(const float     startDistance2Step,
     front_->to(stepUpPosition(), OnloadLimit);
     rear_->to(stepUpPosition(), OnloadLimit);
 
-    // 第一个坐标点为 车体前边缘贴着台阶
+    // 第一个坐标点是“车体前边缘贴着台阶”的进入点。
     Chassis::ctrl->setTargetPostureInWorld(
             relativePosture(startDistance2Step_ - HalfChassisDistanceX - SafeDistance));
 
@@ -124,6 +129,7 @@ void Step::down(const float     startDistance2Step,
     if (isRunning())
         return;
 
+    // 下台阶时同样先把动作参数和 front / rear 角色确定好。
     prepare(startDistance2Step, endDistance2Step, dir);
     should_reset_ = shouldReset;
     height_       = height;
@@ -135,7 +141,7 @@ void Step::down(const float     startDistance2Step,
     front_->to(Position::StepTransition, OnloadLimit);
     rear_->to(Position::StepTransition, OnloadLimit);
 
-    // 第一个坐标点只是底盘的前导引导点；当两侧 lift 到达过渡高度后，会立即重定向到下一段目标。
+    // 第一个坐标点只是前导引导点；lift 到达过渡高度后会立刻重定向到正式目标。
     Chassis::ctrl->setTargetPostureInWorld(
             relativePosture(startDistance2Step_ - AbsWheelOuterEdgeX - 3 * SafeDistance));
 
@@ -153,6 +159,7 @@ void Step::resume_up()
 
 void Step::update()
 {
+    // 下面是底盘状态机，负责“车体应该在什么时候继续往前走”。
     switch (chassis_state_)
     {
     case ChassisState::Idle:
@@ -160,8 +167,8 @@ void Step::update()
     case ChassisState::Up1_等待底盘到达台阶高度_同时往台阶位移:
         if (front_->isFinished() && rear_->isFinished())
         {
-            // TODO: 不同阶段底盘的速度限制应当不同
-            // TODO: 如果 will_take_ = false, 则该目标值设置应当带末速度
+            // TODO: fixbug 不同阶段底盘的速度限制应当不同。
+            // TODO: fixbug 如果 will_take_ = false，这里还可以把末速度衔接得更平滑。
             Chassis::ctrl->setTargetPostureInWorld(
                     // 使前主动轮外边缘贴着台阶
                     relativePosture(startDistance2Step_ - AbsWheelOuterEdgeX - SafeDistance),
@@ -247,14 +254,15 @@ void Step::update()
     case LiftState::Idle:
         break;
     case LiftState::Up1_抬升ing:
+        // 前侧 lift 到位后才允许进入“等待收起”阶段。
         if (front_->isFinished())
             front_state_ = LiftState::Up2_等待收起;
         break;
     case LiftState::Up2_等待收起:
-        // 等待取物
+        // 等待取物。
         if (will_take_)
             break;
-        // TODO: 这里不应该这样扩大安全距离
+        // TODO: fixbug 这里不应该这样扩大安全距离。
         if (currentRelativeX() >
             startDistance2Step_ - AbsAuxOuterWheelX + AuxWheelRadius + 3 * SafeDistance)
         {
@@ -268,7 +276,7 @@ void Step::update()
             front_state_ = LiftState::Up4_等待放下;
         break;
     case LiftState::Up4_等待放下:
-        // 前轮已经完全登上
+        // 前轮已经完全登上。
         if (currentRelativeX() > startDistance2Step_ - AbsWheelInnerEdgeX + 3 * SafeDistance)
         {
             front_->to(Position::StepTransition, 放腿速度);
@@ -286,7 +294,7 @@ void Step::update()
         }
         break;
     case LiftState::Up6_等待恢复到Normal:
-        // 在 rear 触发
+        // 在 rear 触发。
         break;
     case LiftState::Up7_恢复到Normaling:
         if (front_->isFinished())
@@ -295,7 +303,7 @@ void Step::update()
     case LiftState::Down1_等待放下:
         if (currentRelativeX() > startDistance2Step_ - AbsWheelOuterEdgeX)
         {
-            // 离地判定
+            // 离地判定。
             front_->setGrounding(false);
         }
         if (currentRelativeX() > startDistance2Step_ - AbsWheelInnerEdgeX + SafeDistance)
@@ -322,7 +330,7 @@ void Step::update()
         }
         else
         {
-            // 如果不复位底盘，则在底盘完成后立即完成
+            // 如果不复位底盘，则在底盘完成后立即完成。
             if (chassis_state_ == ChassisState::Done)
             {
                 front_state_ = LiftState::Done;
@@ -348,10 +356,10 @@ void Step::update()
             rear_state_ = LiftState::Up2_等待收起;
         break;
     case LiftState::Up2_等待收起:
-        // 等待取物，此处可以不加该判断，这里为了对称
+        // 等待取物，此处可以不加该判断，这里主要为了和 front 侧对称。
         if (will_take_)
             break;
-        // 中后辅助轮已登上台阶
+        // 中后辅助轮已登上台阶。
         if (currentRelativeX() >
             startDistance2Step_ + AbsAuxInnerWheelX + AuxWheelRadius + 3 * SafeDistance)
         {
@@ -365,7 +373,7 @@ void Step::update()
             rear_state_ = LiftState::Up4_等待放下;
         break;
     case LiftState::Up4_等待放下:
-        // 后轮已经完全登上
+        // 后轮已经完全登上。
         if (currentRelativeX() > startDistance2Step_ + AbsWheelOuterEdgeX + 3 * SafeDistance)
         {
             if (front_state_ == LiftState::Up6_等待恢复到Normal)
@@ -390,7 +398,7 @@ void Step::update()
     case LiftState::Down1_等待放下:
         if (currentRelativeX() > startDistance2Step_ + AbsWheelInnerEdgeX)
         {
-            // 离地判定
+            // 离地判定。
             rear_->setGrounding(false);
         }
         if (currentRelativeX() > startDistance2Step_ + AbsWheelOuterEdgeX + SafeDistance)
@@ -417,7 +425,7 @@ void Step::update()
         }
         else
         {
-            // 如果不复位底盘，则在底盘完成后立即完成
+            // 如果不复位底盘，则在底盘完成后立即完成。
             if (chassis_state_ == ChassisState::Done)
             {
                 rear_state_ = LiftState::Done;
@@ -439,6 +447,7 @@ void Step::update()
 {
     for (;;)
     {
+        // 空闲时阻塞等待启动，而不是空转占 CPU。
         osThreadFlagsWait(FlagStart, osFlagsWaitAll, osWaitForever);
         osThreadFlagsClear(FlagResume);
 

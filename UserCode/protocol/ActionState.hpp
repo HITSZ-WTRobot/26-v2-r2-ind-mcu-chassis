@@ -5,6 +5,9 @@
  */
 #pragma once
 
+// 这个模块把“当前动作状态”压缩成一个 16-bit 反馈字段。
+// 它不执行动作，只给上位机提供一个紧凑、稳定的状态快照。
+
 #include <cstdint>
 
 namespace Protocol::ActionState
@@ -53,7 +56,7 @@ enum class LiftStatus : uint16_t
     Calibrating = 0u, /// 校准中
     Running     = 1u, /// 正在执行（变更底盘高度）
     Ready       = 2u, /// 就位
-    NotEnabled  = 3u, /// 保留，
+    NotEnabled  = 3u, /// 该能力未启用，不代表故障。
 };
 
 enum class GripStatus : uint16_t
@@ -68,6 +71,7 @@ enum class GripStatus : uint16_t
 
 namespace Layout
 {
+// 各子字段的位宽 / 位移都放在这里，避免在 pack() 里散落魔法数字。
 inline constexpr uint16_t StepShift                = 0u;
 inline constexpr uint16_t ChassisModeShift         = 2u;
 inline constexpr uint16_t ChassisCurveFinishedBit  = 4u;
@@ -89,6 +93,7 @@ constexpr uint16_t pack(const StepStatus  step,
                         const GripStatus  grip,
                         const bool        grip_suction_has_object)
 {
+    // 这里只做位拼接，不掺入任何业务判断。
     return static_cast<uint16_t>(
             (static_cast<uint16_t>(step) << Layout::StepShift) |
             (static_cast<uint16_t>(chassis_mode) << Layout::ChassisModeShift) |

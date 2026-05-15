@@ -21,6 +21,7 @@ namespace Protocol::Feedback
 {
 namespace
 {
+// 下面这些小工具只负责写协议缓冲区，避免在组帧逻辑里重复手写移位。
 void write_u32(uint8_t* data, const uint32_t value)
 {
     data[0] = static_cast<uint8_t>(value >> 24);
@@ -56,6 +57,7 @@ osThreadId_t transmit_task_{};
 
 void buildFeedbackFrame(std::array<uint8_t, FeedbackFrameLen>& frame)
 {
+    // 先取定位和 lift 状态，再把状态表和连接表一起封装成固定反馈帧。
     chassis::Posture posture{ .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
     if (Chassis::loc != nullptr)
         posture = Chassis::loc->postureInWorld();
@@ -113,6 +115,7 @@ void buildFeedbackFrame(std::array<uint8_t, FeedbackFrameLen>& frame)
 
 void registerProtocol(PCProtocol* protocol)
 {
+    // 这里只记录指针，不接管协议对象生命周期。
     assert(protocol_count_ < protocols_.size());
     protocols_[protocol_count_++] = protocol;
 }
@@ -122,6 +125,7 @@ void startTask()
     if (transmit_task_ != nullptr)
         return;
 
+    // 反馈周期固定为 10 ms，给上位机一个稳定刷新率。
     constexpr osThreadAttr_t feedback_attr{
         .name       = "pc-feedback",
         .stack_size = 512 * 4,

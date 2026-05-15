@@ -21,6 +21,7 @@ namespace
 {
 [[nodiscard]] constexpr bool has_can_devices()
 {
+    // 只要有任意 DJI 电机，就需要初始化 CAN。
     return ProjectParts::EnableWheelChassis || ProjectParts::EnableLift || ProjectParts::EnableGrip;
 }
 
@@ -31,6 +32,7 @@ void sensor_init()
 
     using namespace sensors;
 
+    // 先注册 UART 同步接收回调，再启动传感器接收，避免首帧丢失。
     UartRxSync_RegisterCallback(Sensor::gyro_yaw, config::uart::SensorGyroYaw);
     Sensor::gyro_yaw = new gyro::HWT101CT(config::uart::SensorGyroYaw);
 
@@ -43,6 +45,7 @@ void pressure_sensor_init()
 {
     if constexpr (ProjectParts::EnableGripSuctionPressureSensor)
     {
+        // 气压计是 I2C 周期设备，创建后必须先注册到共享 manager。
         Sensor::grip_suction_pressure = new XGZP6847DDevice(Suction::Config::PressureRangeKPa,
                                                             Suction::Config::PressureAddress7bit);
 
@@ -61,13 +64,13 @@ void can_init()
     if constexpr (!has_can_devices())
         return;
 
-    // CAN 初始化
+    // CAN filter / receive callback 是 DJI 电机反馈解码的基础。
     motors::DJIMotor::CAN_FilterInit(&hcan1, 0);
     CAN_RegisterCallback(&hcan1, motors::DJIMotor::CANBaseReceiveCallback);
     motors::DJIMotor::CAN_FilterInit(&hcan2, 14);
     CAN_RegisterCallback(&hcan2, motors::DJIMotor::CANBaseReceiveCallback);
 
-    // 注册 CAN 主回调，并启动 CAN
+    // 注册 CAN 主回调，并启动接收中断。
     CAN_InitMainCallback(&hcan1);
     CAN_Start(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
     CAN_InitMainCallback(&hcan2);
@@ -107,6 +110,7 @@ void wheel_motor_init()
         return;
 
     using namespace motors;
+    // wheel[] 的索引顺序必须与 IndLiftMecanum4::WheelType 保持一致。
     for (size_t i = 0; i < 4; ++i)
         Motor::wheel[i] = new DJIMotor(motor_wheel_config[i]);
 }
@@ -148,6 +152,7 @@ void motor_lift_init()
         return;
 
     using motors::DJIMotor;
+    // lift[] 的前两项属于前侧，后两项属于后侧。
     for (size_t i = 0; i < 4; ++i)
         Motor::lift[i] = new DJIMotor(motor_lift_config[i]);
 }
@@ -157,6 +162,7 @@ void motor_grip_init()
     if constexpr (!ProjectParts::EnableGrip)
         return;
 
+    // grip 的两个关节使用不同型号的 DJI 电调 / 电机组合。
     constexpr motors::DJIMotor::Config ArmCfg{
         .hcan = &hcan2,
         .type = motors::DJIMotor::Type::M3508_C620,
@@ -174,24 +180,28 @@ void motor_grip_init()
 
 [[nodiscard]] bool has_dji_motor_on_can1()
 {
+    // CAN1 目前承载前轮和前侧 lift。
     return Motor::wheel[0] != nullptr || Motor::wheel[1] != nullptr || Motor::lift[0] != nullptr ||
            Motor::lift[1] != nullptr;
 }
 
 [[nodiscard]] bool has_dji_motor_on_can2_group_1_4()
 {
+    // CAN2 的 1~4 号电机组承载后轮和 grip。
     return Motor::wheel[2] != nullptr || Motor::wheel[3] != nullptr || Motor::grip_arm != nullptr ||
            Motor::grip_turn != nullptr;
 }
 
 [[nodiscard]] bool has_dji_motor_on_can2_group_5_8()
 {
+    // CAN2 的 5~8 号电机组承载后侧 lift。
     return Motor::lift[2] != nullptr || Motor::lift[3] != nullptr;
 }
 } // namespace
 
 void init()
 {
+    // 传感器先于控制对象创建；后续 chassis / grip 会直接引用这些指针。
     sensor_init();
     pressure_sensor_init();
 
@@ -206,6 +216,7 @@ void init()
 
 void update_1kHz()
 {
+    // 每个 CAN 报文一次最多发一组 DJI 电机电流，因此按总线和 id 分组发送。
     if (has_dji_motor_on_can1())
     {
         motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);

@@ -142,6 +142,7 @@ bool currentGripSuctionHasObject()
 {
     for (;;)
     {
+        // 50 Hz 低频刷新即可，不需要和 1 kHz 控制链争抢实时性。
         updateTable();
         osDelay(ActionStateUpdatePeriodMs);
     }

@@ -5,6 +5,10 @@
  * @brief   上台阶动作
  */
 #pragma once
+
+// Step 是一个“底盘 + 前后 lift 协同”的高层动作状态机。
+// 它不直接做连续控制，只负责把动作拆成多个阶段并在合适时机切换目标。
+
 #include "traits.hpp"
 #include "chassis/LiftSide.hpp"
 #include "chassis/chassis.hpp"
@@ -17,6 +21,7 @@ class Step : traits::NoCopy, traits::NoDelete
 public:
     Step();
 
+    // 单例入口，便于协议层和测试入口共用同一个动作状态机。
     static Step& inst();
 
     enum class Direction
@@ -31,22 +36,26 @@ public:
         Step400
     };
 
+    // 上台阶：从台阶前方切入，必要时可以在中途暂停去取件。
     void up(float     startDistance2Step,
             float     endDistance2Step,
             Direction dir      = Direction::Forward,
             bool      willTake = false,
             Height    height   = Height::Step200);
 
+    // 下台阶：从高处回到低处，必要时可选择是否恢复到底盘正常高度。
     void down(float     startDistance2Step,
               float     endDistance2Step,
               Direction dir         = Direction::Forward,
               bool      shouldReset = true,
               Height    height      = Height::Step200);
 
+    // 继续上台阶中途暂停后的后半段。
     void resume_up();
 
     static void TaskEntry(void* self) { static_cast<Step*>(self)->loop(); }
 
+    // 后台线程只负责 1 ms 粒度推进状态机。
     [[noreturn]] void loop();
 
     [[nodiscard]] bool isIdle() const
@@ -69,20 +78,14 @@ public:
 
     [[nodiscard]] bool isRunning() const { return !isFinished() && !isIdle(); }
 
-    /**
-     * 等待执行完成
-     */
+    /** @brief 阻塞等待动作完全结束。 */
     void waitForFinish() const
     {
         while (!isFinished())
             osDelay(10);
     }
 
-    /**
-     * 等待中间停止取件
-     *
-     * TODO: 好奇怪的名字，改一下
-     */
+    /** @brief 等待上台阶中途暂停到取件窗口。 */
     void waitForPause() const
     {
         if (will_take_)
@@ -91,10 +94,13 @@ public:
     }
 
 private:
+    // 独立线程句柄。
     osThreadId_t task_;
 
+    // 在动作开始前，把左右前后 lift 的角色和起始位姿都整理好。
     void prepare(float startDistance2Step, float endDistance2Step, Direction dir);
 
+    // 状态机推进逻辑。
     void update();
 
     enum class ChassisState
@@ -134,10 +140,10 @@ private:
         Done
     };
 
-    // 上台阶过程是否停下取物
+    // 上台阶过程是否停下取物。
     bool will_take_ = false;
 
-    // 下台阶是否复位底盘
+    // 下台阶是否复位底盘。
     bool should_reset_ = true;
 
     Height height_ = Height::Step200;
@@ -154,8 +160,10 @@ private:
     LiftState    front_state_   = LiftState::Idle;
     LiftState    rear_state_    = LiftState::Idle;
 
+    // 动作开始时的世界系位姿，后续所有相对计算都以它为基准。
     chassis::Posture start_pos_{};
 
+    // 根据前进 / 后退方向，front_ / rear_ 会指向实际意义上的前后两侧 lift。
     Lift::LiftSide* front_ = nullptr;
     Lift::LiftSide* rear_  = nullptr;
 

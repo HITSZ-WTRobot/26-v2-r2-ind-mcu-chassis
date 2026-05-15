@@ -56,6 +56,8 @@ void encode_connection_table(uint8_t payload[2], const uint16_t value)
 
 [[nodiscard]] constexpr uint16_t required_mask()
 {
+    // 只把“校准前必须在线的本地硬件”纳入 required。
+    // 上位机连接和上位机定位流由 System::Init 后续判断。
     uint16_t required = 0;
 
     if constexpr (ProjectParts::EnableWheelChassis)
@@ -97,6 +99,7 @@ void encode_connection_table(uint8_t payload[2], const uint16_t value)
 class ConnectionTableI2CDevice final : public I2CDevice
 {
 public:
+    // 这是一个“虚拟 I2C 设备”：它没有被读取的寄存器，只负责周期发送连接表。
     [[nodiscard]] const char* name() const override { return "connection-table"; }
 
     [[nodiscard]] uint8_t address7bit() const override { return ConnectionTableI2CAddress7bit; }
@@ -116,6 +119,7 @@ protected:
 private:
     bool transmit(I2CBusDMA& bus, const uint32_t timeout_ms) const
     {
+        // 发送前取一次快照，避免 table 在编码两个字节之间变化。
         const uint16_t current = table;
         uint8_t        payload[2]{};
         encode_connection_table(payload, current);
@@ -135,6 +139,7 @@ private:
 
 ConnectionTableI2CDevice& connection_table_i2c_device()
 {
+    // manager 注册时需要稳定引用，因此用函数内 static。
     static ConnectionTableI2CDevice device;
     return device;
 }
@@ -142,6 +147,7 @@ ConnectionTableI2CDevice& connection_table_i2c_device()
 
 void init()
 {
+    // 先刷新一次，保证外部第一次读取就能拿到当前连接状态。
     updateTable();
 
     if constexpr (!ProjectParts::EnableConnectionTableI2CTx)
@@ -164,6 +170,7 @@ void init()
 
 void updateTable()
 {
+    // 重新构造整张表，而不是在旧值上增量修改，避免已断开的 bit 残留。
     uint16_t current = 0;
 
     if constexpr (ProjectParts::EnableWheelChassis)
@@ -214,6 +221,7 @@ bool isAllConnected()
 
     constexpr uint16_t required = required_mask();
 
+    // required 为空时返回 true，这样“全关调试形态”不会卡在连接等待。
     return (current & required) == required;
 }
 
