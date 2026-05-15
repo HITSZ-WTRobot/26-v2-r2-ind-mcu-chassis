@@ -47,7 +47,7 @@ void TIM_Callback_1kHz_2(TIM_HandleTypeDef* htim)
 
     if (Protocol::pc_rx != nullptr && Chassis::ctrl != nullptr && !Protocol::pc_rx->isConnected())
     {
-        Chassis::ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
+        // Chassis::ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
     }
 }
 
