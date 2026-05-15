@@ -31,6 +31,8 @@
   - 语义：机器人在目标系中的位姿，坐标轴与世界系对齐。
 - 0x23 SetLocalizationSource
   - payload: mode (uint16)：0=None，1=Lidar，2=Vision
+- 0x24 ResetLocalizationFrame
+   - payload: reserve (全 0)，重置当前外部定位源坐标系，下一帧重新初始化
 
 ## 使用指南
 ### 之前
@@ -59,10 +61,15 @@
    - 发送 `SetLocalizationSource(mode=0)`
    - 无需外部位姿帧
 
+4. 当前源坐标系重置（Lidar / Vision）
+   - 发送 `ResetLocalizationFrame`
+   - 下一帧外部位姿将重新初始化坐标系并重置 EKF 状态与协方差
+
 ## 行为差异与注意事项
 - 切换来源会触发一个短时的速度保持窗口以避免控制冲击；该处理不会调用 `Stop()`，且不依赖定位结果。
 - 视觉目标变化不会被自动检测；若目标物发生更换，需要重新切换到视觉模式以重新锚定。
 - 外部位姿帧仅在来自主协议且时间同步正常时被接受，行为与原先 Lidar 一致。
+- `ResetLocalizationFrame` 只清空当前源的锚点，不改变活动源；若当前源为 None 则忽略。
 
 ## 验证清单
 - 确认 `connection` 的 bit14 随活动外部流切换。

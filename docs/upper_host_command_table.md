@@ -57,6 +57,7 @@
 | `0x21` | `LidarPosture` | `x(int16), y(int16), yaw(int16), lidarTimestamp(uint32)` | 上位机定位位姿输入。 |
 | `0x22` | `VisionPosture` | `x(int16), y(int16), yaw(int16), visionTimestamp(uint32)` | 视觉定位位姿输入（机器人在目标系中的位姿）。 |
 | `0x23` | `SetLocalizationSource` | `mode(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16)` | 切换外部定位源。 |
+| `0x24` | `ResetLocalizationFrame` | `reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16)` | 重置当前外部定位源坐标系，等待下一帧重新初始化。 |
 | `0x30` | `StepUp` | `startDistance(int16), endDistance(int16), direction(uint16), willTake(uint16)` | 上台阶动作组。 |
 | `0x31` | `StepUpResume` | 无 | 恢复此前因 `willTake=1` 暂停的上台阶流程。 |
 | `0x32` | `StepDown` | `startDistance(int16), endDistance(int16), direction(uint16), shouldReset(uint16)` | 下台阶动作组。 |
@@ -199,6 +200,12 @@
 
 - 切换过程中下位机会短暂将底盘速度置零（不使用 Stop）。
 - 当 `mode=0` 时，下位机仍保持陀螺仪高频更新与底盘预测，但不再接收外部观测。
+
+### 5.8.1 `0x24 ResetLocalizationFrame`
+
+- 数据区全部为预留。
+- 若当前外部定位源为 `Lidar` 或 `Vision`，下位机会清除该源锚点，下一帧外部位姿将重新初始化坐标系并重置 EKF 状态与协方差。
+- 若当前源为 `None`，该命令会被忽略。
 
 ### 5.9 `0x30 StepUp`
 

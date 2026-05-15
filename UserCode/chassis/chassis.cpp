@@ -165,21 +165,22 @@ ExternalSource externalSource()
     return active_source;
 }
 
-void switchExternalSource(const ExternalSource source)
+void switchExternalSource(const ExternalSource source, const bool force_reset)
 {
     if constexpr (!ProjectParts::EnablePcLocalization)
         return;
 
-    if (source == active_source)
+    if (source == active_source && !force_reset)
         return;
 
-    active_source = source;
+    if (source != active_source)
+        active_source = source;
     if (ctrl != nullptr)
         ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
 
     if (source == ExternalSource::Lidar || source == ExternalSource::Vision)
     {
-        // 切换到新源时，首帧观测（此刻还未观测，因此设0占位）将重建该源的参考系并重置 EKF 状态。
+        // 切换或强制重置时，首帧观测（此刻还未观测，因此设0占位）将重建该源的参考系并重置 EKF 状态。
         auto& frame = source_frames[source_index(source)];
         frame.origin = { .x = 0.0f, .y = 0.0f, .yaw = 0.0f };
         frame.valid  = false;

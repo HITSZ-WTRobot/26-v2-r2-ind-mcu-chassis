@@ -335,6 +335,17 @@ void handleCommand(const Frame& frame)
                 Chassis::switchExternalSource(source);
         }
         break;
+    case PCCommand::ResetLocalizationFrame:
+        if constexpr (ProjectParts::EnablePcLocalization)
+        {
+            const auto source = Chassis::externalSource();
+            if (source == Chassis::ExternalSource::Lidar ||
+                source == Chassis::ExternalSource::Vision)
+            {
+                Chassis::switchExternalSource(source, true);
+            }
+        }
+        break;
     case PCCommand::LidarPosture:
     {
         // LidarPosture 只在“上位机定位包”能力启用时才参与处理。

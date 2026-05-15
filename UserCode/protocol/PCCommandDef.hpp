@@ -89,6 +89,12 @@ enum class PCCommand : uint8_t
     /// @param mode: 0=None, 1=Lidar, 2=Vision
     SetLocalizationSource = 0x23,
 
+    /// 重置当前外部定位源的坐标系
+    /// |  uint16  | uint16 | uint16 | uint16 | uint16 | uint16 |
+    /// | reserve  | reserve| reserve| reserve| reserve| reserve|
+    /// @note 下一帧外部位姿将重新初始化坐标系，并重置 EKF 状态与协方差
+    ResetLocalizationFrame = 0x24,
+
     /* 动作组 */
     /// 上台阶
     /// |        int16       |      int16       |   uint16  |  uint16  |

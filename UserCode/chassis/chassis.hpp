@@ -40,7 +40,7 @@ void initLocCtrl(const chassis::Posture& init_posture);
 void initStandaloneLocCtrl();
 
 ExternalSource externalSource();
-void           switchExternalSource(ExternalSource source);
+void           switchExternalSource(ExternalSource source, bool force_reset = false);
 bool           needsExternalInitPosture();
 
 chassis::Posture externalObservationToWorldForInit(ExternalSource        source,
