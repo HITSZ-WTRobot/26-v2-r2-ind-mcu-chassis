@@ -14,7 +14,7 @@ namespace Protocol::ActionState
  *
  * - bit0..1   Step 状态：Idle / Done / Running / WaitingTake
  * - bit2..3   底盘模式：Stop / Velocity / Position / Slave
- * - bit4      底盘曲线是否完成
+ * - bit4      底盘曲线是否完成（时间结束且跟踪误差在 Master 跟踪阈值内）
  * - bit5..6   Lift 状态：Calibrating / Running / Ready / NotEnabled
  * - bit7..9   Grip 状态：Calibrating / TakingSpear / KfsStore /
  *               KfsRelease / Idle / Done

@@ -49,7 +49,7 @@
 | --- | --- | --- | --- |
 | `bit0..1` | `0x0003` | `StepStatus` | 台阶动作状态 |
 | `bit2..3` | `0x000C` | `ChassisMode` | 底盘控制模式 |
-| `bit4` | `0x0010` | `ChassisCurveFinished` | 底盘位置轨迹是否完成 |
+| `bit4` | `0x0010` | `ChassisCurveFinished` | 底盘位置轨迹是否完成：曲线时间结束且跟踪误差在 Master 跟踪阈值内 |
 | `bit5..6` | `0x0060` | `LiftStatus` | 升降机构状态 |
 | `bit7..9` | `0x0380` | `GripStatus` | Grip / 动作组状态 |
 | `bit10` | `0x0400` | `GripSuctionHasObject` | Grip 吸盘是否检测到物体 |

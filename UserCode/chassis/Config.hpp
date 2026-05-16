@@ -160,14 +160,18 @@ constexpr float SafeDistance = 0.01; // 1cm 安全距离（底盘方向）
  */
 namespace Control
 {
+using TrajectoryLimit             = chassis::controller::Master::TrajectoryLimit;
+using TrajectoryTrackingThreshold = chassis::controller::Master::TrajectoryTrackingThreshold;
+using MasterConfig                = chassis::controller::Master::Config;
+
 #if TEST_ENABLE_AUTO_MAPPING
-constexpr chassis::controller::Master::TrajectoryLimit DefaultTrajectoryLimit = {
+constexpr TrajectoryLimit DefaultTrajectoryLimit = {
     .x   = { .max_spd = 0.60f, .max_acc = 0.60f, .max_jerk = 12.0f },
     .y   = { .max_spd = 0.60f, .max_acc = 0.60f, .max_jerk = 12.0f },
     .yaw = { .max_spd = 45.0f, .max_acc = 60.0f, .max_jerk = 1200.0f }
 };
 #else
-constexpr chassis::controller::Master::TrajectoryLimit DefaultTrajectoryLimit = {
+constexpr TrajectoryLimit DefaultTrajectoryLimit = {
     // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
     // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
     // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
@@ -177,13 +181,20 @@ constexpr chassis::controller::Master::TrajectoryLimit DefaultTrajectoryLimit = 
 };
 #endif
 
-constexpr chassis::controller::Master::Config masterCfg = {
+constexpr TrajectoryTrackingThreshold DefaultTrajectoryTrackingThreshold{
+    .x   = 0.01f,
+    .y   = 0.01f,
+    .yaw = 0.5f,
+};
+
+constexpr MasterConfig masterCfg = {
     .posture_error_pd_cfg = {
         .vx = { .Kp = 3.0, .Kd = 0.3f, .abs_output_max = 0.6f },
         .vy = { .Kp = 3.0, .Kd = 0.3f, .abs_output_max = 0.6f },
         .wz = { .Kp = 3.0, .Kd = 0.3f, .abs_output_max = 135.0f },
     },
-    .limit = DefaultTrajectoryLimit,
+    .limit              = DefaultTrajectoryLimit,
+    .tracking_threshold = DefaultTrajectoryTrackingThreshold,
 };
 
 } // namespace Control
