@@ -171,14 +171,18 @@ constexpr TrajectoryLimit DefaultTrajectoryLimit = {
     .yaw = { .max_spd = 45.0f, .max_acc = 60.0f, .max_jerk = 1200.0f }
 };
 #else
-constexpr TrajectoryLimit DefaultTrajectoryLimit = {
-    // .x = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
-    // .y   = { .max_spd = 1.0f, .max_acc = 1.2f, .max_jerk = 20.0f },
-    // .yaw = { .max_spd = 90, .max_acc = 45, .max_jerk = 90 }
+// max!!
+constexpr TrajectoryLimit MaxTrajectoryLimit = {
     .x   = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
     .y   = { .max_spd = 8.0f, .max_acc = 3.0f, .max_jerk = 150.0f },
     .yaw = { .max_spd = 460, .max_acc = 170, .max_jerk = 170 * 50 }
 };
+
+// 下调限速
+constexpr float TrajectoryLimitRatio = 0.7;
+
+constexpr TrajectoryLimit DefaultTrajectoryLimit = MaxTrajectoryLimit * TrajectoryLimitRatio;
+
 #endif
 
 constexpr TrajectoryTrackingThreshold DefaultTrajectoryTrackingThreshold{
