@@ -161,8 +161,6 @@ extern "C" void Init(void* argument)
         osDelay(1);
     }
 
-    // TODO: 向上位机返回校准结果
-
     // 若当前不依赖上位机初始位姿，则在这里直接构造 Loc / Controller：
     // - 无陀螺仪：构造 JustEncoder
     // - 有陀螺仪但无上位机定位包：构造本地下位机 EKF
