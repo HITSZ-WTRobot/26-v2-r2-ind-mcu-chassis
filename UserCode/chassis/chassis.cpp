@@ -156,9 +156,17 @@ void initStandaloneLocCtrl()
     // 启用了上位机定位包时，必须等 `System::Init::initPostureReceive()`
     // 拿到首帧外部位姿后再构造 EKF，这里不能抢先初始化。
     if constexpr (ProjectParts::NeedUpperHostInitPosture)
-        return;
-
+    {
+        if (needsExternalInitPosture())
+            return;
+    }
+    // 此时不使用上位机数据or上位机模式为None，直接用默认位姿初始化定位控制器。
     initLocCtrl(default_init_posture());
+}
+
+bool hasLocCtrl()
+{
+    return ctrl != nullptr;
 }
 ExternalSource externalSource()
 {
@@ -177,6 +185,12 @@ void switchExternalSource(const ExternalSource source, const bool force_reset)
         active_source = source;
     if (ctrl != nullptr)
         ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
+
+    if (source == ExternalSource::None)
+    {
+        if (ctrl == nullptr && motion != nullptr && motion->isReady())
+            initLocCtrl(default_init_posture());
+    }
 
     if (source == ExternalSource::Lidar || source == ExternalSource::Vision)
     {

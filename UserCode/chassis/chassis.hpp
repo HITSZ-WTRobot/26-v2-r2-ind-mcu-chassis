@@ -39,6 +39,8 @@ void init();
 void initLocCtrl(const chassis::Posture& init_posture);
 void initStandaloneLocCtrl();
 
+bool hasLocCtrl();
+
 ExternalSource externalSource();
 void           switchExternalSource(ExternalSource source, bool force_reset = false);
 bool           needsExternalInitPosture();

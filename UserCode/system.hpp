@@ -5,6 +5,7 @@
 namespace Chassis
 {
 bool needsExternalInitPosture();
+bool hasLocCtrl();
 }
 
 namespace System
@@ -43,6 +44,8 @@ inline bool inited()
     {
         if (Chassis::needsExternalInitPosture())
             return postureReceived;
+
+        return Chassis::hasLocCtrl();
     }
 
     return true;
