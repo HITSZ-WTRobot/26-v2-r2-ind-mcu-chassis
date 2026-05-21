@@ -132,7 +132,7 @@ void init()
     if (started_)
         return;
 
-    assert(config::uart::InfraredReceiver->Init.BaudRate == 115200);
+    assert(config::uart::InfraredReceiver->Init.BaudRate == 57600);
 
     HAL_UART_RegisterCallback(config::uart::InfraredReceiver,
                               HAL_UART_RX_COMPLETE_CB_ID,
