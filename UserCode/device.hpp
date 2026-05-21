@@ -17,6 +17,7 @@ namespace config::uart
 constexpr auto AuxControllerHost = &huart1;
 constexpr auto SensorGyroYaw     = &huart2;
 constexpr auto UpperHost         = &huart3;
+constexpr auto InfraredReceiver  = &huart6;
 } // namespace config::uart
 
 namespace Device

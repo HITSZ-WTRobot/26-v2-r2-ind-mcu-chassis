@@ -5,14 +5,14 @@
  * 本文件是“组件启用逻辑”的唯一入口。
  *
  * 使用规则：
- * - 只修改下面 10 个 0 / 1 宏；
+ * - 只修改下面 11 个 0 / 1 宏；
  * - 这些开关的设计目的，是方便局部联调 / 排障 / 单机构验证；
  * - 正式比赛或正式交付构建时，必须按完整硬件形态启用全部功能，不把它当作长期产品分型配置；
  * - 业务代码不要直接重新组合原始宏，统一使用本文件中派生出来的
  *   `ProjectParts::EnableXxx` / `NeedXxx` 常量；
  * - 派生常量的存在意义，是把“模块开关”翻译成“系统能力”。
  *
- * 十个一级开关分别代表：
+ * 十一个一级开关分别代表：
  * 1. 底盘（四个底盘电机组成的 mecanum4 平面运动部分）
  * 2. 升降（两个抬升电机组成的抬升机构）
  * 3. grip（夹取机构本体：arm / turn / claw）
@@ -23,6 +23,7 @@
  * 8. 上位机控制指令（上位机其他控制命令）
  * 9. 上位机串口辨识初始化（下位机持续发送 0xAA，直到收到任意合法上位机帧）
  * 10. connection table I2C 周期发送
+ * 11. 红外接收模块（本机通过 115200 串口接收单字节状态协议）
  *
  * 常见组合：
  * - 仅底盘调试：
@@ -97,6 +98,11 @@
 #    define PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX 1
 #endif
 
+/// 启用红外接收模块。当前使用 USART6 单字节 DMA circular 接收。
+#ifndef PROJECT_PART_ENABLE_INFRARED_RECEIVER
+#    define PROJECT_PART_ENABLE_INFRARED_RECEIVER 1
+#endif
+
 namespace ProjectParts
 {
 
@@ -122,6 +128,8 @@ inline constexpr bool EnableUpperHostIdentifyInit = PROJECT_PART_ENABLE_UPPER_HO
                                                     0;
 /// 一级开关：connection table I2C 周期发送。
 inline constexpr bool EnableConnectionTableI2CTx = PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX != 0;
+/// 一级开关：红外接收模块。
+inline constexpr bool EnableInfraredReceiver = PROJECT_PART_ENABLE_INFRARED_RECEIVER != 0;
 
 /**
  * 是否需要构造当前工程的底盘运动对象。

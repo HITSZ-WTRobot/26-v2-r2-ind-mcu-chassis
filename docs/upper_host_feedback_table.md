@@ -53,7 +53,8 @@
 | `bit5..6` | `0x0060` | `LiftStatus` | 升降机构状态 |
 | `bit7..9` | `0x0380` | `GripStatus` | Grip / 动作组状态 |
 | `bit10` | `0x0400` | `GripSuctionHasObject` | Grip 吸盘是否检测到物体 |
-| `bit11..15` | `0xF800` | Reserved | 预留 |
+| `bit11..12` | `0x1800` | `InfraredReceiverState` | 红外接收模块稳定状态 |
+| `bit13..15` | `0xE000` | Reserved | 预留 |
 
 建议上位机按下面方式解码：
 
@@ -64,6 +65,7 @@ chassis_curve_finished   = (table >> 4) & 0x1
 lift_status              = (table >> 5) & 0x3
 grip_status              = (table >> 7) & 0x7
 grip_suction_has_object  = (table >> 10) & 0x1
+infrared_receiver_state  = (table >> 11) & 0x3
 ```
 
 补充：
@@ -135,6 +137,17 @@ grip_suction_has_object  = (table >> 10) & 0x1
 
 - 该位只在 `PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR=1` 时有实际语义。
 - 当前它复用下位机吸盘组件内部的气压施密特判定结果，因此会跟随当前新鲜压力样本变化。
+
+### 3.7 `InfraredReceiverState`
+
+红外接收模块通过本机串口接收单字节协议。下位机只有连续收到至少 3 个完全相同的合法字节后，才会切换该状态。
+
+| 值 | 对应字节 | 含义 |
+| --- | --- | --- |
+| `0` | `0xA0` | 仅作连接保活 |
+| `1` | `0xA1` | 对接完成；下位机在状态切换到该值时执行一次 `Grip::openClaw()` |
+| `2` | `0xA2` | 无附加执行 |
+| `3` | `0xA3` | 预留状态 |
 
 ## 4. `Connection::table`
 

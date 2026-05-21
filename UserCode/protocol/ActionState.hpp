@@ -19,7 +19,8 @@ namespace Protocol::ActionState
  * - bit7..9   Grip 状态：Calibrating / TakingSpear / KfsStore /
  *               KfsRelease / Idle / Done
  * - bit10     Grip suction 是否检测到物体（仅在启用吸盘气压计时有效）
- * - bit11..15 预留
+ * - bit11..12 红外接收稳定状态：A0 / A1 / A2 / A3 映射到 0..3
+ * - bit13..15 预留
  */
 inline volatile uint16_t table{};
 
@@ -74,12 +75,14 @@ inline constexpr uint16_t ChassisCurveFinishedBit  = 4u;
 inline constexpr uint16_t LiftShift                = 5u;
 inline constexpr uint16_t GripShift                = 7u;
 inline constexpr uint16_t GripSuctionHasObjectBit  = 10u;
+inline constexpr uint16_t InfraredStateShift       = 11u;
 inline constexpr uint16_t StepMask                 = 0x3u << StepShift;
 inline constexpr uint16_t ChassisModeMask          = 0x3u << ChassisModeShift;
 inline constexpr uint16_t ChassisCurveFinishedMask = 0x1u << ChassisCurveFinishedBit;
 inline constexpr uint16_t LiftMask                 = 0x3u << LiftShift;
 inline constexpr uint16_t GripMask                 = 0x7u << GripShift;
 inline constexpr uint16_t GripSuctionHasObjectMask = 0x1u << GripSuctionHasObjectBit;
+inline constexpr uint16_t InfraredStateMask        = 0x3u << InfraredStateShift;
 } // namespace Layout
 
 constexpr uint16_t pack(const StepStatus  step,
@@ -87,7 +90,8 @@ constexpr uint16_t pack(const StepStatus  step,
                         const bool        chassis_curve_finished,
                         const LiftStatus  lift,
                         const GripStatus  grip,
-                        const bool        grip_suction_has_object)
+                        const bool        grip_suction_has_object,
+                        const uint16_t    infrared_state)
 {
     return static_cast<uint16_t>(
             (static_cast<uint16_t>(step) << Layout::StepShift) |
@@ -95,7 +99,8 @@ constexpr uint16_t pack(const StepStatus  step,
             ((chassis_curve_finished ? 1u : 0u) << Layout::ChassisCurveFinishedBit) |
             (static_cast<uint16_t>(lift) << Layout::LiftShift) |
             (static_cast<uint16_t>(grip) << Layout::GripShift) |
-            ((grip_suction_has_object ? 1u : 0u) << Layout::GripSuctionHasObjectBit));
+            ((grip_suction_has_object ? 1u : 0u) << Layout::GripSuctionHasObjectBit) |
+            ((infrared_state & 0x3u) << Layout::InfraredStateShift));
 }
 
 void updateTable();

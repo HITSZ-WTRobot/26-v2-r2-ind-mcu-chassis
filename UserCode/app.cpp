@@ -13,6 +13,7 @@
 #include "grip/actions/spear_grab.hpp"
 #include "grip/grip.hpp"
 #include "i2c.hpp"
+#include "infrared/InfraredReceiver.hpp"
 #include "project_parts.hpp"
 #include "protocol.hpp"
 #include "system.hpp"
@@ -81,6 +82,8 @@ extern "C" void Init(void* argument)
 
     if constexpr (ProjectParts::EnableGrip)
         Grip::init();
+
+    Infrared::init();
 
     if constexpr (ProjectParts::EnableStepAction)
         (void)Action::Step::inst();

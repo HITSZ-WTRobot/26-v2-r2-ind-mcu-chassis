@@ -11,6 +11,7 @@
 #include "grip/actions/roller_store.hpp"
 #include "grip/actions/spear_grab.hpp"
 #include "grip/grip.hpp"
+#include "infrared/InfraredReceiver.hpp"
 #include "main.h"
 #include "project_parts.hpp"
 
@@ -138,6 +139,14 @@ bool currentGripSuctionHasObject()
     return Grip::Action::KfsStore::inst().hasDetectedObject();
 }
 
+uint16_t currentInfraredState()
+{
+    if constexpr (!ProjectParts::EnableInfraredReceiver)
+        return 0u;
+
+    return Infrared::stateBits();
+}
+
 [[noreturn]] void loop(void* argument)
 {
     for (;;)
@@ -171,6 +180,7 @@ void updateTable()
                  isChassisCurveFinished(),
                  currentLiftStatus(),
                  currentGripStatus(),
-                 currentGripSuctionHasObject());
+                 currentGripSuctionHasObject(),
+                 currentInfraredState());
 }
 } // namespace Protocol::ActionState
