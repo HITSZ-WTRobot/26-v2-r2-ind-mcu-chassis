@@ -102,7 +102,7 @@ void Step::up(const float     startDistance2Step,
 
     // 第一个坐标点为 车体前边缘贴着台阶
     Chassis::ctrl->setTargetPostureInWorld(
-            relativePosture(startDistance2Step_ - HalfChassisDistanceX - SafeDistance));
+            relativePosture(startDistance2Step_ - HalfChassisDistanceX - 3 * SafeDistance));
 
     osThreadFlagsSet(task_, FlagStart);
 }
