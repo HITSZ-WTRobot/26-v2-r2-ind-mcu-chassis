@@ -89,13 +89,13 @@ constexpr uint16_t TargetPosCount = std::size(TargetPoses);
 constexpr float SafeDistance = 0.25f; // 夹取后沿目标 x 方向先撤离的安全距离 unit m
 
 // 矛头夹取执行高度 unit m
-constexpr float LiftExecute = Chassis::Config::Lift::chassisHeightToLiftPosition(0.475);
+constexpr float LiftExecute = Chassis::Config::Lift::chassisHeightToLiftPosition(0.455);
 
 constexpr uint32_t ClawCloseDelayMs  = 100U;  // 目标位合爪后的保持等待时间 unit ms
 constexpr float    PostGrabLiftRaise = 0.06f; // 合爪后 lift 继续抬高的距离 unit m
 
 // 夹取完成后的对接高度 unit m
-constexpr float LiftDocking = Chassis::Config::Lift::chassisHeightToLiftPosition(0.250);
+constexpr float LiftDocking = Chassis::Config::Lift::chassisHeightToLiftPosition(0.265);
 
 constexpr float PrepareYThreshold     = 0.003f; // prepare 阶段允许的侧向误差 unit m
 constexpr float PrepareYawThreshold   = 0.5f;   // prepare 阶段允许的偏航误差 unit deg
