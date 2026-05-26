@@ -33,7 +33,7 @@ constexpr PIDMotor::Config PIDCfg{
 constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
 
 constexpr float MinToLimitMM = 1.25f;  /// 辅助轮接地时离下限位距离
-constexpr float RangeMM      = 410.0f; ///  到上限位时离下限位
+constexpr float RangeMM      = 407.0f; ///  到上限位时离下限位
 
 constexpr float LiftMaxMM    = RangeMM - MinToLimitMM; // 最高抬升位置 unit mm
 constexpr float LiftMinMM    = 0;                      // 最低抬升位置 unit mm
@@ -89,8 +89,8 @@ namespace Position
 using Lift::LiftMin;
 
 constexpr float Normal         = 0.02f;   // 行进默认保持高度 unit m
-constexpr float StepTransition = 0.01f;   // 上下台阶过程中的过渡高度 unit m
-constexpr float StepUp200      = 0.22f;   // 比 200mm 台阶略高 unit m
+constexpr float StepTransition = 0.0127f; // 上下台阶过程中的过渡高度 unit m
+constexpr float StepUp200      = 0.215f;  // 比 200mm 台阶略高 unit m
 constexpr float StepUp400      = 0.408f;  // 比 400mm 台阶略高 unit m
 constexpr float UpR1           = LiftMax; // 比 R1 的台阶高，在最后阶段 unit m
 } // namespace Position
