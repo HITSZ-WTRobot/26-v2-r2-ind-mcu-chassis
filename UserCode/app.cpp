@@ -58,6 +58,8 @@ void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
 
     if (Grip::grip != nullptr)
         Grip::grip->update_100Hz();
+
+    Infrared::update_100Hz();
 }
 
 namespace Arena

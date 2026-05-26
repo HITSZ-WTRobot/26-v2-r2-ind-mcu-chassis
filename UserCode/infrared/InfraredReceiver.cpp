@@ -29,6 +29,22 @@ uint8_t candidate_count_{};
 bool    has_candidate_{ false };
 bool    started_{ false };
 
+volatile bool     release_retract_pending_{ false };
+volatile uint32_t release_retract_start_ms_{};
+
+void trigger_docking_finished_action()
+{
+    if constexpr (!ProjectParts::EnableGrip)
+        return;
+
+    if (Grip::grip == nullptr)
+        return;
+
+    Grip::grip->openClaw();
+    release_retract_start_ms_ = HAL_GetTick();
+    release_retract_pending_  = true;
+}
+
 [[nodiscard]] bool decode_state(const uint8_t byte, State& out)
 {
     switch (byte)
@@ -55,14 +71,10 @@ void apply_stable_state(const State next)
     const State prev = state_;
     state_           = next;
 
-    if (prev == next || next != State::DockingFinished)
+    if (prev != State::KeepAlive || next != State::DockingFinished)
         return;
 
-    if constexpr (ProjectParts::EnableGrip)
-    {
-        if (Grip::grip != nullptr)
-            Grip::grip->openClaw();
-    }
+    trigger_docking_finished_action();
 }
 
 void reset_candidate()
@@ -153,6 +165,30 @@ void init()
         Error_Handler();
 
     started_ = true;
+}
+
+void update_100Hz()
+{
+    if constexpr (!ProjectParts::EnableInfraredReceiver || !ProjectParts::EnableGrip)
+        return;
+
+    if (!release_retract_pending_)
+        return;
+
+    const uint32_t now_ms     = HAL_GetTick();
+    const uint32_t start_ms   = release_retract_start_ms_;
+    const uint32_t elapsed_ms = now_ms - start_ms;
+
+    if (elapsed_ms < Grip::Config::InfraredDocking::ReleaseRetractDelayMs)
+        return;
+
+    if (release_retract_start_ms_ != start_ms)
+        return;
+
+    release_retract_pending_ = false;
+
+    if (Grip::grip != nullptr)
+        (void)Grip::grip->toJointPose(Grip::Config::InfraredDocking::ReleaseRetractPose);
 }
 
 void receiveCallback()

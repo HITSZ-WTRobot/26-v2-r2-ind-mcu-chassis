@@ -10,7 +10,9 @@ Firmware integration lives at the repository root. `UserCode/` is the only proje
 - `UserCode/project_parts.hpp` — the single source of truth for compile-time feature toggles and derived capabilities.
 - `UserCode/infrared/` — USART6 single-byte DMA circular infrared receiver. It accepts
   `0xA0..0xA3`, requires at least three consecutive equal legal bytes before changing state, and
-  triggers `Grip::openClaw()` when the stable state changes to `0xA1`.
+  triggers `Grip::openClaw()` only on a stable `0xA0 -> 0xA1` transition, then uses its
+  100 Hz update hook to delay and send the grip to
+  `Grip::Config::InfraredDocking::ReleaseRetractPose`.
 - `UserCode/chassis/` — the combined wheel-chassis + lift motion object, localization/controller setup, and step action state machine under `UserCode/chassis/actions/`.
 - `UserCode/grip/` — the grip mechanism entry point, trajectory control, calibration config, and the two grip action modules under `UserCode/grip/actions/`: `SpearGrab` for taking spearheads and `KfsStore` for temporary roller storage.
 - `UserCode/protocol/` — upper-host protocol modules: `PCProtocol.*` owns UART RX
@@ -63,7 +65,7 @@ When adding a new subsystem, update its init, periodic update hooks, readiness g
 ## Device & Protocol Mapping
 The current hardware/software mapping in `UserCode/` is:
 - `UART1` (`huart1`) is the auxiliary controller host link; `UART2` (`huart2`) is the yaw gyro (`HWT101CT`); `UART3` (`huart3`) is the main upper-host link.
-- `USART6` (`huart6`) is the infrared receiver link at 115200 baud. It uses DMA circular
+- `USART6` (`huart6`) is the infrared receiver link at 57600 baud. It uses DMA circular
   single-byte receive on the CubeMX-configured pins.
 - Wheel motors are DJI motors: front wheel pair on `hcan1` with `id1 = 1, 2`, rear wheel pair on `hcan2` with `id1 = 3, 4`.
 - Lift motors are also DJI motors, tracked as `Device::Motor::lift[4]`: front lift pair on `hcan1` with `id1 = 3, 4`, rear lift pair on `hcan2` with `id1 = 5, 6`.

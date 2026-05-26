@@ -18,6 +18,7 @@ enum class State : uint16_t
 };
 
 void init();
+void update_100Hz();
 void receiveCallback();
 void errorHandler();
 
