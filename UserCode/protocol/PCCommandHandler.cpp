@@ -136,6 +136,13 @@ void handleCommand(const Frame& frame)
 
     const auto& data = frame.data;
 
+    const auto read_posture = [&](const uint32_t offset) -> chassis::Posture
+    {
+        return { .x   = to_pos(read_i16(&data[offset])),
+                 .y   = to_pos(read_i16(&data[offset + 2])),
+                 .yaw = to_angle(read_i16(&data[offset + 4])) };
+    };
+
     switch (frame.cmd)
     {
     case PCCommand::Ping:
@@ -431,7 +438,33 @@ void handleCommand(const Frame& frame)
             Grip::Action::KfsStore::inst().release();
         break;
     default:
+    {
+        const auto cmd = static_cast<uint8_t>(frame.cmd);
+        if ((cmd & 0xF0U) != 0x50U)
+            break;
+
+        if constexpr (!ProjectParts::EnableStepAction)
+            break;
+
+        const bool type_down = (cmd & 0x08U) != 0U;
+
+        const Action::Step::Direction direction = (cmd & 0x04U) == 0U
+                                                          ? Action::Step::Direction::Forward
+                                                          : Action::Step::Direction::Backward;
+        const Action::Step::Height    height = (cmd & 0x02U) == 0U ? Action::Step::Height::Step200
+                                                                   : Action::Step::Height::Step400;
+        const bool                    param  = (cmd & 0x01U) != 0U;
+
+        const chassis::Posture step_target = read_posture(0);
+        const chassis::Posture end         = read_posture(6);
+
+        if (type_down)
+            Action::Step::inst().down(step_target, end, direction, param, height);
+        else
+            Action::Step::inst().up(step_target, end, direction, param, height);
+
         break;
+    }
     }
 }
 
