@@ -212,8 +212,8 @@ void Step::update()
     {
     case ChassisState::Idle:
         break;
-    case ChassisState::Up0:
-        if (yawPrepared())
+    case ChassisState::Up0://这个流程里面进行了上台阶的准备工作，主要是调整底盘位置和姿态，使其适合上台阶
+        if (yawPrepared())//yaw 已经准备好，开始上台阶
         {
             Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(
                                                            -(HalfChassisDistanceX + SafeDistance)),
@@ -221,6 +221,7 @@ void Step::update()
             chassis_state_ = ChassisState::Up1;
         }
         break;
+    //REVIEW: 状态设计问题,判断逻辑错误,前进只判断动作空闲而没有进行状态机之间的同步
     case ChassisState::Up1:
         if (front_->isFinished() && rear_->isFinished() &&
             std::fabs(currentRelativeToStep().y) < StepPrepareYThreshold)
@@ -235,6 +236,7 @@ void Step::update()
                 osThreadFlagsWait(FlagResume, osFlagsWaitAll, osWaitForever);
         }
         break;
+    
     case ChassisState::Up2:
         if (front_state_ == LiftState::Up4_WaitDeploy)
         {
@@ -342,7 +344,7 @@ void Step::update()
         if (will_take_)
             break;
         // TODO: 这里不应该这样扩大安全距离
-        if (currentRelativeX() > -AbsAuxOuterWheelX + AuxWheelRadius + 3 * SafeDistance)
+        if (currentRelativeX() > -AbsAuxOuterWheelX + AuxWheelRadius + 3 * SafeDistance)//这里是判断前侧辅助轮有没有上台阶
         {
             front_->to(LiftMin, NoloadLimit);
             front_->setGrounding(false); // 离地
