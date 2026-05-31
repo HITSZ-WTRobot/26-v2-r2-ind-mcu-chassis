@@ -355,6 +355,7 @@ void handleCommand(const Frame& frame)
         const Action::Step::Height height = frame.cmd == PCCommand::StepUp400
                                                     ? Action::Step::Height::Step400
                                                     : Action::Step::Height::Step200;
+        //状态机步入逻辑
         Action::Step::inst().up(startDistance, endDistance, direction, willTake, height);
         break;
     }

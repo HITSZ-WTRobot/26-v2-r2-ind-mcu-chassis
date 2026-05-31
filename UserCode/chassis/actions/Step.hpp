@@ -159,18 +159,18 @@ private:
     {
         Idle,
 
-        Up1_抬升ing,
-        Up2_等待收起,
-        Up3_收起ing,
-        Up4_等待放下,
-        Up5_放下ing,
-        Up6_等待恢复到Normal,
-        Up7_恢复到Normaling,
+        Up1_Lifting,
+        Up2_WaitRetract,
+        Up3_Retracting,
+        Up4_WaitDeploy,
+        Up5_Deploying,
+        Up6_WaitRestoreNormal,
+        Up7_RestoringNormal,
 
-        Down1_等待放下,
-        Down2_放下ing,
-        Down3_等待回收到正常位置,
-        Down4_回收ing,
+        Down1_WaitDeploy,
+        Down2_Deploying,
+        Down3_WaitRestoreNormal,
+        Down4_RestoringNormal,
 
         Done
     };
