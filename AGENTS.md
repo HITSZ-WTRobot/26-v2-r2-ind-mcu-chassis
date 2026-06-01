@@ -84,7 +84,16 @@ Upper-host protocol behavior is likewise feature-gated:
 - Step action commands occupy `0x30..0x34`: `0x30 StepUp200`, `0x31 StepUpResume`
   shared by all step-up heights, `0x32 StepDown200`, `0x33 StepUp400`, and
   `0x34 StepDown400`. `StepUp200/400` share the same payload and differ only by
-  `Action::Step::Height`; `StepDown200/400` do the same.
+  `Action::Step::Height`; `StepDown200/400` do the same. These legacy commands keep
+  the original linear work-surface distance payload and are implemented as wrappers
+  around the pose-based Step action.
+- Pose-based Step action commands occupy `0x50..0x5F`, encoded as
+  `0x50 | type<<3 | dir<<2 | height<<1 | param`, where `type` selects up/down,
+  `dir` selects Forward/Backward, `height` selects Step200/Step400, and `param`
+  is `willTake` for up or `shouldReset` for down. The payload is
+  `StepTargetPos(x,y,yaw) + EndPos(x,y,yaw)`. `StepTargetPos` is a world-frame pose
+  on the selected step edge; Step internals use relative poses `R{x,y,yaw}` where
+  Forward has relative yaw 0 and Backward has relative yaw 180.
 - Grip action commands occupy `0x40..0x43`: `0x40 TakeSpear` carries target/end posture as 6 packed `int16` values, `0x41 TakeSpearById` carries `SpearId + endPos`, and `0x42/0x43` trigger `StoreKFS/ReleaseKFS`.
 - The six fixed spear target postures live in `Grip::Config::SpearGrab::TargetPoses`; fill them with calibrated world-frame values before using `TakeSpearById`.
 - `TakeSpear` uses `Grip::Config::SpearGrab::SafeDistance` as a fixed retreat distance and is gated by `ProjectParts::EnableSpearGrabAction`; `StoreKFS/ReleaseKFS` are gated by `ProjectParts::EnableKfsAction`.
