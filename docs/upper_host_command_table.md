@@ -60,7 +60,6 @@
 | `0x32` | `StepDown200` | `startDistance(int16), endDistance(int16), direction(uint16), shouldReset(uint16)` | 下 200mm 台阶动作组。 |
 | `0x33` | `StepUp400` | 与 `StepUp200` 相同 | 上 400mm 台阶动作组。 |
 | `0x34` | `StepDown400` | 与 `StepDown200` 相同 | 下 400mm 台阶动作组。 |
-| `0x50..0x5F` | `StepPose` | `stepTarget_x(int16), stepTarget_y(int16), stepTarget_yaw(int16), end_x(int16), end_y(int16), end_yaw(int16)` | 平面台阶动作组，cmd 低 4 位编码动作类型、方向、高度和参数。 |
 | `0x40` | `TakeSpear` | `target_x(int16), target_y(int16), target_yaw(int16), end_x(int16), end_y(int16), end_yaw(int16)` | 直接指定待取矛头位姿和结束位姿。 |
 | `0x41` | `TakeSpearById` | `spearId(uint16), end_x(int16), end_y(int16), end_yaw(int16), reserve(uint16), reserve(uint16)` | 通过固定矛位索引启动取矛头。 |
 | `0x42` | `StoreKFS` | 无 | 卷轴临时存放动作组。 |
@@ -210,61 +209,7 @@
 - `0x32 StepDown200` 使用 200mm 台阶高度配置。
 - `0x34 StepDown400` 使用 400mm 台阶高度配置。
 
-### 5.9 `0x50..0x5F StepPose`
-
-该命令组用于平面作业面的台阶动作。命令字按位编码：
-
-```text
-cmd = 0x50 | type<<3 | dir<<2 | height<<1 | param
-```
-
-| 字段 | 位 | 说明 |
-| --- | --- | --- |
-| `type` | bit3 | `0=up`, `1=down` |
-| `dir` | bit2 | `0=Forward`, `1=Backward` |
-| `height` | bit1 | `0=Step200`, `1=Step400` |
-| `param` | bit0 | `type=up` 时为 `willTake`；`type=down` 时为 `shouldReset` |
-
-数据区：
-
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `stepTarget_x` | `int16` | 台阶边缘选定作业点世界系 `x`，编码为 `m * 2000` |
-| `stepTarget_y` | `int16` | 台阶边缘选定作业点世界系 `y`，编码为 `m * 2000` |
-| `stepTarget_yaw` | `int16` | 台阶作业方向世界系 `yaw`，编码为 `deg * 100` |
-| `end_x` | `int16` | 动作最终结束世界系 `x`，编码为 `m * 2000` |
-| `end_y` | `int16` | 动作最终结束世界系 `y`，编码为 `m * 2000` |
-| `end_yaw` | `int16` | 动作最终结束世界系 `yaw`，编码为 `deg * 100` |
-
-命令字展开：
-
-| Cmd | 动作 | 方向 | 高度 | 参数 |
-| --- | --- | --- | --- | --- |
-| `0x50` | up | Forward | Step200 | `willTake=0` |
-| `0x51` | up | Forward | Step200 | `willTake=1` |
-| `0x52` | up | Forward | Step400 | `willTake=0` |
-| `0x53` | up | Forward | Step400 | `willTake=1` |
-| `0x54` | up | Backward | Step200 | `willTake=0` |
-| `0x55` | up | Backward | Step200 | `willTake=1` |
-| `0x56` | up | Backward | Step400 | `willTake=0` |
-| `0x57` | up | Backward | Step400 | `willTake=1` |
-| `0x58` | down | Forward | Step200 | `shouldReset=0` |
-| `0x59` | down | Forward | Step200 | `shouldReset=1` |
-| `0x5A` | down | Forward | Step400 | `shouldReset=0` |
-| `0x5B` | down | Forward | Step400 | `shouldReset=1` |
-| `0x5C` | down | Backward | Step200 | `shouldReset=0` |
-| `0x5D` | down | Backward | Step200 | `shouldReset=1` |
-| `0x5E` | down | Backward | Step400 | `shouldReset=0` |
-| `0x5F` | down | Backward | Step400 | `shouldReset=1` |
-
-补充：
-
-- `StepTargetPos` 定义在世界系中，表示台阶边缘上的选定作业点；其 `yaw` 描述台阶作业方向直线。
-- 下位机内部使用相对 `StepTargetPos` 的位姿 `R{x, y, yaw}` 规划预备点和跨台阶阶段。
-- `Forward` 的相对 yaw 为 `0deg`，`Backward` 的相对 yaw 为 `180deg`，不做 yaw 归一化。
-- `0x31 StepUpResume` 同样恢复该命令组中 `willTake=1` 暂停的上台阶流程。
-
-### 5.10 `0x40 TakeSpear`
+### 5.9 `0x40 TakeSpear`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -280,7 +225,7 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | param
 - 安全撤离距离固定使用 `Grip::Config::SpearGrab::SafeDistance`，当前值为 `0.20 m`。
 - 若 `end_pos` 相对 `target_pos` 的 `x` 方向距离不大于安全撤离距离，下位机会直接忽略该命令。
 
-### 5.11 `0x41 TakeSpearById`
+### 5.10 `0x41 TakeSpearById`
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |

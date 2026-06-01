@@ -6,8 +6,6 @@
 #include "Step.hpp"
 #include "chassis/chassis.hpp"
 
-#include <cmath>
-
 namespace Action
 {
 namespace
@@ -18,7 +16,7 @@ constexpr uint32_t FlagResume = 1 << 1;
 using namespace Chassis::Config::ChassisInfo;
 using namespace Chassis::Config::Lift;
 
-constexpr Chassis::Config::Limit DeployLiftLimit{ MaxSpeed, MaxOnloadAccel, MaxOnloadAccel * 50 };
+constexpr Chassis::Config::Limit 放腿速度{ MaxSpeed, MaxOnloadAccel, MaxOnloadAccel * 50 };
 
 using chassis::controller::Master;
 } // namespace
@@ -38,14 +36,16 @@ Step& Step::inst()
     return inst;
 }
 
-void Step::prepare(const chassis::Posture& stepTargetPos,
-                   const chassis::Posture& endPos,
-                   const Direction         dir)
+void Step::prepare(const float     startDistance2Step,
+                   const float     endDistance2Step,
+                   const Direction dir)
 {
-    direction_        = dir;
-    dir_relative_yaw_ = dir == Direction::Forward ? 0.0f : 180.0f;
-    step_target_pos_  = stepTargetPos;
-    end_pos_          = endPos;
+    direction_          = dir;
+    x_sign_             = dir == Direction::Forward ? 1 : -1;
+    startDistance2Step_ = startDistance2Step;
+    endDistance2Step_   = endDistance2Step;
+
+    start_pos_ = Chassis::loc->postureInWorld();
 
     if (dir == Direction::Forward)
     {
@@ -57,25 +57,6 @@ void Step::prepare(const chassis::Posture& stepTargetPos,
         rear_  = &Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front);
         front_ = &Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear);
     }
-}
-
-bool Step::yawPrepared() const
-{
-    return std::fabs(currentRelativeToStep().yaw - dir_relative_yaw_) < StepPrepareYawThreshold;
-}
-
-chassis::Posture Step::endXWithStepYaw() const
-{
-    const auto end_rel = chassis::loc::IChassisLoc::WorldPosture2RelativePosture(step_target_pos_,
-                                                                                 end_pos_);
-    return stepRelativePosture({ end_rel.x, 0.0f, dir_relative_yaw_ });
-}
-
-chassis::Posture Step::endXYWithStepYaw() const
-{
-    const auto end_rel = chassis::loc::IChassisLoc::WorldPosture2RelativePosture(step_target_pos_,
-                                                                                 end_pos_);
-    return stepRelativePosture({ end_rel.x, end_rel.y, dir_relative_yaw_ });
 }
 
 float Step::stepUpPosition() const
@@ -105,41 +86,23 @@ void Step::up(const float     startDistance2Step,
               const bool      willTake,
               const Height    height)
 {
-    const chassis::Posture start_pos = Chassis::loc->postureInWorld();
-    const float            x_sign    = dir == Direction::Forward ? 1.0f : -1.0f;
-    const float            step_yaw  = dir == Direction::Forward ? 0.0f : -180.0f;
-
-    const chassis::Posture step_target = chassis::loc::IChassisLoc::RelativePosture2WorldPosture(
-            start_pos, { x_sign * startDistance2Step, 0.0f, step_yaw });
-    const chassis::Posture end = chassis::loc::IChassisLoc::RelativePosture2WorldPosture(
-            start_pos, { x_sign * (startDistance2Step + endDistance2Step), 0.0f, 0.0f });
-
-    up(step_target, end, dir, willTake, height);
-}
-
-void Step::up(const chassis::Posture& stepTargetPos,
-              const chassis::Posture& endPos,
-              const Direction         dir,
-              const bool              willTake,
-              const Height            height)
-{
     if (isRunning())
         return;
 
-    prepare(stepTargetPos, endPos, dir);
-    will_take_    = willTake;
-    should_reset_ = true;
-    height_       = height;
+    prepare(startDistance2Step, endDistance2Step, dir);
+    will_take_ = willTake;
+    height_    = height;
 
-    chassis_state_ = ChassisState::Up0_PrepareYaw;
-    front_state_   = LiftState::Up1_Lifting;
-    rear_state_    = LiftState::Up1_Lifting;
+    chassis_state_ = ChassisState::Up1_等待底盘到达台阶高度_同时往台阶位移;
+    front_state_   = LiftState::Up1_抬升ing;
+    rear_state_    = LiftState::Up1_抬升ing;
 
     front_->to(stepUpPosition(), OnloadLimit);
     rear_->to(stepUpPosition(), OnloadLimit);
 
+    // 第一个坐标点为 车体前边缘贴着台阶
     Chassis::ctrl->setTargetPostureInWorld(
-            stepRelativePosture(-(HalfChassisDiagonal + SafeDistance)));
+            relativePosture(startDistance2Step_ - HalfChassisDistanceX - 3 * SafeDistance));
 
     osThreadFlagsSet(task_, FlagStart);
 }
@@ -158,41 +121,23 @@ void Step::down(const float     startDistance2Step,
                 const bool      shouldReset,
                 const Height    height)
 {
-    const chassis::Posture start_pos = Chassis::loc->postureInWorld();
-    const float            x_sign    = dir == Direction::Forward ? 1.0f : -1.0f;
-    const float            step_yaw  = dir == Direction::Forward ? 0.0f : -180.0f;
-
-    const chassis::Posture step_target = chassis::loc::IChassisLoc::RelativePosture2WorldPosture(
-            start_pos, { x_sign * startDistance2Step, 0.0f, step_yaw });
-    const chassis::Posture end = chassis::loc::IChassisLoc::RelativePosture2WorldPosture(
-            start_pos, { x_sign * (startDistance2Step + endDistance2Step), 0.0f, 0.0f });
-
-    down(step_target, end, dir, shouldReset, height);
-}
-
-void Step::down(const chassis::Posture& stepTargetPos,
-                const chassis::Posture& endPos,
-                const Direction         dir,
-                const bool              shouldReset,
-                const Height            height)
-{
     if (isRunning())
         return;
 
-    prepare(stepTargetPos, endPos, dir);
-    will_take_    = false;
+    prepare(startDistance2Step, endDistance2Step, dir);
     should_reset_ = shouldReset;
     height_       = height;
 
-    chassis_state_ = ChassisState::Down0_PrepareYaw;
-    front_state_   = LiftState::Down1_WaitDeploy;
-    rear_state_    = LiftState::Down1_WaitDeploy;
+    chassis_state_ = ChassisState::Down0_前进使前轮前边缘到达台阶边缘_等待底盘降为过渡高度;
+    front_state_   = LiftState::Down1_等待放下;
+    rear_state_    = LiftState::Down1_等待放下;
 
     front_->to(Position::StepTransition, OnloadLimit);
     rear_->to(Position::StepTransition, OnloadLimit);
 
+    // 第一个坐标点只是底盘的前导引导点；当两侧 lift 到达过渡高度后，会立即重定向到下一段目标。
     Chassis::ctrl->setTargetPostureInWorld(
-            stepRelativePosture(-(HalfWheelDiagonal + WheelRadius + 3 * SafeDistance)));
+            relativePosture(startDistance2Step_ - AbsWheelOuterEdgeX - 3 * SafeDistance));
 
     osThreadFlagsSet(task_, FlagStart);
 }
@@ -212,139 +157,81 @@ void Step::update()
     {
     case ChassisState::Idle:
         break;
-
-    // 上台阶预备：先到台阶前的安全预备点，并等待 yaw 对准台阶方向。
-    case ChassisState::Up0_PrepareYaw:
-        if (yawPrepared())
+    case ChassisState::Up1_等待底盘到达台阶高度_同时往台阶位移:
+        if (front_->isFinished() && rear_->isFinished())
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(
-                                                           -(HalfChassisDistanceX + SafeDistance)),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
-            chassis_state_ = ChassisState::Up1_ApproachEdge;
-        }
-        break;
+            // TODO: 不同阶段底盘的速度限制应当不同
+            // TODO: 如果 will_take_ = false, 则该目标值设置应当带末速度
+            Chassis::ctrl->setTargetPostureInWorld(
+                    // 使前主动轮外边缘贴着台阶
+                    relativePosture(startDistance2Step_ - AbsWheelOuterEdgeX - SafeDistance),
+                    Master::TrajectoryLinkMode::PreviousCurve);
 
-    // 上台阶靠近边缘：等待两侧升到台阶高度，并确认 y 偏差足够小。
-    case ChassisState::Up1_ApproachEdge:
-        if (front_->isFinished() && rear_->isFinished() &&
-            std::fabs(currentRelativeToStep().y) < StepPrepareYThreshold)
-        {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(-(AbsWheelOuterEdgeX +
-                                                                         3 * SafeDistance)),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
-
-            chassis_state_ = ChassisState::Up2_WaitFrontRetract;
+            chassis_state_ = ChassisState::Up2_前进将前辅助轮悬于台阶上方_等待前轮收起;
 
             if (will_take_)
                 osThreadFlagsWait(FlagResume, osFlagsWaitAll, osWaitForever);
         }
         break;
-
-    // 等前侧腿收起：前辅助轮越过边缘后，等待前侧腿完成收起。
-    case ChassisState::Up2_WaitFrontRetract:
-        if (front_state_ == LiftState::Up4_WaitDeploy)
+    case ChassisState::Up2_前进将前辅助轮悬于台阶上方_等待前轮收起:
+        if (front_state_ == LiftState::Up4_等待放下)
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(AbsWheelInnerEdgeX -
-                                                                       3 * SafeDistance),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            Chassis::ctrl->setTargetPostureInWorld(
+                    // 使后主动轮内边缘贴着台阶
+                    relativePosture(startDistance2Step_ + AbsWheelInnerEdgeX - SafeDistance),
+                    Master::TrajectoryLinkMode::PreviousCurve);
 
-            chassis_state_ = ChassisState::Up3_WaitRearRetract;
+            chassis_state_ = ChassisState::Up3_前进将中辅助轮悬于台阶上方_等待前轮放下_等待后轮收起;
         }
         break;
-
-    // 等后侧腿收起：继续推进到后侧跨越条件，等待后侧腿收起完成。
-    case ChassisState::Up3_WaitRearRetract:
-        if (rear_state_ == LiftState::Up4_WaitDeploy)
+    case ChassisState::Up3_前进将中辅助轮悬于台阶上方_等待前轮放下_等待后轮收起:
+        if ((front_state_ == LiftState::Done || front_state_ == LiftState::Up6_等待恢复到Normal) &&
+            rear_state_ == LiftState::Up4_等待放下)
         {
-            Chassis::ctrl->setTargetPostureInWorld(endXWithStepYaw(),
+            Chassis::ctrl->setTargetPostureInWorld(relativePosture(startDistance2Step_ +
+                                                                   endDistance2Step_),
                                                    Master::TrajectoryLinkMode::PreviousCurve);
 
-            chassis_state_ = ChassisState::Up4_MoveToEndX;
+            chassis_state_ = ChassisState::Up4_前进使底盘完全登上台阶;
         }
         break;
-
-    // 保持台阶 yaw 先对齐终点 x，等后侧腿放下或恢复到位。
-    case ChassisState::Up4_MoveToEndX:
-        if (rear_state_ == LiftState::Up6_WaitRestoreNormal || rear_state_ == LiftState::Done)
-        {
-            Chassis::ctrl->setTargetPostureInWorld(endXYWithStepYaw(),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
-            chassis_state_ = ChassisState::Up5_MoveToEndXY;
-        }
-        break;
-
-    // 保持台阶 yaw 走到终点 x/y，离开台阶安全范围后再切最终位姿。
-    case ChassisState::Up5_MoveToEndXY:
-        if (currentRelativeX() > HalfWheelDiagonal + WheelRadius + 3 * SafeDistance)
-        {
-            Chassis::ctrl->setTargetPostureInWorld(end_pos_,
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
-            chassis_state_ = ChassisState::Up6_FinalizePose;
-        }
-        break;
-
-    // 上台阶收尾：等待底盘最终位姿轨迹完成。
-    case ChassisState::Up6_FinalizePose:
+    case ChassisState::Up4_前进使底盘完全登上台阶:
         if (Chassis::ctrl->isTrajectoryFinished())
         {
             chassis_state_ = ChassisState::Done;
         }
         break;
-
-    // 下台阶预备：先到下台阶预备点，并等待 yaw 对准台阶方向。
-    case ChassisState::Down0_PrepareYaw:
-        if (yawPrepared())
-        {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(
-                                                           -(AbsAuxInnerWheelX + 3 * SafeDistance)),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
-            chassis_state_ = ChassisState::Down1_ApproachFrontAux;
-        }
-        break;
-
-    // 下台阶靠近前侧辅助轮边缘：等待两侧腿到过渡高度。
-    case ChassisState::Down1_ApproachFrontAux:
+    case ChassisState::Down0_前进使前轮前边缘到达台阶边缘_等待底盘降为过渡高度:
         if (front_->isFinished() && rear_->isFinished())
         {
-            chassis_state_ = ChassisState::Down2_WaitFrontDeploy;
+            // lift 已经到达过渡高度，此时允许底盘跳过前导目标，直接切到正式的下台阶位移目标。
+            Chassis::ctrl->setTargetPostureInWorld(
+                    relativePosture(startDistance2Step_ - AbsAuxInnerWheelX - 3 * SafeDistance),
+                    Master::TrajectoryLinkMode::PreviousCurve);
+            chassis_state_ = ChassisState::Down1_前进使中前辅助轮到达台阶边缘_等待前轮放下;
         }
         break;
-
-    // 等前侧腿下放：前侧腿支撑到位后，底盘继续推进到后侧辅助轮边缘。
-    case ChassisState::Down2_WaitFrontDeploy:
-        if (front_state_ == LiftState::Down3_WaitRestoreNormal)
+    case ChassisState::Down1_前进使中前辅助轮到达台阶边缘_等待前轮放下:
+        if (front_state_ == LiftState::Down3_等待回收到正常位置)
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(AbsAuxOuterWheelX -
-                                                                       3 * SafeDistance),
+            Chassis::ctrl->setTargetPostureInWorld( // 外侧（后）辅助轮到达台阶边缘
+                    relativePosture(startDistance2Step_ + AbsAuxOuterWheelX - 3 * SafeDistance),
+                    Master::TrajectoryLinkMode::PreviousCurve);
+
+            chassis_state_ = ChassisState::Down2_前进使后辅助轮到达台阶边缘_等待后轮放下;
+        }
+        break;
+    case ChassisState::Down2_前进使后辅助轮到达台阶边缘_等待后轮放下:
+        if (rear_state_ == LiftState::Down3_等待回收到正常位置)
+        {
+            Chassis::ctrl->setTargetPostureInWorld(relativePosture(startDistance2Step_ +
+                                                                   endDistance2Step_),
                                                    Master::TrajectoryLinkMode::PreviousCurve);
 
-            chassis_state_ = ChassisState::Down3_WaitRearDeploy;
+            chassis_state_ = ChassisState::Down3_前进使底盘完全走下台阶;
         }
         break;
-
-    // 等后侧腿下放：后侧腿支撑到位后，保持台阶 yaw 走到终点 x/y。
-    case ChassisState::Down3_WaitRearDeploy:
-        if (rear_state_ == LiftState::Down3_WaitRestoreNormal)
-        {
-            Chassis::ctrl->setTargetPostureInWorld(endXYWithStepYaw(),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
-
-            chassis_state_ = ChassisState::Down4_MoveToEndXY;
-        }
-        break;
-
-    // 下台阶离开边缘：离开台阶安全范围后再切最终位姿。
-    case ChassisState::Down4_MoveToEndXY:
-        if (currentRelativeX() > HalfChassisDiagonal + SafeDistance)
-        {
-            Chassis::ctrl->setTargetPostureInWorld(end_pos_,
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
-            chassis_state_ = ChassisState::Down5_FinalizePose;
-        }
-        break;
-
-    // 下台阶收尾：等待底盘最终位姿轨迹完成。
-    case ChassisState::Down5_FinalizePose:
+    case ChassisState::Down3_前进使底盘完全走下台阶:
         if (Chassis::ctrl->isTrajectoryFinished())
         {
             chassis_state_ = ChassisState::Done;
@@ -359,81 +246,78 @@ void Step::update()
     {
     case LiftState::Idle:
         break;
-    case LiftState::Up1_Lifting:
+    case LiftState::Up1_抬升ing:
         if (front_->isFinished())
-            front_state_ = LiftState::Up2_WaitRetract;
+            front_state_ = LiftState::Up2_等待收起;
         break;
-    case LiftState::Up2_WaitRetract:
+    case LiftState::Up2_等待收起:
         // 等待取物
         if (will_take_)
             break;
         // TODO: 这里不应该这样扩大安全距离
-        if (currentRelativeX() > -AbsAuxOuterWheelX + AuxWheelRadius + 3 * SafeDistance)//这里是判断前侧辅助轮有没有上台阶
+        if (currentRelativeX() >
+            startDistance2Step_ - AbsAuxOuterWheelX + AuxWheelRadius + 3 * SafeDistance)
         {
             front_->to(LiftMin, NoloadLimit);
             front_->setGrounding(false); // 离地
-            front_state_ = LiftState::Up3_Retracting;
+            front_state_ = LiftState::Up3_收起ing;
         }
         break;
-    case LiftState::Up3_Retracting:
+    case LiftState::Up3_收起ing:
         if (front_->isFinished())
-            front_state_ = LiftState::Up4_WaitDeploy;
+            front_state_ = LiftState::Up4_等待放下;
         break;
-    case LiftState::Up4_WaitDeploy:
+    case LiftState::Up4_等待放下:
         // 前轮已经完全登上
-        if (currentRelativeX() > -AbsWheelInnerEdgeX + 3 * SafeDistance)
+        if (currentRelativeX() > startDistance2Step_ - AbsWheelInnerEdgeX + 3 * SafeDistance)
         {
-            front_->to(Position::StepTransition, DeployLiftLimit);
-            front_state_ = LiftState::Up5_Deploying;
+            front_->to(Position::StepTransition, 放腿速度);
+            front_state_ = LiftState::Up5_放下ing;
         }
         break;
-    case LiftState::Up5_Deploying:
+    case LiftState::Up5_放下ing:
         if (front_->isFinished())
         {
             front_->setGrounding(true); // 着地
             if constexpr (Position::StepTransition == Position::Normal)
                 front_state_ = LiftState::Done;
             else
-                front_state_ = LiftState::Up6_WaitRestoreNormal;
+                front_state_ = LiftState::Up6_等待恢复到Normal;
         }
         break;
-    case LiftState::Up6_WaitRestoreNormal:
+    case LiftState::Up6_等待恢复到Normal:
         // 在 rear 触发
         break;
-    case LiftState::Up7_RestoringNormal:
+    case LiftState::Up7_恢复到Normaling:
         if (front_->isFinished())
             front_state_ = LiftState::Done;
         break;
-    case LiftState::Down1_WaitDeploy:
-        if (chassis_state_ == ChassisState::Down0_PrepareYaw ||
-            chassis_state_ == ChassisState::Down1_ApproachFrontAux)
-            break;
-
-        if (currentRelativeX() > -AbsWheelOuterEdgeX)
+    case LiftState::Down1_等待放下:
+        if (currentRelativeX() > startDistance2Step_ - AbsWheelOuterEdgeX)
         {
             // 离地判定
             front_->setGrounding(false);
         }
-        if (currentRelativeX() > -AbsWheelInnerEdgeX + 3 * SafeDistance)
+        if (currentRelativeX() > startDistance2Step_ - AbsWheelInnerEdgeX + SafeDistance)
         {
             front_->to(stepUpPosition(), NoloadLimit);
-            front_state_ = LiftState::Down2_Deploying;
+            front_state_ = LiftState::Down2_放下ing;
         }
         break;
-    case LiftState::Down2_Deploying:
+    case LiftState::Down2_放下ing:
         if (front_->isFinished())
         {
             front_->setGrounding(true);
-            front_state_ = LiftState::Down3_WaitRestoreNormal;
+            front_state_ = LiftState::Down3_等待回收到正常位置;
         }
         break;
-    case LiftState::Down3_WaitRestoreNormal:
+    case LiftState::Down3_等待回收到正常位置:
         if (should_reset_)
         {
-            if (chassis_state_ == ChassisState::Down5_FinalizePose)
+            if (currentRelativeX() > startDistance2Step_ + HalfChassisDistanceX + SafeDistance)
             {
                 front_->to(Position::Normal, OnloadLimit);
-                front_state_ = LiftState::Down4_RestoringNormal;
+                front_state_ = LiftState::Down4_回收ing;
             }
         }
         else
@@ -445,7 +329,7 @@ void Step::update()
             }
         }
         break;
-    case LiftState::Down4_RestoringNormal:
+    case LiftState::Down4_回收ing:
         if (front_->isFinished())
         {
             front_state_ = LiftState::Done;
@@ -459,79 +343,76 @@ void Step::update()
     {
     case LiftState::Idle:
         break;
-    case LiftState::Up1_Lifting:
+    case LiftState::Up1_抬升ing:
         if (rear_->isFinished())
-            rear_state_ = LiftState::Up2_WaitRetract;
+            rear_state_ = LiftState::Up2_等待收起;
         break;
-    case LiftState::Up2_WaitRetract:
+    case LiftState::Up2_等待收起:
         // 等待取物，此处可以不加该判断，这里为了对称
         if (will_take_)
             break;
-        if ((currentRelativeX() > AbsAuxInnerWheelX + AuxWheelRadius + 3 * SafeDistance) &&
-            (front_state_ == LiftState::Done || front_state_ == LiftState::Up6_WaitRestoreNormal))
+        // 中后辅助轮已登上台阶
+        if (currentRelativeX() >
+            startDistance2Step_ + AbsAuxInnerWheelX + AuxWheelRadius + 3 * SafeDistance)
         {
             rear_->to(LiftMin, NoloadLimit);
             rear_->setGrounding(false);
-            rear_state_ = LiftState::Up3_Retracting;
+            rear_state_ = LiftState::Up3_收起ing;
         }
         break;
-    case LiftState::Up3_Retracting:
+    case LiftState::Up3_收起ing:
         if (rear_->isFinished())
-            rear_state_ = LiftState::Up4_WaitDeploy;
+            rear_state_ = LiftState::Up4_等待放下;
         break;
-    case LiftState::Up4_WaitDeploy:
+    case LiftState::Up4_等待放下:
         // 后轮已经完全登上
-        if (currentRelativeX() > AbsWheelOuterEdgeX + 3 * SafeDistance)
+        if (currentRelativeX() > startDistance2Step_ + AbsWheelOuterEdgeX + 3 * SafeDistance)
         {
-            if (front_state_ == LiftState::Up6_WaitRestoreNormal)
+            if (front_state_ == LiftState::Up6_等待恢复到Normal)
             {
-                front_->to(Position::Normal, DeployLiftLimit);
-                front_state_ = LiftState::Up7_RestoringNormal;
+                front_->to(Position::Normal, 放腿速度);
+                front_state_ = LiftState::Up7_恢复到Normaling;
             }
-            rear_->to(Position::Normal, DeployLiftLimit);
-            rear_state_ = LiftState::Up5_Deploying;
+            rear_->to(Position::Normal, 放腿速度);
+            rear_state_ = LiftState::Up5_放下ing;
         }
         break;
-    case LiftState::Up5_Deploying:
+    case LiftState::Up5_放下ing:
         if (rear_->isFinished())
         {
             rear_state_ = LiftState::Done;
             rear_->setGrounding(true); // 着地
         }
         break;
-    case LiftState::Up6_WaitRestoreNormal:
-    case LiftState::Up7_RestoringNormal:
+    case LiftState::Up6_等待恢复到Normal:
+    case LiftState::Up7_恢复到Normaling:
         break;
-    case LiftState::Down1_WaitDeploy:
-        if (chassis_state_ == ChassisState::Down0_PrepareYaw ||
-            chassis_state_ == ChassisState::Down1_ApproachFrontAux)
-            break;
-
-        if (currentRelativeX() > AbsWheelInnerEdgeX)
+    case LiftState::Down1_等待放下:
+        if (currentRelativeX() > startDistance2Step_ + AbsWheelInnerEdgeX)
         {
             // 离地判定
             rear_->setGrounding(false);
         }
-        if (currentRelativeX() > AbsWheelOuterEdgeX + 3 * SafeDistance)
+        if (currentRelativeX() > startDistance2Step_ + AbsWheelOuterEdgeX + SafeDistance)
         {
             rear_->to(stepUpPosition(), NoloadLimit);
-            rear_state_ = LiftState::Down2_Deploying;
+            rear_state_ = LiftState::Down2_放下ing;
         }
         break;
-    case LiftState::Down2_Deploying:
+    case LiftState::Down2_放下ing:
         if (rear_->isFinished())
         {
             rear_->setGrounding(true);
-            rear_state_ = LiftState::Down3_WaitRestoreNormal;
+            rear_state_ = LiftState::Down3_等待回收到正常位置;
         }
         break;
-    case LiftState::Down3_WaitRestoreNormal:
+    case LiftState::Down3_等待回收到正常位置:
         if (should_reset_)
         {
-            if (chassis_state_ == ChassisState::Down5_FinalizePose)
+            if (currentRelativeX() > startDistance2Step_ + HalfChassisDistanceX + SafeDistance)
             {
                 rear_->to(Position::Normal, OnloadLimit);
-                rear_state_ = LiftState::Down4_RestoringNormal;
+                rear_state_ = LiftState::Down4_回收ing;
             }
         }
         else
@@ -543,7 +424,7 @@ void Step::update()
             }
         }
         break;
-    case LiftState::Down4_RestoringNormal:
+    case LiftState::Down4_回收ing:
         if (rear_->isFinished())
         {
             rear_state_ = LiftState::Done;
@@ -568,4 +449,4 @@ void Step::update()
         }
     }
 }
-} // namespace Action
+}; // namespace Action

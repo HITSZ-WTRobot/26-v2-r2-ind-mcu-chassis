@@ -134,17 +134,6 @@ constexpr float AuxiliaryWheelRadiusMM  = 20.0f;  // 辅助轮半径
 constexpr float AuxOuterWheelDistanceMM = 760.0f; // 外侧两个辅助轮中心距
 constexpr float AuxInnerWheelDistanceMM = 160.0f; // 内侧两个辅助轮中心距
 constexpr float ChassisDistanceXMM      = 800.0f; // 车体长度
-constexpr float ChassisDistanceYMM      = 510.0f; // 车体宽度
-
-constexpr float constexpr_sqrt_impl(const float x, const float curr, const float prev)
-{
-    return curr == prev ? curr : constexpr_sqrt_impl(x, 0.5f * (curr + x / curr), curr);
-}
-
-constexpr float constexpr_sqrt(const float x)
-{
-    return x > 0.0f ? constexpr_sqrt_impl(x, x, 0.0f) : 0.0f;
-}
 
 // 换算后用于使用
 constexpr float AuxWheelRadius = 1e-3f * AuxiliaryWheelRadiusMM; // 辅助轮半径
@@ -162,19 +151,8 @@ constexpr float AbsWheelInnerEdgeX = AbsWheelX - WheelRadius; // 主动轮内边
 
 constexpr float ChassisDistanceX     = ChassisDistanceXMM * 1e-3f;
 constexpr float HalfChassisDistanceX = ChassisDistanceX / 2.0f;
-constexpr float ChassisDistanceY     = ChassisDistanceYMM * 1e-3f;
-constexpr float HalfChassisDistanceY = ChassisDistanceY / 2.0f;
-constexpr float HalfWheelDistanceY   = Motion::WheelDistanceYMM * 0.5f * 1e-3f;
-
-constexpr float HalfChassisDiagonal = constexpr_sqrt(HalfChassisDistanceX * HalfChassisDistanceX +
-                                                     HalfChassisDistanceY * HalfChassisDistanceY);
-constexpr float HalfWheelDiagonal   = constexpr_sqrt(AbsWheelX * AbsWheelX +
-                                                     HalfWheelDistanceY * HalfWheelDistanceY);
 
 constexpr float SafeDistance = 0.01; // 1cm 安全距离（底盘方向）
-
-constexpr float StepPrepareYThreshold   = 0.05f; // 上台阶预备阶段 y 方向允许误差 unit m
-constexpr float StepPrepareYawThreshold = 1.0f;  // 台阶动作预备阶段 yaw 允许误差 unit deg
 } // namespace ChassisInfo
 
 /**
