@@ -225,7 +225,6 @@ void Step::update()
         break;
 
     // 上台阶靠近边缘：等待两侧升到台阶高度，并确认 y 偏差足够小。
-    //REVIEW: 状态设计问题,判断逻辑错误,前进只判断动作空闲而没有进行状态机之间的同步
     case ChassisState::Up1_ApproachEdge:
         if (front_->isFinished() && rear_->isFinished() &&
             std::fabs(currentRelativeToStep().y) < StepPrepareYThreshold)
