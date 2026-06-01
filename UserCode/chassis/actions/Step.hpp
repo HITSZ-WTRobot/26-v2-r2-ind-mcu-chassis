@@ -69,7 +69,7 @@ public:
 
     [[nodiscard]] bool isWaitingTake() const
     {
-        return will_take_ && chassis_state_ == ChassisState::Up2;
+        return will_take_ && chassis_state_ == ChassisState::Up2_WaitFrontRetract;
     }
 
     [[nodiscard]] bool isFinished() const
@@ -115,42 +115,42 @@ private:
         Idle,
 
         // 目标 R{-(HalfChassisDiagonal + SafeDistance), 0, dirRelativeYaw}；
-        // 前后腿同步抬升到台阶高度；yaw 到阈值后切换到 Up1。
-        Up0,
+        // 前后腿同步抬升到台阶高度；yaw 到阈值后切换到 Up1_ApproachEdge。
+        Up0_PrepareYaw,
         // 目标 R{-(HalfChassisDistanceX + SafeDistance), 0, dirRelativeYaw}；
         // 等待前后腿抬升完成且 y 到阈值后切换到原上台阶动作链。
-        Up1,
+        Up1_ApproachEdge,
         // 目标 R{-(AbsWheelOuterEdgeX + SafeDistance), 0, dirRelativeYaw}；
         // 前辅助轮越过台阶边缘，willTake 时在此等待 0x31 恢复。
-        Up2,
+        Up2_WaitFrontRetract,
         // 目标 R{AbsWheelInnerEdgeX - 3 * SafeDistance, 0, dirRelativeYaw}；
         // 等待后腿收起，之后切到保持台阶 yaw 的 EndPos 相对 x。
-        Up3,
+        Up3_WaitRearRetract,
         // 目标 R{end_rel.x, 0, dirRelativeYaw}；
         // 等待后腿放下，之后切到保持台阶 yaw 的 EndPos 相对 x/y。
-        Up4,
+        Up4_MoveToEndX,
         // 目标 R{end_rel.x, end_rel.y, dirRelativeYaw}；
         // 前后腿恢复 Normal，离开台阶安全 x 后切最终 EndPos。
-        Up5,
+        Up5_MoveToEndXY,
         // 目标 EndPos；等待底盘轨迹和前后腿都完成。
-        Up6,
+        Up6_FinalizePose,
 
         // 目标 R{-(HalfWheelDiagonal + WheelRadius + 3 * SafeDistance), 0, dirRelativeYaw}；
-        // 前后腿同步到过渡高度；yaw 到阈值后切换到 Down1。
-        Down0,
+        // 前后腿同步到过渡高度；yaw 到阈值后切换到 Down1_ApproachFrontAux。
+        Down0_PrepareYaw,
         // 目标 R{-(AbsAuxInnerWheelX + 3 * SafeDistance), 0, dirRelativeYaw}；
         // 等待前后腿到过渡高度后进入原下台阶动作链。
-        Down1,
+        Down1_ApproachFrontAux,
         // 继续前侧辅助轮到达台阶边缘的推进；等待前腿下放完成。
-        Down2,
+        Down2_WaitFrontDeploy,
         // 目标 R{AbsAuxOuterWheelX - 3 * SafeDistance, 0, dirRelativeYaw}；
         // 等待后腿下放完成。
-        Down3,
+        Down3_WaitRearDeploy,
         // 目标 W{end_pos.x, end_pos.y, step_target_pos.yaw + dirRelativeYaw}；
         // 腿高度保持不变，离开台阶安全 x 后切最终 EndPos。
-        Down4,
+        Down4_MoveToEndXY,
         // 目标 EndPos；shouldReset 时前后腿恢复 Normal，否则保持高度等待底盘完成。
-        Down5,
+        Down5_FinalizePose,
 
         Done
     };
