@@ -291,26 +291,29 @@ void Step::update()
         }
         break;
 
-    // 下台阶预备：先到下台阶预备点，并等待 yaw 对准台阶方向。
+    // 下台阶预备：先到下台阶预备点，此时进行降底盘和前进到主动轮外边缘的并行。
     case ChassisState::Down0_PrepareYaw:
         if (yawPrepared())
         {
             Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(
-                                                           -(AbsAuxInnerWheelX + 3 * SafeDistance)),
+                                                           -(AbsWheelOuterEdgeX + 3 * SafeDistance)),
                                                    Master::TrajectoryLinkMode::PreviousCurve);
             chassis_state_ = ChassisState::Down1_ApproachFrontAux;
         }
         break;
 
-    // 下台阶靠近前侧辅助轮边缘：等待两侧腿到过渡高度。
+    // 等待两侧腿到过渡高度，之后下台阶靠近辅助轮内侧前侧边缘，准备下放前腿。
     case ChassisState::Down1_ApproachFrontAux:
         if (front_->isFinished() && rear_->isFinished())
         {
+            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(-(AbsAuxInnerWheelX +
+                                                                         3 * SafeDistance)),
+                                                   Master::TrajectoryLinkMode::PreviousCurve);
             chassis_state_ = ChassisState::Down2_WaitFrontDeploy;
         }
         break;
 
-    // 等前侧腿下放：前侧腿支撑到位后，底盘继续推进到后侧辅助轮边缘。
+    // 等前侧腿下放：前侧腿支撑到位后，底盘继续推进到后侧外辅助轮边缘。
     case ChassisState::Down2_WaitFrontDeploy:
         if (front_state_ == LiftState::Down3_WaitRestoreNormal)
         {
@@ -404,6 +407,7 @@ void Step::update()
         if (front_->isFinished())
             front_state_ = LiftState::Done;
         break;
+        // 等待离地之后并具备放下前腿条件之后开始放腿
     case LiftState::Down1_WaitDeploy:
         if (chassis_state_ == ChassisState::Down0_PrepareYaw ||
             chassis_state_ == ChassisState::Down1_ApproachFrontAux)
@@ -420,6 +424,7 @@ void Step::update()
             front_state_ = LiftState::Down2_Deploying;
         }
         break;
+        // 等前侧腿下放完成判定状态，并更改底盘支撑状态
     case LiftState::Down2_Deploying:
         if (front_->isFinished())
         {
@@ -427,6 +432,7 @@ void Step::update()
             front_state_ = LiftState::Down3_WaitRestoreNormal;
         }
         break;
+        // 等待前侧腿放下或不复位底盘时的台阶完成条件，之后如果需要复位底盘则开始复位，否则直接完成
     case LiftState::Down3_WaitRestoreNormal:
         if (should_reset_)
         {
@@ -502,6 +508,7 @@ void Step::update()
     case LiftState::Up6_WaitRestoreNormal:
     case LiftState::Up7_RestoringNormal:
         break;
+        // 等待离地之后并具备放下后腿条件之后开始放腿
     case LiftState::Down1_WaitDeploy:
         if (chassis_state_ == ChassisState::Down0_PrepareYaw ||
             chassis_state_ == ChassisState::Down1_ApproachFrontAux)
@@ -518,6 +525,7 @@ void Step::update()
             rear_state_ = LiftState::Down2_Deploying;
         }
         break;
+        // 等待后侧腿下放完成判定状态，并更改底盘支撑状态
     case LiftState::Down2_Deploying:
         if (rear_->isFinished())
         {
@@ -525,6 +533,7 @@ void Step::update()
             rear_state_ = LiftState::Down3_WaitRestoreNormal;
         }
         break;
+        // 等待后侧腿放下或不复位底盘时的台阶完成条件，之后如果需要复位底盘则开始复位，否则直接完成
     case LiftState::Down3_WaitRestoreNormal:
         if (should_reset_)
         {
