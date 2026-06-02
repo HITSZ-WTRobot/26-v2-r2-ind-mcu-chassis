@@ -291,12 +291,12 @@ void Step::update()
         }
         break;
 
-    // 下台阶预备：先到下台阶预备点，并等待 yaw 对准台阶方向。
+    // 下台阶预备：先到下台阶预备点，此时进行降底盘和前进的并行。
     case ChassisState::Down0_PrepareYaw:
         if (yawPrepared())
         {
             Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(
-                                                           -(AbsAuxInnerWheelX + 3 * SafeDistance)),
+                                                           -(AbsWheelOuterEdgeX + 3 * SafeDistance)),
                                                    Master::TrajectoryLinkMode::PreviousCurve);
             chassis_state_ = ChassisState::Down1_ApproachFrontAux;
         }
@@ -306,6 +306,9 @@ void Step::update()
     case ChassisState::Down1_ApproachFrontAux:
         if (front_->isFinished() && rear_->isFinished())
         {
+            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(-(AbsAuxInnerWheelX +
+                                                                         3 * SafeDistance)),
+                                                   Master::TrajectoryLinkMode::PreviousCurve);
             chassis_state_ = ChassisState::Down2_WaitFrontDeploy;
         }
         break;
