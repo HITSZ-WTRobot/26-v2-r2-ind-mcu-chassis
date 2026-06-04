@@ -61,7 +61,8 @@ void Step::prepare(const chassis::Posture& stepTargetPos,
 
 bool Step::yawPrepared() const
 {
-    return std::fabs(currentRelativeToStep().yaw - dir_relative_yaw_) < StepPrepareYawThreshold;
+    return std::fabs(chassis::Posture::yawError(currentRelativeToStep().yaw, dir_relative_yaw_)) <
+           StepPrepareYawThreshold;
 }
 
 chassis::Posture Step::endXWithStepYaw() const
