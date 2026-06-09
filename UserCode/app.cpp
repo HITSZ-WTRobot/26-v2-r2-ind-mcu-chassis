@@ -147,7 +147,7 @@ extern "C" void Init(void* argument)
     if constexpr (ProjectParts::EnableGrip)
     {
         if (Grip::grip != nullptr)
-            Grip::grip->startCalibration(); // 电机堵转到限位处进行初始化
+            Grip::grip->startCalibration(); // 校准 Grip turn
     }
 
     while (true)
@@ -156,7 +156,7 @@ extern "C" void Init(void* argument)
         // 若未启用升降，则不阻塞启动流程。
         const bool chassis_ready = !ProjectParts::EnableLift ||
                                    (Chassis::motion != nullptr && Chassis::motion->isReady());
-        // grip 未启用时不阻塞；启用时必须等待其归零完成。
+        // grip 未启用时不阻塞；启用时必须 Grip turn 电机找零完成
         const bool grip_ready = !ProjectParts::EnableGrip ||
                                 (Grip::grip != nullptr && Grip::grip->isCalibrated());
 

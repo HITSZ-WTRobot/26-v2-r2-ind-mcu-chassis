@@ -43,14 +43,11 @@ public:
     /** @brief 100 Hz：推进 S 曲线轨迹。 */
     void update_100Hz();
 
-    /** @brief 同时启动大臂与转向两轴的回零校准。 */
+    /** @brief 同时启动转向的回零校准。 */
     void startCalibration();
 
-    /** @brief 两轴都完成校准后，grip 才算校准完成。 */
-    [[nodiscard]] bool isCalibrated() const
-    {
-        return arm_trajectory_.isCalibrated() && turn_trajectory_.isCalibrated();
-    }
+    /** @brief 转向电机校准完成则 grip 校准完成 */
+    [[nodiscard]] bool isCalibrated() const { return turn_trajectory_.isCalibrated(); }
 
     /** @brief 前往系统待机姿态，并张开夹爪。 */
     bool toStandbyPose();
@@ -89,8 +86,8 @@ private:
     /// 转向电机速度环控制器。
     controllers::MotorVelController turn_vel_controller_;
 
-    /// 大臂单轴回零 + 轨迹封装。
-    trajectory::HomingMotorTrajectory<1> arm_trajectory_;
+    /// 大臂单轴轨迹。
+    trajectory::MotorTrajectory<1> arm_trajectory_;
     /// 转向单轴回零 + 轨迹封装。
     trajectory::HomingMotorTrajectory<1> turn_trajectory_;
 

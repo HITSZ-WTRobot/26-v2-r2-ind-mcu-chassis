@@ -19,6 +19,10 @@ namespace Device
 
 namespace
 {
+
+/// 当前所有 DM 电机反馈目标 ID，必须与驱动器端 Master ID 配置一致。
+inline constexpr uint32_t DmMasterId = 0x00U;
+
 [[nodiscard]] constexpr bool has_can_devices()
 {
     return ProjectParts::EnableWheelChassis || ProjectParts::EnableLift || ProjectParts::EnableGrip;
@@ -66,6 +70,11 @@ void can_init()
     CAN_RegisterCallback(&hcan1, motors::DJIMotor::CANBaseReceiveCallback);
     motors::DJIMotor::CAN_FilterInit(&hcan2, 14);
     CAN_RegisterCallback(&hcan2, motors::DJIMotor::CANBaseReceiveCallback);
+    if constexpr (ProjectParts::EnableGrip)
+    {
+        motors::DMMotor::CAN_FilterInit(&hcan2, 15, DmMasterId);
+        CAN_RegisterCallback(&hcan2, motors::DMMotor::CANBaseReceiveCallback);
+    }
 
     // 注册 CAN 主回调，并启动 CAN
     CAN_InitMainCallback(&hcan1);
@@ -157,19 +166,31 @@ void motor_grip_init()
     if constexpr (!ProjectParts::EnableGrip)
         return;
 
-    constexpr motors::DJIMotor::Config ArmCfg{
-        .hcan = &hcan2,
-        .type = motors::DJIMotor::Type::M3508_C620,
-        .id1  = 1,
-    };
-
-    constexpr motors::DJIMotor::Config TurnCfg{
-        .hcan = &hcan2,
-        .type = motors::DJIMotor::Type::M2006_C610,
-        .id1  = 2,
-    };
-    Motor::grip_arm  = new motors::DJIMotor(ArmCfg);
-    Motor::grip_turn = new motors::DJIMotor(TurnCfg);
+    Motor::grip_arm  = new motors::DMMotor({
+             .hcan               = &hcan2,
+             .id0                = 0x09U,
+             .type               = motors::DMMotor::Type::J4310_2EC,
+             .mode               = motors::DMMotor::Mode::Vel,
+             .pos_max_rad        = 3.14159,
+             .vel_max_rad        = 25,
+             .tor_max            = 12,
+             .default_angle_zero = Grip::Config::Motor::ArmAngleZeroDeg,
+             .auto_zero          = false,
+             .reverse            = false,
+             .reduction_rate     = 1.0f,
+    });
+    Motor::grip_turn = new motors::DMMotor({
+            .hcan           = &hcan2,
+            .id0            = 0x0AU,
+            .type           = motors::DMMotor::Type::S2325_1EC,
+            .mode           = motors::DMMotor::Mode::MIT,
+            .pos_max_rad    = 3.14159,
+            .vel_max_rad    = 60,
+            .tor_max        = 5,
+            .auto_zero      = true,
+            .reverse        = false,
+            .reduction_rate = 1.0f,
+    });
 }
 
 [[nodiscard]] bool has_dji_motor_on_can1()
@@ -180,8 +201,7 @@ void motor_grip_init()
 
 [[nodiscard]] bool has_dji_motor_on_can2_group_1_4()
 {
-    return Motor::wheel[2] != nullptr || Motor::wheel[3] != nullptr || Motor::grip_arm != nullptr ||
-           Motor::grip_turn != nullptr;
+    return Motor::wheel[2] != nullptr || Motor::wheel[3] != nullptr;
 }
 
 [[nodiscard]] bool has_dji_motor_on_can2_group_5_8()
@@ -206,6 +226,14 @@ void init()
 
 void update_1kHz()
 {
+    if constexpr (ProjectParts::EnableGrip)
+    {
+        if (Motor::grip_arm != nullptr)
+            Motor::grip_arm->ping();
+        if (Motor::grip_turn != nullptr)
+            Motor::grip_turn->ping();
+    }
+
     if (has_dji_motor_on_can1())
     {
         motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
