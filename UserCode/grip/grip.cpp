@@ -13,10 +13,7 @@ namespace Grip
 Grip::Grip() :
     arm_vel_controller_(Device::Motor::grip_arm, Config::Motor::ArmVelControllerCfg),
     turn_vel_controller_(Device::Motor::grip_turn, Config::Motor::TurnVelControllerCfg),
-    arm_trajectory_(trajectory::MotorTrajectory<1>(&arm_vel_controller_,
-                                                   Config::Trajectory::ArmCfg,
-                                                   Config::Trajectory::ArmPDCfg),
-                    Config::Calibration::ArmCalibCfg),
+    arm_trajectory_(&arm_vel_controller_, Config::Trajectory::ArmCfg, Config::Trajectory::ArmPDCfg),
     turn_trajectory_(trajectory::MotorTrajectory<1>(&turn_vel_controller_,
                                                     Config::Trajectory::TurnCfg,
                                                     Config::Trajectory::TurnPDCfg),
@@ -38,7 +35,7 @@ void init()
 
 bool Grip::enable()
 {
-    // 未回零前禁止使能轨迹控制，避免直接用未定义零点规划姿态。
+    // 固定零点初始化完成前禁止使能轨迹控制，避免直接用未定义零点规划姿态。
     if (!isCalibrated())
         return false;
 
@@ -85,9 +82,17 @@ void Grip::update_100Hz()
 
 void Grip::startCalibration()
 {
-    // 两轴回零同步启动，由各自轨迹对象内部维护校准状态机。
-    arm_trajectory_.startCalibration();
+    if (!turn_trajectory_.enable() || !arm_trajectory_.enable())
+    {
+        turn_trajectory_.disable();
+        arm_trajectory_.disable();
+        return;
+    }
+
+    // turn 轴回零，由轨迹对象内部维护校准状态机。
     turn_trajectory_.startCalibration();
+    // arm 轴直接移动到 StandBy 位置
+    arm_trajectory_.setTarget(Config::Poses::Standby.arm_pos);
 }
 
 bool Grip::planPose(const Config::JointPose& pose)

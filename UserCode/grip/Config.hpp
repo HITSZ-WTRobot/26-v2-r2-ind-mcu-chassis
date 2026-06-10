@@ -6,7 +6,7 @@
 
 #include "IChassisDef.hpp"
 #include "can.h"
-#include "dji.hpp"
+#include "dm.hpp"
 #include "gpio_driver.h"
 #include "homing_motor_trajectory.hpp"
 #include "motor_vel_controller.hpp"
@@ -31,7 +31,7 @@ struct JointPose
 namespace Poses
 {
 /// 待机姿态：系统空闲、KFS 释放完成后都应回到这里。
-constexpr JointPose Standby{ 90.0f, 0.0f };
+constexpr JointPose Standby{ 60.0f, 0.0f };
 /// 准备夹取姿态：夹爪张开，等待底盘靠近目标。
 constexpr JointPose PrepareGrab{ 0.0f, 0.0f };
 /// 夹取执行姿态：夹爪闭合，并把大臂推出完成矛头夹取。
@@ -112,43 +112,39 @@ constexpr float PrepareLiftZThreshold = 0.002f; // prepare 阶段允许的 lift 
 
 namespace Motor
 {
+
+constexpr float ArmAngleZeroDeg = 0;
+
 /// 大臂速度环参数
 constexpr controllers::MotorVelController::Config ArmVelControllerCfg{
-    .pid = { .Kp = 370.0f, .Ki = 5.0f, .Kd = 0.0f, .abs_output_max = 12000.0f },
+    .ctrl_mode          = controllers::ControlMode::InternalVel,
+    .internal_set_ratio = 10,
 };
 
-/// 转向电机速度环参数
+/// 转向电机速度环参数，输出单位为 DM MIT 力矩 Nm。
+/// TODO: 需要调 grip::turn 参数
 constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
-    .pid = { .Kp = 500.0f, .Ki = 5.0f, .Kd = 0.0f, .abs_output_max = 4000.0f },
+    .pid       = { .Kp = 0.02f, .Ki = 0.0f, .Kd = 0.0f, .abs_output_max = 4 },
+    .ctrl_mode = controllers::ControlMode::ExternalPID,
 };
 
 } // namespace Motor
 
 namespace Calibration
 {
-constexpr float ArmLockCurrent  = 8000.0f;
-constexpr float TurnLockCurrent = 2000.0f;
+constexpr float TurnLockTorque = 0.5f;
 
 constexpr float    deadAngle   = 0.1f;
-constexpr uint32_t lockedTicks = 1000;
+constexpr uint32_t lockedTicks = 500;
 
-constexpr float ArmCalibVel  = 15.0f;
-constexpr float TurnCalibVel = -30.0f;
+constexpr float TurnCalibVel = -30.0f; // TODO: 调参
 
-constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig ArmCalibCfg = { //
-    .speed               = ArmCalibVel,                                           //
-    .max_current         = ArmLockCurrent,                                        //
-    .min_ticks           = lockedTicks,                                           //
-    .offset              = -100.0f,
-    .target_after_homing = 90.0f,
-    .dead_angle          = deadAngle
-};
 constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg = { //
     .speed               = TurnCalibVel,
-    .max_current         = TurnLockCurrent, //
+    .max_current         = TurnLockTorque, //
     .min_ticks           = lockedTicks,
-    .offset              = 205.0f, //
-    .target_after_homing = 0.0f,
+    .offset              = 205.0f, // TODO: 调参
+    .target_after_homing = Poses::Standby.turn_pos,
     .dead_angle          = deadAngle
 };
 

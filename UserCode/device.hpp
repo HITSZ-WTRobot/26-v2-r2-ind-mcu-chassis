@@ -7,6 +7,7 @@
 #include "HWT101CT.hpp"
 #include "XGZP6847DDevice.hpp"
 #include "dji.hpp"
+#include "dm.hpp"
 #include "usart.h"
 
 #include <cstddef>
@@ -61,10 +62,13 @@ inline motors::DJIMotor* wheel[4]{};
 inline motors::DJIMotor* lift[4]{};
 
 /**
- * 矛头电机
+ * Grip 电机。
+ * 当前映射：
+ * - grip_arm：DM4310，CAN2 id0 = 0x09，内部速度模式
+ * - grip_turn：DM2325，CAN2 id0 = 0x0A，MIT 力矩模式
  */
-inline motors::DJIMotor* grip_arm{};
-inline motors::DJIMotor* grip_turn{};
+inline motors::DMMotor* grip_arm{};
+inline motors::DMMotor* grip_turn{};
 } // namespace Motor
 
 void init();
