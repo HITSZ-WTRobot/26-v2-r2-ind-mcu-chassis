@@ -132,18 +132,18 @@ constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
 
 namespace Calibration
 {
-constexpr float TurnLockTorque = 1.35f;
+constexpr float TurnLockTorque = 0.5f;
 
 constexpr float    deadAngle   = 0.1f;
-constexpr uint32_t lockedTicks = 1000;
+constexpr uint32_t lockedTicks = 500;
 
-constexpr float TurnCalibVel = -30.0f;
+constexpr float TurnCalibVel = -30.0f; // TODO: 调参
 
 constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg = { //
     .speed               = TurnCalibVel,
     .max_current         = TurnLockTorque, //
     .min_ticks           = lockedTicks,
-    .offset              = 205.0f, //
+    .offset              = 205.0f, // TODO: 调参
     .target_after_homing = Poses::Standby.turn_pos,
     .dead_angle          = deadAngle
 };
