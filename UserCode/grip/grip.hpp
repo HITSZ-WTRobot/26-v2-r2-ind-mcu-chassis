@@ -46,8 +46,11 @@ public:
     /** @brief 同时启动转向的回零校准。 */
     void startCalibration();
 
-    /** @brief 转向电机校准完成则 grip 校准完成 */
-    [[nodiscard]] bool isCalibrated() const { return turn_trajectory_.isCalibrated(); }
+    /** @brief 转向电机校准完成 且 arm_traj 就位 则 grip 校准完成 */
+    [[nodiscard]] bool isCalibrated() const
+    {
+        return turn_trajectory_.isCalibrated() && arm_trajectory_.isFinished();
+    }
 
     /** @brief 前往系统待机姿态，并张开夹爪。 */
     bool toStandbyPose();
