@@ -66,7 +66,7 @@ inline motors::DJIMotor* wheel[4]{};
  * 升降电机。
  * 当前按“前侧两台 + 后侧两台”的物理分组保存：
  * - lift[0], lift[1]：前侧抬升，CAN1 id1 = 3, 4
- * - lift[2], lift[3]：后侧抬升，CAN2 id1 = 5, 6
+ * - lift[2], lift[3]：后侧抬升，CAN2 id1 = 1, 2
  *
  * TODO: 补充每台 lift 电机的具体左右对应关系与实际减速比。
  */

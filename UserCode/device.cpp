@@ -153,14 +153,14 @@ constexpr motors::DJIMotor::Config motor_lift_config[4] = {
     {
             .hcan           = &hcan2,
             .type           = motors::DJIMotor::Type::M3508_C620,
-            .id1            = 5,
+            .id1            = 1,
             .reverse        = true,
             .reduction_rate = 1.0f,
     },
     {
             .hcan           = &hcan2,
             .type           = motors::DJIMotor::Type::M3508_C620,
-            .id1            = 6,
+            .id1            = 2,
             .reverse        = false,
             .reduction_rate = 1.0f,
     },
@@ -214,15 +214,12 @@ void motor_grip_init()
            Motor::lift[1] != nullptr;
 }
 
-[[nodiscard]] bool has_dji_motor_on_can2_group_1_4()
+[[nodiscard]] bool has_dji_motor_on_can2()
 {
-    return Motor::wheel[2] != nullptr || Motor::wheel[3] != nullptr;
+    return Motor::wheel[2] != nullptr || Motor::wheel[3] != nullptr || Motor::lift[2] != nullptr ||
+           Motor::lift[3] != nullptr;
 }
 
-[[nodiscard]] bool has_dji_motor_on_can2_group_5_8()
-{
-    return Motor::lift[2] != nullptr || Motor::lift[3] != nullptr;
-}
 } // namespace
 
 void init()
@@ -257,14 +254,9 @@ void update_1kHz()
         // motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
     }
 
-    if (has_dji_motor_on_can2_group_1_4())
+    if (has_dji_motor_on_can2())
     {
         motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);
-    }
-
-    if (has_dji_motor_on_can2_group_5_8())
-    {
-        motors::DJIMotor::SendIqCommand(&hcan2, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_5_8);
     }
 }
 } // namespace Device
