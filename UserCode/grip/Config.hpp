@@ -122,9 +122,8 @@ constexpr controllers::MotorVelController::Config ArmVelControllerCfg{
 };
 
 /// 转向电机速度环参数，输出单位为 DM MIT 力矩 Nm。
-/// TODO: 需要调 grip::turn 参数
 constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
-    .pid       = { .Kp = 0.02f, .Ki = 0.0f, .Kd = 0.0f, .abs_output_max = 4 },
+    .pid       = { .Kp = 0.09f, .Ki = 0.0025f, .Kd = 0.0f, .abs_output_max = 4 },
     .ctrl_mode = controllers::ControlMode::ExternalPID,
 };
 
