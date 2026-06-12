@@ -185,7 +185,7 @@ void motor_grip_init()
             .type           = motors::DMMotor::Type::S2325_1EC,
             .mode           = motors::DMMotor::Mode::MIT,
             .pos_max_rad    = 3.14159,
-            .vel_max_rad    = 60,
+            .vel_max_rad    = 63,
             .tor_max        = 5,
             .auto_zero      = true,
             .reverse        = false,
