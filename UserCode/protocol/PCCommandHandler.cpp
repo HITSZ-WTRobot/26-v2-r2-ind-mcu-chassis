@@ -438,6 +438,30 @@ void handleCommand(const Frame& frame)
         if constexpr (ProjectParts::EnableKfsAction)
             Grip::Action::KfsStore::inst().release();
         break;
+    case PCCommand::SetGripSuction:
+        if constexpr (ProjectParts::EnableGripSuction)
+        {
+            if (Device::Suction::grip != nullptr)
+            {
+                if (read_u16(&data[0]))
+                    Device::Suction::grip->activate();
+                else
+                    Device::Suction::grip->deactivate();
+            }
+        }
+        break;
+    case PCCommand::SetAbdomenSuction:
+        if constexpr (ProjectParts::EnableAbdomenSuction)
+        {
+            if (Device::Suction::abdomen != nullptr)
+            {
+                if (read_u16(&data[0]))
+                    Device::Suction::abdomen->activate();
+                else
+                    Device::Suction::abdomen->deactivate();
+            }
+        }
+        break;
     default:
     {
         const auto cmd = static_cast<uint8_t>(frame.cmd);

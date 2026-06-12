@@ -129,4 +129,12 @@ enum class PCCommand : uint8_t
     StoreKFS = 0x42,
     /// 启动 KFS 释放动作组。
     ReleaseKFS = 0x43,
+    /// 控制 Grip 吸盘开关
+    /// | uint16  | uint16  | uint16  | uint16  | uint16  | uint16  |
+    /// | on(0/1) | reserve | reserve | reserve | reserve | reserve |
+    SetGripSuction = 0x44,
+    /// 控制腹部吸盘开关
+    /// | uint16  | uint16  | uint16  | uint16  | uint16  | uint16  |
+    /// | on(0/1) | reserve | reserve | reserve | reserve | reserve |
+    SetAbdomenSuction = 0x45,
 };

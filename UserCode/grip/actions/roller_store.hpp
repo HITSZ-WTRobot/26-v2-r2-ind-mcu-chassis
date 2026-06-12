@@ -6,7 +6,6 @@
 
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
-#include "suction/SuctionCup.hpp"
 #include "traits.hpp"
 
 namespace Grip::Action
@@ -87,8 +86,6 @@ private:
     State state_ = State::Idle;
     /// 面向上位机反馈的动作流归属；暂存完成后会保持为 Store，直到发起回放。
     WorkflowPhase workflow_phase_ = WorkflowPhase::Idle;
-    /// KFS 持有的吸盘组件。
-    Suction::SuctionCup kfs_suction_cup_;
     /// 进入等待吸上 / 放下确认阶段时的时间戳，用于无气压计保底判定。
     uint32_t wait_state_since_ms_{};
     /// 无气压计时使用的流程内持物状态；有气压计时仅镜像最近一次确认结果。

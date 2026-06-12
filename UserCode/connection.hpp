@@ -23,6 +23,7 @@ enum class Bit : uint8_t
     GripTurn              = 9,
     GyroYaw               = 10,
     GripSuctionPressure   = 11,
+    AbdomenSuctionPressure = 12,
     UpperHostLocalization = 14,
     UpperHost             = 15,
 };
@@ -43,7 +44,8 @@ enum class Bit : uint8_t
  * - bit9  : grip_turn
  * - bit10 : gyro_yaw
  * - bit11 : grip suction pressure（仅在启用吸盘气压计编译开关时有效）
- * - bit12~13: 预留
+ * - bit12 : abdomen suction pressure（仅在启用腹部吸盘气压计编译开关时有效，当前未实现）
+ * - bit13 : 预留
  * - bit14 : upper_host_localization
  * - bit15 : upper_host
  */

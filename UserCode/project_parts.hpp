@@ -12,18 +12,19 @@
  *   `ProjectParts::EnableXxx` / `NeedXxx` 常量；
  * - 派生常量的存在意义，是把“模块开关”翻译成“系统能力”。
  *
- * 十一个一级开关分别代表：
+ * 十二个一级开关分别代表：
  * 1. 底盘（四个底盘电机组成的 mecanum4 平面运动部分）
  * 2. 升降（两个抬升电机组成的抬升机构）
  * 3. grip（夹取机构本体：arm / turn / claw）
  * 4. grip suction（挂在 grip 上的吸盘）
  * 5. grip suction pressure sensor（挂在吸盘上的气压计）
- * 6. 陀螺仪（当前为航向陀螺仪）
- * 7. 上位机定位包（上位机下发的外部位姿观测）
- * 8. 上位机控制指令（上位机其他控制命令）
- * 9. 上位机串口辨识初始化（下位机持续发送 0xAA，直到收到任意合法上位机帧）
- * 10. connection table I2C 周期发送
- * 11. 红外接收模块（本机通过 57600 串口接收单字节状态协议）
+ * 6. 腹部吸盘（位于车体腹部的独立吸盘，当前不连气压计）
+ * 7. 陀螺仪（当前为航向陀螺仪）
+ * 8. 上位机定位包（上位机下发的外部位姿观测）
+ * 9. 上位机控制指令（上位机其他控制命令）
+ * 10. 上位机串口辨识初始化（下位机持续发送 0xAA，直到收到任意合法上位机帧）
+ * 11. connection table I2C 周期发送
+ * 12. 红外接收模块（本机通过 57600 串口接收单字节状态协议）
  *
  * 常见组合：
  * - 仅底盘调试：
@@ -103,6 +104,11 @@
 #    define PROJECT_PART_ENABLE_INFRARED_RECEIVER 1
 #endif
 
+/// 启用腹部吸盘组件，包括气泵 GPIO（当前不连气压计）。
+#ifndef PROJECT_PART_ENABLE_ABDOMEN_SUCTION
+#    define PROJECT_PART_ENABLE_ABDOMEN_SUCTION 1
+#endif
+
 namespace ProjectParts
 {
 
@@ -130,6 +136,8 @@ inline constexpr bool EnableUpperHostIdentifyInit = PROJECT_PART_ENABLE_UPPER_HO
 inline constexpr bool EnableConnectionTableI2CTx = PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX != 0;
 /// 一级开关：红外接收模块。
 inline constexpr bool EnableInfraredReceiver = PROJECT_PART_ENABLE_INFRARED_RECEIVER != 0;
+/// 一级开关：腹部吸盘组件。
+inline constexpr bool EnableAbdomenSuction = PROJECT_PART_ENABLE_ABDOMEN_SUCTION != 0;
 
 /**
  * 是否需要构造当前工程的底盘运动对象。

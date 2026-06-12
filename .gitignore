@@ -62,7 +62,9 @@ startup_stm32*.s
 Thumbs.db
 
 ### Agent files ###
+.claude/
 .codex
+.trellis/
 
 # Syncthing
 .stignore

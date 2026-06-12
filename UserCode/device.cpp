@@ -45,19 +45,34 @@ void sensor_init()
 
 void pressure_sensor_init()
 {
-    if constexpr (ProjectParts::EnableGripSuctionPressureSensor)
-    {
-        Sensor::grip_suction_pressure = new XGZP6847DDevice(Suction::Config::PressureRangeKPa,
-                                                            Suction::Config::PressureAddress7bit);
+    // 气压计当前未启用/实现，占位保留。
+    (void)ProjectParts::EnableGripSuctionPressureSensor;
+}
 
-        if (!AppI2C::manager2().registerDevice(*Sensor::grip_suction_pressure,
-                                               Suction::Config::PressureUpdatePeriodMs,
-                                               Grip::Config::KfsStore::SuctionPressureUpdatePhaseMs,
-                                               Suction::Config::PressureTimeoutMs))
-        {
-            Error_Handler();
-        }
-    }
+void grip_suction_init()
+{
+    if constexpr (!ProjectParts::EnableGripSuction)
+        return;
+
+    Suction::grip = new ::Suction::SuctionCup(
+            { .pump_gpio                     = { RELAY1_GPIO_Port, RELAY1_Pin },
+              .pressure_stale_ms             = 120U,
+              .object_detect_on_pressure_pa  = ::Suction::Config::DetectOnPressurePa,
+              .object_detect_off_pressure_pa = ::Suction::Config::DetectOffPressurePa },
+            nullptr);
+}
+
+void abdomen_suction_init()
+{
+    if constexpr (!ProjectParts::EnableAbdomenSuction)
+        return;
+
+    Suction::abdomen = new ::Suction::SuctionCup(
+            { .pump_gpio                     = { RELAY2_GPIO_Port, RELAY2_Pin },
+              .pressure_stale_ms             = 120U,
+              .object_detect_on_pressure_pa  = ::Suction::Config::DetectOnPressurePa,
+              .object_detect_off_pressure_pa = ::Suction::Config::DetectOffPressurePa },
+            nullptr);
 }
 
 void can_init()
@@ -214,6 +229,8 @@ void init()
 {
     sensor_init();
     pressure_sensor_init();
+    grip_suction_init();
+    abdomen_suction_init();
 
     can_init();
 

@@ -85,6 +85,8 @@ void encode_connection_table(uint8_t payload[2], const uint16_t value)
         required |= mask(Bit::GripSuctionPressure);
     }
 
+    // 腹部吸盘气压计当前未启用/实现，暂不纳入 required_mask。
+
     if constexpr (ProjectParts::EnableGyro)
         required |= mask(Bit::GyroYaw);
 
@@ -190,10 +192,13 @@ void updateTable()
 
     if constexpr (ProjectParts::EnableGripSuctionPressureSensor)
     {
-        set_bit(current,
-                Bit::GripSuctionPressure,
-                Device::Sensor::grip_suction_pressure != nullptr &&
-                        Device::Sensor::grip_suction_pressure->isOnline());
+        set_bit(current, Bit::GripSuctionPressure, false);
+    }
+
+    if constexpr (ProjectParts::EnableAbdomenSuction)
+    {
+        // 腹部吸盘气压计当前未启用/实现，固定为未连接。
+        set_bit(current, Bit::AbdomenSuctionPressure, false);
     }
 
     if constexpr (ProjectParts::EnableGyro)

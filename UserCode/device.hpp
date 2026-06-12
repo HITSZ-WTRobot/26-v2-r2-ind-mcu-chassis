@@ -5,9 +5,9 @@
  */
 #pragma once
 #include "HWT101CT.hpp"
-#include "XGZP6847DDevice.hpp"
 #include "dji.hpp"
 #include "dm.hpp"
+#include "suction/SuctionCup.hpp"
 #include "usart.h"
 
 #include <cstddef>
@@ -32,13 +32,24 @@ namespace Sensor
  * HWT101CT， UART2
  */
 inline sensors::gyro::HWT101CT* gyro_yaw{};
+} // namespace Sensor
+
+// 执行器声明
+namespace Suction
+{
 
 /**
- * Grip 吸盘气压计
- * XGZP6847D， I2C2
+ * Grip 吸盘
+ * 位于 grip 机构侧，气泵由 RELAY1 控制，当前不连接气压计。
  */
-inline XGZP6847DDevice* grip_suction_pressure{};
-} // namespace Sensor
+inline ::Suction::SuctionCup* grip{};
+
+/**
+ * 腹部吸盘
+ * 位于车体腹部，气泵由 RELAY2 控制，当前不连接气压计。
+ */
+inline ::Suction::SuctionCup* abdomen{};
+} // namespace Suction
 
 // 电机声明
 namespace Motor

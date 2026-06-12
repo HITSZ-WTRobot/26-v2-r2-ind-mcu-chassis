@@ -13,9 +13,7 @@ namespace
 constexpr uint32_t FlagStart = 1u << 0;
 } // namespace
 
-KfsStore::KfsStore() :
-    kfs_suction_cup_(::Grip::Config::KfsStore::SuctionCupConfig,
-                     Device::Sensor::grip_suction_pressure)
+KfsStore::KfsStore()
 {
     // 与 SpearGrab 一样，KFS 使用独立后台线程管理分阶段流程。
     constexpr osThreadAttr_t attr{
@@ -48,9 +46,9 @@ void KfsStore::store()
         return;
 
     // 有气压计时以实时检测为准；无气压计时退化为流程内的默认持物状态。
-    if (kfs_suction_cup_.canDetectObject())
+    if (Device::Suction::grip->canDetectObject())
     {
-        if (kfs_suction_cup_.hasObject())
+        if (Device::Suction::grip->hasObject())
             return;
     }
     else if (assumed_has_object_)
@@ -63,7 +61,7 @@ void KfsStore::store()
 
     // 先启动吸盘，再把机构移向拾取位，避免刚到位时负压尚未建立。
     assumed_has_object_ = false;
-    kfs_suction_cup_.activate();
+    Device::Suction::grip->activate();
     if (::Grip::grip->toKfsPickupPose())
     {
         workflow_phase_ = WorkflowPhase::Store;
@@ -73,7 +71,7 @@ void KfsStore::store()
     }
 
     // 若姿态规划失败，则立即撤销本次吸盘动作，避免空吸。
-    kfs_suction_cup_.deactivate();
+    Device::Suction::grip->deactivate();
 }
 
 void KfsStore::release()
@@ -82,9 +80,9 @@ void KfsStore::release()
         return;
 
     // 有气压计时以实时检测为准；无气压计时退化为流程内的默认持物状态。
-    if (kfs_suction_cup_.canDetectObject())
+    if (Device::Suction::grip->canDetectObject())
     {
-        if (!kfs_suction_cup_.hasObject())
+        if (!Device::Suction::grip->hasObject())
             return;
     }
     else if (!assumed_has_object_)
@@ -121,7 +119,7 @@ bool KfsStore::isRunning() const
 
 bool KfsStore::hasDetectedObject()
 {
-    return kfs_suction_cup_.canDetectObject() && kfs_suction_cup_.hasObject();
+    return Device::Suction::grip->canDetectObject() && Device::Suction::grip->hasObject();
 }
 
 void KfsStore::waitForFinish() const
@@ -142,15 +140,15 @@ void KfsStore::update()
         {
             // 机械臂到位后：有气压计继续等气压确认；无气压计则从此刻开始计保底延时。
             wait_state_since_ms_ = HAL_GetTick();
-            state_ = State::WaitingObjectAttach;
+            state_               = State::WaitingObjectAttach;
         }
         break;
     case State::WaitingObjectAttach:
     {
         bool attached = false;
-        if (kfs_suction_cup_.canDetectObject())
+        if (Device::Suction::grip->canDetectObject())
         {
-            attached = kfs_suction_cup_.hasObject();
+            attached = Device::Suction::grip->hasObject();
         }
         else
         {
@@ -174,18 +172,18 @@ void KfsStore::update()
     case State::MovingToReleasePose:
         if (::Grip::grip->isFinished())
         {
-            // TODO: 增加电磁阀，释放阶段应先切阀再关闭气泵 / 吸盘。
-            kfs_suction_cup_.deactivate();
+            Device::Suction::grip->deactivate();
             wait_state_since_ms_ = HAL_GetTick();
+
             state_ = State::WaitingObjectRelease;
         }
         break;
     case State::WaitingObjectRelease:
     {
         bool released = false;
-        if (kfs_suction_cup_.canDetectObject())
+        if (Device::Suction::grip->canDetectObject())
         {
-            released = !kfs_suction_cup_.hasObject();
+            released = !Device::Suction::grip->hasObject();
         }
         else
         {

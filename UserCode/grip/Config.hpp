@@ -13,7 +13,6 @@
 #include "pid_pd.hpp"
 #include "s_curve.hpp"
 #include "chassis/Config.hpp"
-#include "suction/SuctionCup.hpp"
 
 #include <cstdint>
 
@@ -62,12 +61,6 @@ inline constexpr uint32_t AttachConfirmDelayMs = 150U;
 /// 无气压计时：到达释放位并关闭气泵后，等待卷轴脱离再认为已放下。
 inline constexpr uint32_t ReleaseConfirmDelayMs = 100U;
 
-inline const Suction::SuctionCup::Config SuctionCupConfig{
-    .pump_gpio                     = { GRIP_SUCTION_GPIO_Port, GRIP_SUCTION_Pin },
-    .pressure_stale_ms             = 120U,
-    .object_detect_on_pressure_pa  = Suction::Config::DetectOnPressurePa,
-    .object_detect_off_pressure_pa = Suction::Config::DetectOffPressurePa,
-};
 } // namespace KfsStore
 
 namespace SpearGrab
@@ -142,7 +135,7 @@ constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg =
     .speed               = TurnCalibVel,
     .max_current         = TurnLockTorque, //
     .min_ticks           = lockedTicks,
-    .offset              = 205.0f, // TODO: 调参
+    .offset              = 0.0f, // TODO: 调参
     .target_after_homing = Poses::Standby.turn_pos,
     .dead_angle          = deadAngle
 };
