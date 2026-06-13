@@ -27,7 +27,7 @@ using Limit = velocity_profile::SCurveProfile::Config;
 namespace Lift
 {
 constexpr PIDMotor::Config PIDCfg{
-    .Kp = 450.0f, .Ki = 1.0f, .Kd = 0.00f, .abs_output_max = 16384 * 0.75
+    .Kp = 200.0f, .Ki = 3.0f, .Kd = 0.00f, .abs_output_max = 16384 * 0.75
 };
 
 constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
@@ -114,9 +114,9 @@ constexpr trajectory::HomingMotorTrajectory<2>::CalibrationConfig CalibrationCfg
 namespace Motion
 {
 constexpr PIDMotor::Config MotorWheelVelPIDCfg = { //
-    .Kp             = 450.0f,
-    .Ki             = 1.0f,
-    .Kd             = 0.00f,
+    .Kp             = 200.0f,
+    .Ki             = 3.0f,
+    .Kd             = 0.0f,
     .abs_output_max = 8000.0f
 };
 
