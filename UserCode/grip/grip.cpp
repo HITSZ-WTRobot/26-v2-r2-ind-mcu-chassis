@@ -18,7 +18,7 @@ Grip::Grip() :
                                                     Config::Trajectory::TurnCfg,
                                                     Config::Trajectory::TurnPDCfg),
                      Config::Calibration::TurnCalibCfg),
-    claw_{ RELAY0_GPIO_Port, RELAY0_Pin }
+    claw_{ RELAY2_GPIO_Port, RELAY2_Pin }
 {
     // 默认上电保持张开，避免在校准前误夹持机构或工件。
     openClaw();
