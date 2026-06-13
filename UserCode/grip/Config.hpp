@@ -30,7 +30,7 @@ struct JointPose
 namespace Poses
 {
 /// 待机姿态：系统空闲、KFS 释放完成后都应回到这里。
-constexpr JointPose Standby{ 60.0f, 0.0f };
+constexpr JointPose Standby{ 75.0f, 0.0f };
 /// 准备夹取姿态：夹爪张开，等待底盘靠近目标。
 constexpr JointPose PrepareGrab{ 0.0f, 0.0f };
 /// 夹取执行姿态：夹爪闭合，并把大臂推出完成矛头夹取。
@@ -124,18 +124,18 @@ constexpr controllers::MotorVelController::Config TurnVelControllerCfg{
 
 namespace Calibration
 {
-constexpr float TurnLockTorque = 0.5f;
+constexpr float TurnLockTorque = 1.0f;
 
 constexpr float    deadAngle   = 0.1f;
 constexpr uint32_t lockedTicks = 500;
 
-constexpr float TurnCalibVel = -30.0f; // TODO: 调参
+constexpr float TurnCalibVel = -30.0f;
 
 constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg = { //
     .speed               = TurnCalibVel,
     .max_current         = TurnLockTorque, //
-    .min_ticks           = lockedTicks,
-    .offset              = 0.0f, // TODO: 调参
+    .min_ticks           = lockedTicks,    //
+    .offset              = 135.0f,
     .target_after_homing = Poses::Standby.turn_pos,
     .dead_angle          = deadAngle
 };
