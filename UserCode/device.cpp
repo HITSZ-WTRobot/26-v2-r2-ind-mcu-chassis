@@ -21,7 +21,7 @@ namespace
 {
 
 /// 当前所有 DM 电机反馈目标 ID，必须与驱动器端 Master ID 配置一致。
-inline constexpr uint32_t DmMasterId = 0x00U;
+inline constexpr uint32_t DmMasterId = 0x114U;
 
 [[nodiscard]] constexpr bool has_can_devices()
 {
