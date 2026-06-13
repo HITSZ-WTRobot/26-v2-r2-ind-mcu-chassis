@@ -166,8 +166,8 @@ infrared_receiver_state  = (table >> 11) & 0x3
 | `8` | `0x0100` | `grip_arm` | Grip 大臂电机 |
 | `9` | `0x0200` | `grip_turn` | Grip 转向电机 |
 | `10` | `0x0400` | `gyro_yaw` | 航向陀螺仪 |
-| `11` | `0x0800` | Reserved | 预留 |
-| `12` | `0x1000` | Reserved | 预留 |
+| `11` | `0x0800` | `GripSuctionPressure` | Grip 吸盘气压计在线（仅 `PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR=1` 时有效） |
+| `12` | `0x1000` | `AbdomenSuctionPressure` | 腹部吸盘气压计在线（预留，当前未实现） |
 | `13` | `0x2000` | Reserved | 预留 |
 | `14` | `0x4000` | `upper_host_localization` | 上位机定位流在线 |
 | `15` | `0x8000` | `upper_host` | 上位机串口链路在线 |

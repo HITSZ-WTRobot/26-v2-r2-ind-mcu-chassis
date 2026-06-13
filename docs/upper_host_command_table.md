@@ -65,6 +65,8 @@
 | `0x41` | `TakeSpearById` | `spearId(uint16), end_x(int16), end_y(int16), end_yaw(int16), reserve(uint16), reserve(uint16)` | 通过固定矛位索引启动取矛头。 |
 | `0x42` | `StoreKFS` | 无 | 卷轴临时存放动作组。 |
 | `0x43` | `ReleaseKFS` | 无 | 卷轴释放动作组。 |
+| `0x44` | `SetGripSuction` | `on(uint16), reserve(uint16) x5` | 控制 Grip 吸盘开关。`on=1` 启动气泵，`on=0` 关闭气泵。 |
+| `0x45` | `SetAbdomenSuction` | `on(uint16), reserve(uint16) x5` | 控制腹部吸盘开关。`on=1` 启动气泵，`on=0` 关闭气泵。 |
 
 ## 5. 各命令细节
 
@@ -307,3 +309,37 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | param
 | `5` | `0.0` | `0.0` | `0.0` | 当前为占位值 |
 
 在填入真实标定位姿前，不建议上位机直接依赖 `TakeSpearById`。
+
+### 5.12 `0x44 SetGripSuction`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `on` | `uint16` | `0=关闭气泵`, `1=启动气泵` |
+| `reserve0` | `uint16` | 预留，当前忽略 |
+| `reserve1` | `uint16` | 预留，当前忽略 |
+| `reserve2` | `uint16` | 预留，当前忽略 |
+| `reserve3` | `uint16` | 预留，当前忽略 |
+| `reserve4` | `uint16` | 预留，当前忽略 |
+
+补充：
+
+- 该命令仅在 `PROJECT_PART_ENABLE_GRIP_SUCTION=1` 时生效。
+- 控制 Grip 侧吸盘气泵（RELAY1），直接操作 GPIO，不经过 KFS 动作组。
+- 与 `StoreKFS` / `ReleaseKFS` 独立：KFS 动作组内部也会控制该吸盘，上位机应避免与动作组同时操作同一吸盘。
+
+### 5.13 `0x45 SetAbdomenSuction`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `on` | `uint16` | `0=关闭气泵`, `1=启动气泵` |
+| `reserve0` | `uint16` | 预留，当前忽略 |
+| `reserve1` | `uint16` | 预留，当前忽略 |
+| `reserve2` | `uint16` | 预留，当前忽略 |
+| `reserve3` | `uint16` | 预留，当前忽略 |
+| `reserve4` | `uint16` | 预留，当前忽略 |
+
+补充：
+
+- 该命令仅在 `PROJECT_PART_ENABLE_ABDOMEN_SUCTION=1` 时生效。
+- 控制车体腹部吸盘气泵（RELAY2），独立于 Grip 吸盘。
+- 当前不连接气压计，无吸附检测能力。
