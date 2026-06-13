@@ -37,9 +37,9 @@ public:
     [[nodiscard]] bool enabled() const { return enabled_; }
 
     /** @brief 1 kHz：更新速度环控制输出。 */
-    void update_1kHz();
+    void update_500Hz_2();
     /** @brief 500 Hz：更新位置误差补偿。 */
-    void update_500Hz();
+    void update_500Hz_1();
     /** @brief 100 Hz：推进 S 曲线轨迹。 */
     void update_100Hz();
 

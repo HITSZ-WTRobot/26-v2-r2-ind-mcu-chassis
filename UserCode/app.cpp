@@ -31,10 +31,13 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
         grip_prescaler_500Hz++;
         if (grip_prescaler_500Hz >= 2)
         {
-            Grip::grip->update_500Hz();
+            Grip::grip->update_500Hz_1();
             grip_prescaler_500Hz = 0;
         }
-        Grip::grip->update_1kHz();
+        else
+        {
+            Grip::grip->update_500Hz_2();
+        }
     }
 }
 

@@ -59,14 +59,14 @@ void Grip::disable()
     enabled_ = false;
 }
 
-void Grip::update_1kHz()
+void Grip::update_500Hz_2()
 {
     // 速度环是最快路径，放在 1 kHz 定时回调中。
     // arm_trajectory_.controllerUpdate(); 内部速度环，不需要主动维持 controllerUpdate()
     turn_trajectory_.controllerUpdate();
 }
 
-void Grip::update_500Hz()
+void Grip::update_500Hz_1()
 {
     // 误差补偿频率低于速度环，但仍需比轨迹推进更快。
     arm_trajectory_.errorUpdate();
