@@ -62,7 +62,7 @@ void Grip::disable()
 void Grip::update_1kHz()
 {
     // 速度环是最快路径，放在 1 kHz 定时回调中。
-    arm_trajectory_.controllerUpdate();
+    // arm_trajectory_.controllerUpdate(); 内部速度环，不需要主动维持 controllerUpdate()
     turn_trajectory_.controllerUpdate();
 }
 
