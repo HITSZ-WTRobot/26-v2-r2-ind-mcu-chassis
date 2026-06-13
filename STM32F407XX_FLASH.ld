@@ -149,6 +149,15 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
+  /* CCM-RAM BSS section - for zero/undef-initialized data without flash LMA */
+  .ccmram_bss (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.ccmram_bss)
+    *(.ccmram_bss*)
+    . = ALIGN(4);
+  } >CCMRAM
+
   _siccmram = LOADADDR(.ccmram);
 
   /* CCM-RAM section

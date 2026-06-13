@@ -77,6 +77,8 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined symbols
 )
 
+target_compile_definitions(FreeRTOS PRIVATE configAPPLICATION_ALLOCATED_HEAP=1)
+
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
