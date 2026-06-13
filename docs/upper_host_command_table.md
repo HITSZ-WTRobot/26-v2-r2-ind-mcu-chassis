@@ -67,6 +67,7 @@
 | `0x43` | `ReleaseKFS` | 无 | 卷轴释放动作组。 |
 | `0x44` | `SetGripSuction` | `on(uint16), reserve(uint16) x5` | 控制 Grip 吸盘开关。`on=1` 启动气泵，`on=0` 关闭气泵。 |
 | `0x45` | `SetAbdomenSuction` | `on(uint16), reserve(uint16) x5` | 控制腹部吸盘开关。`on=1` 启动气泵，`on=0` 关闭气泵。 |
+| `0x46` | `SetGripClaw` | `clawMode(uint16), reserve(uint16) x5` | 独立控制夹爪开合，不改变 Grip 关节位置。`clawMode=0` 张开，`clawMode=1` 闭合。 |
 
 ## 5. 各命令细节
 
@@ -343,3 +344,21 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | param
 - 该命令仅在 `PROJECT_PART_ENABLE_ABDOMEN_SUCTION=1` 时生效。
 - 控制车体腹部吸盘气泵（RELAY2），独立于 Grip 吸盘。
 - 当前不连接气压计，无吸附检测能力。
+
+### 5.14 `0x46 SetGripClaw`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `clawMode` | `uint16` | `0=张开夹爪`, `1=闭合夹爪` |
+| `reserve0` | `uint16` | 预留，当前忽略 |
+| `reserve1` | `uint16` | 预留，当前忽略 |
+| `reserve2` | `uint16` | 预留，当前忽略 |
+| `reserve3` | `uint16` | 预留，当前忽略 |
+| `reserve4` | `uint16` | 预留，当前忽略 |
+
+补充：
+
+- 该命令仅在 `PROJECT_PART_ENABLE_PC_CONTROL=1` 且 `PROJECT_PART_ENABLE_GRIP=1` 时生效。
+- 下位机要求 `Grip::grip` 已创建且已经 `enable()`；未完成回零校准或未使能时会忽略该命令。
+- 该命令仅控制夹爪 GPIO 开合，不会修改 arm/turn 关节轨迹，也不会触发 `toJointPose()`。
+- 上位机应在需要单纯控制夹爪时使用此命令，避免通过 `SetGripPose` 附带关节位姿。\

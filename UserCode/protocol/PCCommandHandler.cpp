@@ -462,6 +462,25 @@ void handleCommand(const Frame& frame)
             }
         }
         break;
+    case PCCommand::SetGripClaw:
+        if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableGrip)
+        {
+            if (Grip::grip == nullptr || !Grip::grip->enabled())
+                break;
+
+            switch (read_u16(&data[0]))
+            {
+            case 0:
+                Grip::grip->openClaw();
+                break;
+            case 1:
+                Grip::grip->closeClaw();
+                break;
+            default:
+                break;
+            }
+        }
+        break;
     default:
     {
         const auto cmd = static_cast<uint8_t>(frame.cmd);

@@ -137,4 +137,9 @@ enum class PCCommand : uint8_t
     /// | uint16  | uint16  | uint16  | uint16  | uint16  | uint16  |
     /// | on(0/1) | reserve | reserve | reserve | reserve | reserve |
     SetAbdomenSuction = 0x45,
+    /// 独立控制夹爪开合，不改变 Grip 关节位置
+    /// |  uint16  | uint16  | uint16  | uint16  | uint16  | uint16  |
+    /// | clawMode | reserve | reserve | reserve | reserve | reserve |
+    /// @param clawMode: 0=张开夹爪，1=闭合夹爪。
+    SetGripClaw = 0x46,
 };
