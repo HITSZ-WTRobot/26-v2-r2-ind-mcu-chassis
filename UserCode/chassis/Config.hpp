@@ -60,9 +60,9 @@ constexpr float MaxOnloadAccel = 0.35f; // unit: m/s^2
 constexpr float MaxNoloadAccel = 0.60f; // unit: m/s^2
 #else
 constexpr float MaxSpeed       = 1.178; // unit: m/s
-constexpr float MaxOnloadAccel = 3.0;   // unit: m/s^2， 对车先好一点
+constexpr float MaxOnloadAccel = 2.0;   // unit: m/s^2， 对车先好一点
 // constexpr float MaxOnloadAccel = 5.5;   // unit: m/s^2
-constexpr float MaxNoloadAccel = 100; // unit: m/s^2
+constexpr float MaxNoloadAccel = 30; // unit: m/s^2
 #endif
 
 constexpr Limit OnloadLimit{ MaxSpeed, MaxOnloadAccel, MaxOnloadAccel * 50 };
@@ -169,7 +169,7 @@ constexpr float HalfWheelDistanceY   = Motion::WheelDistanceYMM * 0.5f * 1e-3f;
 constexpr float HalfChassisDiagonal = constexpr_sqrt(HalfChassisDistanceX * HalfChassisDistanceX +
                                                      HalfChassisDistanceY * HalfChassisDistanceY);
 constexpr float HalfWheelDiagonal   = constexpr_sqrt(AbsWheelX * AbsWheelX +
-                                                     HalfWheelDistanceY * HalfWheelDistanceY);
+                                                   HalfWheelDistanceY * HalfWheelDistanceY);
 
 constexpr float SafeDistance = 0.01; // 1cm 安全距离（底盘方向）
 
@@ -201,7 +201,7 @@ constexpr TrajectoryLimit MaxTrajectoryLimit = {
 };
 
 // 下调限速
-constexpr float TrajectoryLimitRatio = 0.7;
+constexpr float TrajectoryLimitRatio = 0.3;
 
 constexpr TrajectoryLimit DefaultTrajectoryLimit = MaxTrajectoryLimit * TrajectoryLimitRatio;
 
