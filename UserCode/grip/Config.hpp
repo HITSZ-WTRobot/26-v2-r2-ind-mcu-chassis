@@ -106,7 +106,7 @@ constexpr float PrepareLiftZThreshold = 0.002f; // prepare 阶段允许的 lift 
 namespace Motor
 {
 
-constexpr float ArmAngleZeroDeg = 0;
+constexpr float ArmAngleZeroDeg = 90.0f - 17.18345497f;
 
 /// 大臂速度环参数
 constexpr controllers::MotorVelController::Config ArmVelControllerCfg{
@@ -129,13 +129,13 @@ constexpr float TurnLockTorque = 1.0f;
 constexpr float    deadAngle   = 0.1f;
 constexpr uint32_t lockedTicks = 500;
 
-constexpr float TurnCalibVel = -30.0f;
+constexpr float TurnCalibVel = 30.0f;
 
 constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg = { //
     .speed               = TurnCalibVel,
     .max_current         = TurnLockTorque, //
     .min_ticks           = lockedTicks,    //
-    .offset              = 135.0f,
+    .offset              = -150.0f,
     .target_after_homing = Poses::Standby.turn_pos,
     .dead_angle          = deadAngle
 };
