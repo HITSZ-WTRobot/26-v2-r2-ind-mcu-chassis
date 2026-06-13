@@ -238,7 +238,7 @@ void init()
     motor_grip_init();
 }
 
-void update_1kHz()
+void dm_motor_pings()
 {
     if constexpr (ProjectParts::EnableGrip)
     {
@@ -247,7 +247,10 @@ void update_1kHz()
         if (Motor::grip_turn != nullptr)
             Motor::grip_turn->ping();
     }
+}
 
+void update_1kHz()
+{
     if (has_dji_motor_on_can1())
     {
         motors::DJIMotor::SendIqCommand(&hcan1, motors::DJIMotor::IqSetCMDGroup::IqCMDGroup_1_4);

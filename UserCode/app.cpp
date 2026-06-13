@@ -37,6 +37,7 @@ void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
         else
         {
             Grip::grip->update_500Hz_2();
+            Device::dm_motor_pings();
         }
     }
 }

@@ -83,5 +83,6 @@ inline motors::DMMotor* grip_turn{};
 } // namespace Motor
 
 void init();
+void dm_motor_pings();
 void update_1kHz();
 } // namespace Device
