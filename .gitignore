@@ -47,7 +47,6 @@ Release/
 /Utilities/
 .startup/
 startup_stm32*.s
-*.ld
 .settings/
 .ioc.xml
 *.ioc.bak
