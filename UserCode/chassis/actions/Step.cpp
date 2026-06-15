@@ -85,6 +85,8 @@ float Step::stepUpPosition() const
     {
     case Height::Step400:
         return Position::StepUp400;
+    case Height::R1:
+        return Position::UpR1;
     case Height::Step200:
     default:
         return Position::StepUp200;
@@ -131,6 +133,7 @@ void Step::up(const chassis::Posture& stepTargetPos,
     will_take_    = willTake;
     should_reset_ = true;
     height_       = height;
+    r1_mode_      = false;
 
     chassis_state_ = ChassisState::Up0_PrepareYaw;
     front_state_   = LiftState::Up1_Lifting;
@@ -144,6 +147,36 @@ void Step::up(const chassis::Posture& stepTargetPos,
 
     osThreadFlagsSet(task_, FlagStart);
 }
+
+void Step::upR1(const chassis::Posture& stepTargetPos,
+                const Direction         dir)
+{
+    if (isRunning())
+        return;
+
+    const chassis::Posture endPos =
+        chassis::loc::IChassisLoc::RelativePosture2WorldPosture(stepTargetPos,
+                                                                Chassis::Config::UpR1EndRelativePos);
+
+    prepare(stepTargetPos, endPos, dir);
+    will_take_    = false;
+    should_reset_ = true;
+    height_       = Height::R1;
+    r1_mode_      = true;
+
+    chassis_state_ = ChassisState::Up0_PrepareYaw;
+    front_state_   = LiftState::Up1_Lifting;
+    rear_state_    = LiftState::Up1_Lifting;
+
+    front_->to(stepUpPosition(), OnloadLimit);
+    rear_->to(stepUpPosition(), OnloadLimit);
+
+    Chassis::ctrl->setTargetPostureInWorld(
+            stepRelativePosture(-(HalfChassisDiagonal + SafeDistance)));
+
+    osThreadFlagsSet(task_, FlagStart);
+}
+
 /**
  * 下台阶
  * @param startDistance2Step 开始时车体中心距离台阶的距离 unit: m
@@ -374,6 +407,11 @@ void Step::update()
         // TODO: 这里不应该这样扩大安全距离
         if (currentRelativeX() > -AbsAuxOuterWheelX + AuxWheelRadius + 3 * SafeDistance)//这里是判断前侧辅助轮有没有上台阶
         {
+            if (r1_mode_ && Chassis::loc_ekf != nullptr)
+            {
+                Chassis::loc_ekf->setGyroEnabled(false);
+                Chassis::loc_ekf->setLidarEnabled(false);
+            }
             front_->to(LiftMin, NoloadLimit);
             front_->setGrounding(false); // 离地
             front_state_ = LiftState::Up3_Retracting;
@@ -492,10 +530,10 @@ void Step::update()
         {
             if (front_state_ == LiftState::Up6_WaitRestoreNormal)
             {
-                front_->to(Position::Normal, DeployLiftLimit);
+                front_->to(r1_mode_ ? Position::UpR1EndHeight : Position::Normal, DeployLiftLimit);
                 front_state_ = LiftState::Up7_RestoringNormal;
             }
-            rear_->to(Position::Normal, DeployLiftLimit);
+            rear_->to(r1_mode_ ? Position::UpR1EndHeight : Position::Normal, DeployLiftLimit);
             rear_state_ = LiftState::Up5_Deploying;
         }
         break;

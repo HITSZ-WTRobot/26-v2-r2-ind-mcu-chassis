@@ -106,6 +106,13 @@ enum class PCCommand : uint8_t
     /// 下 400mm 台阶，数据格式与 StepDown200 相同
     StepDown400 = 0x34,
 
+    /// 上R1台阶
+    /// |        int16       |        int16       |          int16          |   uint16  |
+    /// | stepTarget_x*2000  | stepTarget_y*2000  | stepTarget_yaw(deg)*100 | direction |
+    /// @param direction: 0 Forward，车头朝前上台阶
+    ///                   1 Backward，车头朝后上台阶
+    StepUpR1 = 0x35,
+
     /// `0x50..0x5F` 为平面台阶动作命令组，不在枚举中逐项展开，统一由命令分发层按位解析：
     /// cmd = 0x50 | type(1bit)<<3 | dir(1bit)<<2 | height(1bit)<<1 | param(1bit)
     /// type: 0=up, 1=down; dir: 0=Forward, 1=Backward; height: 0=Step200, 1=Step400.

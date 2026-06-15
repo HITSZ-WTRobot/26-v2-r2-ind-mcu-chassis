@@ -28,7 +28,8 @@ public:
     enum class Height
     {
         Step200,
-        Step400
+        Step400,
+        R1
     };
 
     void up(float     startDistance2Step,
@@ -56,6 +57,14 @@ public:
               Height                  height      = Height::Step200);
 
     void resume_up();
+
+    /**
+     * 上R1台阶
+     * @param stepTargetPos 台阶边缘在世界坐标系下的位姿
+     * @param dir 上台阶方向
+     */
+    void upR1(const chassis::Posture& stepTargetPos,
+              Direction               dir = Direction::Forward);
 
     static void TaskEntry(void* self) { static_cast<Step*>(self)->loop(); }
 
@@ -182,6 +191,8 @@ private:
     bool should_reset_ = true;
 
     Height height_ = Height::Step200;
+
+    bool r1_mode_ = false;
 
     Direction direction_ = Direction::Forward;
 
