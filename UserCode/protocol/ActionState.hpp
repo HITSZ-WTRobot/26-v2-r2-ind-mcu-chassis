@@ -12,7 +12,7 @@ namespace Protocol::ActionState
 /**
  * 两字节动作状态表，按固定子字段打包：
  *
- * - bit0..1   Step 状态：Idle / Done / Running / WaitingTake
+ * - bit0..1   Step 状态：Idle / Done / Running / WaitingTake(旧保留值)
  * - bit2..3   底盘模式：Stop / Velocity / Position / Slave
  * - bit4      底盘曲线是否完成（时间结束且跟踪误差在 Master 跟踪阈值内）
  * - bit5..6   Lift 状态：Calibrating / Running / Ready / NotEnabled
@@ -35,7 +35,7 @@ enum class StepStatus : uint16_t
     Idle        = 0u, /// 空闲
     Done        = 1u, /// 动作完成
     Running     = 2u, /// 正在执行动作
-    WaitingTake = 3u, /// 正在等待取卷轴
+    WaitingTake = 3u, /// 旧等待取卷轴流程保留值，当前不会主动产生
 };
 
 /**

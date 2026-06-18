@@ -32,39 +32,43 @@ public:
         R1
     };
 
-    void up(float     startDistance2Step,
-            float     endDistance2Step,
-            Direction dir      = Direction::Forward,
-            bool      willTake = false,
-            Height    height   = Height::Step200);
+    enum class FinalHeight
+    {
+        Low,
+        High,
+        R1
+    };
+
+    void up(float       startDistance2Step,
+            float       endDistance2Step,
+            Direction   dir       = Direction::Forward,
+            FinalHeight endHeight = FinalHeight::Low,
+            Height      height    = Height::Step200);
 
     void up(const chassis::Posture& stepTargetPos,
             const chassis::Posture& endPos,
-            Direction               dir      = Direction::Forward,
-            bool                    willTake = false,
-            Height                  height   = Height::Step200);
+            Direction               dir       = Direction::Forward,
+            FinalHeight             endHeight = FinalHeight::Low,
+            Height                  height    = Height::Step200);
 
-    void down(float     startDistance2Step,
-              float     endDistance2Step,
-              Direction dir         = Direction::Forward,
-              bool      shouldReset = true,
-              Height    height      = Height::Step200);
+    void down(float       startDistance2Step,
+              float       endDistance2Step,
+              Direction   dir       = Direction::Forward,
+              FinalHeight endHeight = FinalHeight::Low,
+              Height      height    = Height::Step200);
 
     void down(const chassis::Posture& stepTargetPos,
               const chassis::Posture& endPos,
-              Direction               dir         = Direction::Forward,
-              bool                    shouldReset = true,
-              Height                  height      = Height::Step200);
-
-    void resume_up();
+              Direction               dir       = Direction::Forward,
+              FinalHeight             endHeight = FinalHeight::Low,
+              Height                  height    = Height::Step200);
 
     /**
      * 上R1台阶
      * @param stepTargetPos 台阶边缘在世界坐标系下的位姿
      * @param dir 上台阶方向
      */
-    void upR1(const chassis::Posture& stepTargetPos,
-              Direction               dir = Direction::Forward);
+    void upR1(const chassis::Posture& stepTargetPos, Direction dir = Direction::Forward);
 
     static void TaskEntry(void* self) { static_cast<Step*>(self)->loop(); }
 
@@ -74,11 +78,6 @@ public:
     {
         return chassis_state_ == ChassisState::Idle && front_state_ == LiftState::Idle &&
                rear_state_ == LiftState::Idle;
-    }
-
-    [[nodiscard]] bool isWaitingTake() const
-    {
-        return will_take_ && chassis_state_ == ChassisState::Up2_WaitFrontRetract;
     }
 
     [[nodiscard]] bool isFinished() const
@@ -96,18 +95,6 @@ public:
     {
         while (!isFinished())
             osDelay(10);
-    }
-
-    /**
-     * 等待中间停止取件
-     *
-     * TODO: 好奇怪的名字，改一下
-     */
-    void waitForPause() const
-    {
-        if (will_take_)
-            while (!isWaitingTake())
-                osDelay(10);
     }
 
 private:
@@ -130,16 +117,16 @@ private:
         // 等待前后腿抬升完成且 y 到阈值后切换到原上台阶动作链。
         Up1_ApproachEdge,
         // 目标 R{-(AbsWheelOuterEdgeX + SafeDistance), 0, dirRelativeYaw}；
-        // 前辅助轮越过台阶边缘，willTake 时在此等待 0x31 恢复。
+        // 前辅助轮越过台阶边缘，等待前侧腿完成收起。
         Up2_WaitFrontRetract,
         // 目标 R{AbsWheelInnerEdgeX - 3 * SafeDistance, 0, dirRelativeYaw}；
         // 等待后腿收起，之后切到保持台阶 yaw 的 EndPos 相对 x。
         Up3_WaitRearRetract,
         // 目标 R{end_rel.x, 0, dirRelativeYaw}；
-        // 等待后腿放下，之后切到保持台阶 yaw 的 EndPos 相对 x/y。
+        // 等待后腿进入过渡恢复阶段，之后切到保持台阶 yaw 的 EndPos 相对 x/y。
         Up4_MoveToEndX,
         // 目标 R{end_rel.x, end_rel.y, dirRelativeYaw}；
-        // 前后腿恢复 Normal，离开台阶安全 x 后切最终 EndPos。
+        // 前后腿同步恢复目标高度，离开台阶安全 x 后切最终 EndPos。
         Up5_MoveToEndXY,
         // 目标 EndPos；等待底盘轨迹和前后腿都完成。
         Up6_FinalizePose,
@@ -158,7 +145,7 @@ private:
         // 目标 W{end_pos.x, end_pos.y, step_target_pos.yaw + dirRelativeYaw}；
         // 腿高度保持不变，离开台阶安全 x 后切最终 EndPos。
         Down4_MoveToEndXY,
-        // 目标 EndPos；shouldReset 时前后腿恢复 Normal，否则保持高度等待底盘完成。
+        // 目标 EndPos；前后腿同步恢复目标高度，等待底盘完成。
         Down5_FinalizePose,
 
         Done
@@ -184,15 +171,9 @@ private:
         Done
     };
 
-    // 上台阶过程是否停下取物
-    bool will_take_ = false;
-
-    // 下台阶是否复位底盘
-    bool should_reset_ = true;
+    FinalHeight final_height_ = FinalHeight::Low;
 
     Height height_ = Height::Step200;
-
-    bool r1_mode_ = false;
 
     Direction direction_ = Direction::Forward;
 
@@ -232,6 +213,8 @@ private:
     [[nodiscard]] chassis::Posture endXYWithStepYaw() const;
 
     [[nodiscard]] float stepUpPosition() const;
+
+    [[nodiscard]] float selectedFinalPosition() const;
 };
 
 } // namespace Action

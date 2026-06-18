@@ -17,7 +17,7 @@ namespace Tests::StepManual
 // Ozone 触发变量：
 // 0 none
 // 1 step up 200
-// 2 step up resume
+// 2 reserved
 // 3 step down 200
 // 4 step up 400
 // 5 step down 400
@@ -34,10 +34,8 @@ volatile uint32_t direction = 0U;
 volatile float start_distance2step = 0.60f;
 /// 动作结束时车体中心到台阶的距离，单位 m。
 volatile float end_distance2step = 0.60f;
-/// `trigger == 1` 时是否在上台阶中途等待取件。
-volatile bool will_take{ false };
-/// `trigger == 3` 时下台阶完成后是否恢复到底盘正常高度。
-volatile bool should_reset{ true };
+/// 台阶动作结束后的底盘高度；`0=Low`, `1=High`。
+volatile uint32_t end_height = 0U;
 
 /// 当前编译形态是否具备本地台阶动作链能力。
 volatile bool capability_enabled{ false };
@@ -68,6 +66,23 @@ bool decodeDirection(const uint32_t raw, Action::Step::Direction& dir)
     return false;
 }
 
+bool decodeEndHeight(const uint32_t raw, Action::Step::FinalHeight& height)
+{
+    if (raw == 0U)
+    {
+        height = Action::Step::FinalHeight::Low;
+        return true;
+    }
+
+    if (raw == 1U)
+    {
+        height = Action::Step::FinalHeight::High;
+        return true;
+    }
+
+    return false;
+}
+
 void TestTask(void* argument)
 {
     (void)argument;
@@ -88,34 +103,32 @@ void TestTask(void* argument)
 
             if (runtime_ready)
             {
-                Action::Step::Direction dir;
+                Action::Step::Direction   dir;
+                Action::Step::FinalHeight final_height;
                 switch (cmd)
                 {
                 case 1U:
                 case 4U:
-                    if (decodeDirection(direction, dir) && !step.isRunning())
+                    if (decodeDirection(direction, dir) &&
+                        decodeEndHeight(end_height, final_height) && !step.isRunning())
                     {
                         const auto height = cmd == 4U ? Action::Step::Height::Step400
                                                       : Action::Step::Height::Step200;
-                        step.up(start_distance2step, end_distance2step, dir, will_take, height);
+                        step.up(start_distance2step, end_distance2step, dir, final_height, height);
                         last_command_ok = true;
                     }
                     break;
                 case 2U:
-                    if (step.isWaitingTake())
-                    {
-                        step.resume_up();
-                        last_command_ok = true;
-                    }
                     break;
                 case 3U:
                 case 5U:
-                    if (decodeDirection(direction, dir) && !step.isRunning())
+                    if (decodeDirection(direction, dir) &&
+                        decodeEndHeight(end_height, final_height) && !step.isRunning())
                     {
                         const auto height = cmd == 5U ? Action::Step::Height::Step400
                                                       : Action::Step::Height::Step200;
                         step.down(
-                                start_distance2step, end_distance2step, dir, should_reset, height);
+                                start_distance2step, end_distance2step, dir, final_height, height);
                         last_command_ok = true;
                     }
                     break;

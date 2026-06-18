@@ -81,25 +81,23 @@ enum class PCCommand : uint8_t
     /* 动作组 */
     /// 上 200mm 台阶
     /// |        int16       |      int16       |   uint16  |  uint16  |
-    /// | startDistance*2000 | endDistance*2000 | direction | willTake |
+    /// | startDistance*2000 | endDistance*2000 | direction | endHeight |
     /// @param startDistance: 开始时车体中心距离台阶边缘的距离
     /// @param endDistance: 结束时车体中心距离台阶边缘的距离
     /// @param direction: 0 Forward，车头朝前上台阶
     ///                   1 Backward，车头朝后上台阶
-    /// @param willTake: 0 连贯上台阶;
-    ///                  1 中途将停下来取卷轴，发送 StepUpResume 指令后继续执行上台阶动作
+    /// @param endHeight: 0 Low; 1 High
     StepUp200 = 0x30,
-    /// 继续上台阶动作，200mm / 400mm 共用
+    /// 旧恢复上台阶命令，当前保留无动作。
     StepUpResume = 0x31,
     /// 下 200mm 台阶
     /// |        int16       |      int16       |   uint16  |    uint16   |
-    /// | startDistance*2000 | endDistance*2000 | direction | shouldReset |
+    /// | startDistance*2000 | endDistance*2000 | direction | endHeight |
     /// @param startDistance: 开始时车体中心距离台阶边缘的距离
     /// @param endDistance: 结束时车体中心距离台阶边缘的距离
     /// @param direction: 0 Forward，车头朝前下台阶
     ///                   1 Backward，车头朝后下台阶
-    /// @param shouldReset: 1 下台阶之后底盘恢复到正常高度
-    ///                     0 下台阶最后一步不回收底盘，底盘仍处于比台阶高的状态
+    /// @param endHeight: 0 Low; 1 High
     StepDown200 = 0x32,
     /// 上 400mm 台阶，数据格式与 StepUp200 相同
     StepUp400 = 0x33,
@@ -114,9 +112,9 @@ enum class PCCommand : uint8_t
     StepUpR1 = 0x35,
 
     /// `0x50..0x5F` 为平面台阶动作命令组，不在枚举中逐项展开，统一由命令分发层按位解析：
-    /// cmd = 0x50 | type(1bit)<<3 | dir(1bit)<<2 | height(1bit)<<1 | param(1bit)
+    /// cmd = 0x50 | type(1bit)<<3 | dir(1bit)<<2 | height(1bit)<<1 | finalHeight(1bit)
     /// type: 0=up, 1=down; dir: 0=Forward, 1=Backward; height: 0=Step200, 1=Step400.
-    /// param: up 时表示 willTake，down 时表示 shouldReset.
+    /// finalHeight: 0=Low, 1=High, up/down 统一表示动作结束后的底盘高度.
     /// |        int16       |        int16       |          int16          |
     /// | stepTarget_x*2000  | stepTarget_y*2000  | stepTarget_yaw(deg)*100 |
     /// |      int16     |      int16     |        int16        |

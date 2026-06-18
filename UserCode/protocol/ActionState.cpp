@@ -35,9 +35,6 @@ StepStatus currentStepStatus()
 
     auto& step = Action::Step::inst();
 
-    if (step.isWaitingTake())
-        return StepStatus::WaitingTake;
-
     if (step.isRunning())
         return StepStatus::Running;
 

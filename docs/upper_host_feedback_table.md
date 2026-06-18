@@ -79,11 +79,12 @@ infrared_receiver_state  = (table >> 11) & 0x3
 | `0` | `Idle` | 无台阶动作 |
 | `1` | `Done` | 台阶动作完成 |
 | `2` | `Running` | 台阶动作执行中 |
-| `3` | `WaitingTake` | 正在等待取卷轴后恢复 |
+| `3` | `WaitingTake` | 旧上台阶暂停流程保留值，当前固件不会主动产生 |
 
 补充：
 
 - `StepStatus` 只反馈台阶动作流程状态，不区分当前动作来自 `StepUp200/StepDown200` 还是 `StepUp400/StepDown400`。
+- `WaitingTake` 仅为兼容旧反馈布局保留；当前 Step 状态机没有等待取件流程。
 
 ### 3.2 `ChassisMode`
 

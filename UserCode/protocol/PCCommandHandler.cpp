@@ -143,6 +143,22 @@ void handleCommand(const Frame& frame)
                  .yaw = to_angle(read_i16(&data[offset + 4])) };
     };
 
+    constexpr auto read_step_final_height = [](const uint16_t             raw,
+                                               Action::Step::FinalHeight& height) -> bool
+    {
+        switch (raw)
+        {
+        case 0:
+            height = Action::Step::FinalHeight::Low;
+            return true;
+        case 1:
+            height = Action::Step::FinalHeight::High;
+            return true;
+        default:
+            return false;
+        }
+    };
+
     switch (frame.cmd)
     {
     case PCCommand::Ping:
@@ -343,7 +359,7 @@ void handleCommand(const Frame& frame)
         const float             startDistance = to_pos(read_i16(&data[0]));
         const float             endDistance   = to_pos(read_i16(&data[2]));
         const uint16_t          dir           = read_u16(&data[4]);
-        const bool              willTake      = static_cast<bool>(read_u16(&data[6]));
+        const uint16_t          rawEndHeight  = read_u16(&data[6]);
         Action::Step::Direction direction;
         if (dir == 0)
             direction = Action::Step::Direction::Forward;
@@ -355,21 +371,16 @@ void handleCommand(const Frame& frame)
         const Action::Step::Height height = frame.cmd == PCCommand::StepUp400
                                                     ? Action::Step::Height::Step400
                                                     : Action::Step::Height::Step200;
-        //状态机步入逻辑
-        Action::Step::inst().up(startDistance, endDistance, direction, willTake, height);
+        Action::Step::FinalHeight  endHeight;
+        if (!read_step_final_height(rawEndHeight, endHeight))
+            break;
+
+        // 状态机步入逻辑
+        Action::Step::inst().up(startDistance, endDistance, direction, endHeight, height);
         break;
     }
     case PCCommand::StepUpResume:
     {
-        // 与 StepUp200/400 相同，只有完整动作链启用时才处理恢复命令。
-        if constexpr (!ProjectParts::EnableStepAction)
-            break;
-
-        auto& step = Action::Step::inst();
-        if (step.isWaitingTake())
-        {
-            step.resume_up();
-        }
         break;
     }
     case PCCommand::StepDown200:
@@ -382,7 +393,7 @@ void handleCommand(const Frame& frame)
         const float             startDistance = to_pos(read_i16(&data[0]));
         const float             endDistance   = to_pos(read_i16(&data[2]));
         const uint16_t          dir           = read_u16(&data[4]);
-        const bool              shouldReset   = static_cast<bool>(read_u16(&data[6]));
+        const uint16_t          rawEndHeight  = read_u16(&data[6]);
         Action::Step::Direction direction;
         if (dir == 0)
             direction = Action::Step::Direction::Forward;
@@ -394,7 +405,11 @@ void handleCommand(const Frame& frame)
         const Action::Step::Height height = frame.cmd == PCCommand::StepDown400
                                                     ? Action::Step::Height::Step400
                                                     : Action::Step::Height::Step200;
-        Action::Step::inst().down(startDistance, endDistance, direction, shouldReset, height);
+        Action::Step::FinalHeight  endHeight;
+        if (!read_step_final_height(rawEndHeight, endHeight))
+            break;
+
+        Action::Step::inst().down(startDistance, endDistance, direction, endHeight, height);
         break;
     }
     case PCCommand::StepUpR1:
@@ -402,8 +417,8 @@ void handleCommand(const Frame& frame)
         if constexpr (!ProjectParts::EnableStepAction)
             break;
 
-        const chassis::Posture stepTarget = read_posture(0);
-        const uint16_t         dir        = read_u16(&data[6]);
+        const chassis::Posture  stepTarget = read_posture(0);
+        const uint16_t          dir        = read_u16(&data[6]);
         Action::Step::Direction direction;
         if (dir == 0)
             direction = Action::Step::Direction::Forward;
@@ -515,15 +530,17 @@ void handleCommand(const Frame& frame)
                                                           : Action::Step::Direction::Backward;
         const Action::Step::Height    height = (cmd & 0x02U) == 0U ? Action::Step::Height::Step200
                                                                    : Action::Step::Height::Step400;
-        const bool                    param  = (cmd & 0x01U) != 0U;
+        const Action::Step::FinalHeight final_height = (cmd & 0x01U) == 0U
+                                                               ? Action::Step::FinalHeight::Low
+                                                               : Action::Step::FinalHeight::High;
 
         const chassis::Posture step_target = read_posture(0);
         const chassis::Posture end         = read_posture(6);
 
         if (type_down)
-            Action::Step::inst().down(step_target, end, direction, param, height);
+            Action::Step::inst().down(step_target, end, direction, final_height, height);
         else
-            Action::Step::inst().up(step_target, end, direction, param, height);
+            Action::Step::inst().up(step_target, end, direction, final_height, height);
 
         break;
     }
