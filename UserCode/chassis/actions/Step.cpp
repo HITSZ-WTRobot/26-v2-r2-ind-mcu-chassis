@@ -148,15 +148,14 @@ void Step::up(const chassis::Posture& stepTargetPos,
     osThreadFlagsSet(task_, FlagStart);
 }
 
-void Step::upR1(const chassis::Posture& stepTargetPos,
-                const Direction         dir)
+void Step::upR1(const chassis::Posture& stepTargetPos, const Direction dir)
 {
     if (isRunning())
         return;
 
     const chassis::Posture endPos =
-        chassis::loc::IChassisLoc::RelativePosture2WorldPosture(stepTargetPos,
-                                                                Chassis::Config::UpR1EndRelativePos);
+            chassis::loc::IChassisLoc::RelativePosture2WorldPosture(stepTargetPos,
+                                                                    UpR1EndRelativePos);
 
     prepare(stepTargetPos, endPos, dir);
     will_take_    = false;
@@ -329,8 +328,8 @@ void Step::update()
     case ChassisState::Down0_PrepareYaw:
         if (yawPrepared())
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(
-                                                           -(AbsWheelOuterEdgeX + 3 * SafeDistance)),
+            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(-(AbsWheelOuterEdgeX +
+                                                                         3 * SafeDistance)),
                                                    Master::TrajectoryLinkMode::PreviousCurve);
             chassis_state_ = ChassisState::Down1_ApproachFrontAux;
         }
@@ -340,8 +339,8 @@ void Step::update()
     case ChassisState::Down1_ApproachFrontAux:
         if (front_->isFinished() && rear_->isFinished())
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(-(AbsAuxInnerWheelX +
-                                                                         3 * SafeDistance)),
+            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(
+                                                           -(AbsAuxInnerWheelX + 3 * SafeDistance)),
                                                    Master::TrajectoryLinkMode::PreviousCurve);
             chassis_state_ = ChassisState::Down2_WaitFrontDeploy;
         }
@@ -405,7 +404,8 @@ void Step::update()
         if (will_take_)
             break;
         // TODO: 这里不应该这样扩大安全距离
-        if (currentRelativeX() > -AbsAuxOuterWheelX + AuxWheelRadius + 3 * SafeDistance)//这里是判断前侧辅助轮有没有上台阶
+        if (currentRelativeX() > -AbsAuxOuterWheelX + AuxWheelRadius +
+                                         3 * SafeDistance) // 这里是判断前侧辅助轮有没有上台阶
         {
             if (r1_mode_ && Chassis::loc_ekf != nullptr)
             {
