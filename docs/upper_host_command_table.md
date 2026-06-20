@@ -60,13 +60,14 @@
 | `0x32`       | `StepDown200`                         | `startDistance(int16), endDistance(int16), direction(uint16), endHeight(uint16)`                              | 下 200mm 台阶动作组。                                          |
 | `0x33`       | `StepUp400`                           | 与 `StepUp200` 相同                                                                                              | 上 400mm 台阶动作组。                                          |
 | `0x34`       | `StepDown400`                         | 与 `StepDown200` 相同                                                                                            | 下 400mm 台阶动作组。                                          |
-| `0x50..0x5F` | `StepPose`                            | `stepTarget_x(int16), stepTarget_y(int16), stepTarget_yaw(int16), end_x(int16), end_y(int16), end_yaw(int16)` | 平面台阶动作组，cmd 低 4 位编码动作类型、方向、台阶高度和最终底盘高度。                 |
+| `0x35`       | `StepUpR1`                            | `stepTarget_x(int16), stepTarget_y(int16), stepTarget_yaw(int16), direction(uint16), reserve(uint16) x2`     | 上 R1 台阶动作组，终点由下位机配置常量生成。                               |
+| `0x50..0x5F` | `StepPose`                            | `stepTarget_x(int16), stepTarget_y(int16), stepTarget_yaw(int16), end_x(int16), end_y(int16), end_yaw(int16)` | 平面台阶动作组，cmd 低 4 位编码动作类型、方向、台阶高度和最终 lift 目标高度。            |
 | `0x40`       | `TakeSpear`                           | `target_x(int16), target_y(int16), target_yaw(int16), end_x(int16), end_y(int16), end_yaw(int16)`             | 直接指定待取矛头位姿和结束位姿。                                        |
 | `0x41`       | `TakeSpearById`                       | `spearId(uint16), end_x(int16), end_y(int16), end_yaw(int16), reserve(uint16), reserve(uint16)`               | 通过固定矛位索引启动取矛头。                                          |
 | `0x42`       | `StoreKFS`                            | 无                                                                                                             | 卷轴临时存放动作组。                                              |
 | `0x43`       | `ReleaseKFS`                          | 无                                                                                                             | 卷轴释放动作组。                                                |
-| `0x44`       | `SetGripSuction`                      | `on(uint16), reserve(uint16) x5`                                                                              | 控制 Grip 吸盘开关。`on=1` 启动气泵，`on=0` 关闭气泵。                   |
-| `0x45`       | `SetAbdomenSuction`                   | `on(uint16), reserve(uint16) x5`                                                                              | 控制腹部吸盘开关。`on=1` 启动气泵，`on=0` 关闭气泵。                       |
+| `0x44`       | `SetGripSuction`                      | `on(uint16), reserve(uint16) x5`                                                                              | 控制 Grip 吸盘开关。`on=0` 关闭气泵，非 0 启动气泵。                     |
+| `0x45`       | `SetAbdomenSuction`                   | `on(uint16), reserve(uint16) x5`                                                                              | 控制腹部吸盘开关。`on=0` 关闭气泵，非 0 启动气泵。                         |
 | `0x46`       | `SetGripClaw`                         | `clawMode(uint16), reserve(uint16) x5`                                                                        | 独立控制夹爪开合，不改变 Grip 关节位置。`clawMode=0` 张开，`clawMode=1` 闭合。 |
 
 ## 5. 各命令细节
@@ -191,13 +192,14 @@
 | `startDistance` | `int16`  | 开始时车体中心距离台阶边缘的距离，编码为 `m * 2000` |
 | `endDistance`   | `int16`  | 结束时车体中心距离台阶边缘的距离，编码为 `m * 2000` |
 | `direction`     | `uint16` | `0=Forward`, `1=Backward`       |
-| `endHeight`     | `uint16` | 动作结束后的底盘高度：`0=Low(0.22m)`, `1=High(0.42m)` |
+| `endHeight`     | `uint16` | 动作结束后的 lift 目标高度：`0=Low(0.015m)`, `1=High(0.205m)` |
 
 补充：
 
 - `0x30 StepUp200` 使用 200mm 台阶高度配置。
 - `0x33 StepUp400` 使用 400mm 台阶高度配置。
 - `0x31 StepUpResume` 为旧恢复命令，当前保留无动作。
+- `endHeight` 选择的是下位机 lift 内部目标高度；反馈帧里的底盘离地高度还会再加上当前 `GroundingChassisHeight`，当前默认约 `0.207m`，因此 Low / High 对应反馈高度约为 `0.222m / 0.412m`。
 
 ### 5.8 `0x32 StepDown200 / 0x34 StepDown400`
 
@@ -206,14 +208,37 @@
 | `startDistance` | `int16`  | 开始时车体中心距离台阶边缘的距离，编码为 `m * 2000` |
 | `endDistance`   | `int16`  | 结束时车体中心距离台阶边缘的距离，编码为 `m * 2000` |
 | `direction`     | `uint16` | `0=Forward`, `1=Backward`       |
-| `endHeight`     | `uint16` | 动作结束后的底盘高度：`0=Low(0.22m)`, `1=High(0.42m)` |
+| `endHeight`     | `uint16` | 动作结束后的 lift 目标高度：`0=Low(0.015m)`, `1=High(0.205m)` |
 
 补充：
 
 - `0x32 StepDown200` 使用 200mm 台阶高度配置。
 - `0x34 StepDown400` 使用 400mm 台阶高度配置。
+- `endHeight` 选择的是下位机 lift 内部目标高度；反馈帧里的底盘离地高度还会再加上当前 `GroundingChassisHeight`，当前默认约 `0.207m`，因此 Low / High 对应反馈高度约为 `0.222m / 0.412m`。
 
-### 5.9 `0x50..0x5F StepPose`
+### 5.9 `0x35 StepUpR1`
+
+该命令用于上 R1 台阶。上位机只给出台阶边缘参考位姿和方向；动作终点由下位机内部配置
+`Chassis::Config::UpR1EndRelativePos` 相对 `stepTargetPos` 生成，结束 lift 目标高度固定为
+`Chassis::Config::Lift::Position::UpR1EndHeight`，当前为 `0.100m`。
+
+数据区：
+
+| 字段               | 类型       | 说明                              |
+|------------------|----------|---------------------------------|
+| `stepTarget_x`   | `int16`  | 台阶边缘选定作业点世界系 `x`，编码为 `m * 2000` |
+| `stepTarget_y`   | `int16`  | 台阶边缘选定作业点世界系 `y`，编码为 `m * 2000` |
+| `stepTarget_yaw` | `int16`  | 台阶作业方向世界系 `yaw`，编码为 `deg * 100` |
+| `direction`      | `uint16` | `0=Forward`, `1=Backward`       |
+| `reserve0`       | `uint16` | 预留，当前忽略                         |
+| `reserve1`       | `uint16` | 预留，当前忽略                         |
+
+补充：
+
+- `direction` 非 `0/1` 时，该命令会被忽略。
+- R1 动作当前仍依赖下位机侧 TODO 标定值；使用前需要确认 `UpR1EndRelativePos` 和 `UpR1EndHeight` 已按实车更新。
+
+### 5.10 `0x50..0x5F StepPose`
 
 该命令组用于平面作业面的台阶动作。命令字按位编码：
 
@@ -226,7 +251,7 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | finalHeight
 | `type`        | bit3 | `0=up`, `1=down`                           |
 | `dir`         | bit2 | `0=Forward`, `1=Backward`                  |
 | `height`      | bit1 | `0=Step200`, `1=Step400`                   |
-| `finalHeight` | bit0 | 动作结束后的底盘高度：`0=Low(0.22m)`, `1=High(0.42m)` |
+| `finalHeight` | bit0 | 动作结束后的 lift 目标高度：`0=Low(0.015m)`, `1=High(0.205m)` |
 
 数据区：
 
@@ -241,33 +266,34 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | finalHeight
 
 命令字展开：
 
-| Cmd    | 动作   | 方向       | 台阶高度    | 最终底盘高度      |
+| Cmd    | 动作   | 方向       | 台阶高度    | 最终 lift 目标高度 |
 |--------|------|----------|---------|-------------|
-| `0x50` | up   | Forward  | Step200 | Low(0.21m)  |
-| `0x51` | up   | Forward  | Step200 | High(0.42m) |
-| `0x52` | up   | Forward  | Step400 | Low(0.21m)  |
-| `0x53` | up   | Forward  | Step400 | High(0.42m) |
-| `0x54` | up   | Backward | Step200 | Low(0.21m)  |
-| `0x55` | up   | Backward | Step200 | High(0.42m) |
-| `0x56` | up   | Backward | Step400 | Low(0.21m)  |
-| `0x57` | up   | Backward | Step400 | High(0.42m) |
-| `0x58` | down | Forward  | Step200 | Low(0.21m)  |
-| `0x59` | down | Forward  | Step200 | High(0.42m) |
-| `0x5A` | down | Forward  | Step400 | Low(0.21m)  |
-| `0x5B` | down | Forward  | Step400 | High(0.42m) |
-| `0x5C` | down | Backward | Step200 | Low(0.21m)  |
-| `0x5D` | down | Backward | Step200 | High(0.42m) |
-| `0x5E` | down | Backward | Step400 | Low(0.21m)  |
-| `0x5F` | down | Backward | Step400 | High(0.42m) |
+| `0x50` | up   | Forward  | Step200 | Low(0.015m)  |
+| `0x51` | up   | Forward  | Step200 | High(0.205m) |
+| `0x52` | up   | Forward  | Step400 | Low(0.015m)  |
+| `0x53` | up   | Forward  | Step400 | High(0.205m) |
+| `0x54` | up   | Backward | Step200 | Low(0.015m)  |
+| `0x55` | up   | Backward | Step200 | High(0.205m) |
+| `0x56` | up   | Backward | Step400 | Low(0.015m)  |
+| `0x57` | up   | Backward | Step400 | High(0.205m) |
+| `0x58` | down | Forward  | Step200 | Low(0.015m)  |
+| `0x59` | down | Forward  | Step200 | High(0.205m) |
+| `0x5A` | down | Forward  | Step400 | Low(0.015m)  |
+| `0x5B` | down | Forward  | Step400 | High(0.205m) |
+| `0x5C` | down | Backward | Step200 | Low(0.015m)  |
+| `0x5D` | down | Backward | Step200 | High(0.205m) |
+| `0x5E` | down | Backward | Step400 | Low(0.015m)  |
+| `0x5F` | down | Backward | Step400 | High(0.205m) |
 
 补充：
 
 - `StepTargetPos` 定义在世界系中，表示台阶边缘上的选定作业点；其 `yaw` 描述台阶作业方向直线。
 - 下位机内部使用相对 `StepTargetPos` 的位姿 `R{x, y, yaw}` 规划预备点和跨台阶阶段。
 - `Forward` 的相对 yaw 为 `0deg`，`Backward` 的相对 yaw 为 `180deg`，不做 yaw 归一化。
-- `height` 只选择跨越台阶过程中的台阶高度配置；`finalHeight` 统一选择动作结束后的底盘高度，不区分上台阶或下台阶。
+- `height` 只选择跨越台阶过程中的台阶高度配置；`finalHeight` 统一选择动作结束后的 lift 目标高度，不区分上台阶或下台阶。
+- `finalHeight` 选择的是下位机 lift 内部目标高度；反馈帧里的底盘离地高度还会再加上当前 `GroundingChassisHeight`，当前默认约 `0.207m`，因此 Low / High 对应反馈高度约为 `0.222m / 0.412m`。
 
-### 5.10 `0x40 TakeSpear`
+### 5.11 `0x40 TakeSpear`
 
 | 字段           | 类型      | 说明            |
 |--------------|---------|---------------|
@@ -280,10 +306,10 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | finalHeight
 
 补充：
 
-- 安全撤离距离固定使用 `Grip::Config::SpearGrab::SafeDistance`，当前值为 `0.20 m`。
+- 安全撤离距离固定使用 `Grip::Config::SpearGrab::SafeDistance`，当前值为 `0.25 m`。
 - 若 `end_pos` 相对 `target_pos` 的 `x` 方向距离不大于安全撤离距离，下位机会直接忽略该命令。
 
-### 5.11 `0x41 TakeSpearById`
+### 5.12 `0x41 TakeSpearById`
 
 | 字段         | 类型       | 说明                   |
 |------------|----------|----------------------|
@@ -296,7 +322,7 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | finalHeight
 
 下位机会将 `spearId` 映射到固定位表 `Grip::Config::SpearGrab::TargetPoses[spearId]`，再执行与 `TakeSpear` 相同的动作流。
 
-## 6. 固定矛位表
+固定矛位表：
 
 当前固件中共有 6 个固定矛位：
 
@@ -311,11 +337,31 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | finalHeight
 
 在填入真实标定位姿前，不建议上位机直接依赖 `TakeSpearById`。
 
-### 5.12 `0x44 SetGripSuction`
+### 5.13 `0x42 StoreKFS`
+
+无参数命令，仍需发送完整 12 字节数据区。
+
+补充：
+
+- 该命令仅在 `ProjectParts::EnableKfsAction` 派生能力成立时生效，当前要求 PC control、Grip、Grip suction、Grip suction pressure sensor 均启用。
+- 动作启动条件：KFS 状态机处于空闲或已完成，`Grip::grip` 已创建并 `enable()`，并且吸盘当前未检测到已持物。
+- 动作流程：先启动 Grip 吸盘，再移动到 `KfsPickup` 姿态；确认吸住后移动到 `KfsStore` 姿态，完成后吸盘保持开启。
+
+### 5.14 `0x43 ReleaseKFS`
+
+无参数命令，仍需发送完整 12 字节数据区。
+
+补充：
+
+- 该命令仅在 `ProjectParts::EnableKfsAction` 派生能力成立时生效，当前要求 PC control、Grip、Grip suction、Grip suction pressure sensor 均启用。
+- 动作启动条件：KFS 状态机处于空闲或已完成，`Grip::grip` 已创建并 `enable()`，并且吸盘当前检测到已持物。
+- 动作流程：先移动到 `KfsRelease` 姿态，到位后关闭 Grip 吸盘；确认释放后回到 `Standby` 姿态。
+
+### 5.15 `0x44 SetGripSuction`
 
 | 字段         | 类型       | 说明                 |
 |------------|----------|--------------------|
-| `on`       | `uint16` | `0=关闭气泵`, `1=启动气泵` |
+| `on`       | `uint16` | `0=关闭气泵`, 非 `0` 启动气泵 |
 | `reserve0` | `uint16` | 预留，当前忽略            |
 | `reserve1` | `uint16` | 预留，当前忽略            |
 | `reserve2` | `uint16` | 预留，当前忽略            |
@@ -325,14 +371,14 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | finalHeight
 补充：
 
 - 该命令仅在 `PROJECT_PART_ENABLE_GRIP_SUCTION=1` 时生效。
-- 控制 Grip 侧吸盘气泵（RELAY1），直接操作 GPIO，不经过 KFS 动作组。
+- 控制 Grip 侧吸盘气泵（当前为 `RELAY2` GPIO），直接操作 GPIO，不经过 KFS 动作组。
 - 与 `StoreKFS` / `ReleaseKFS` 独立：KFS 动作组内部也会控制该吸盘，上位机应避免与动作组同时操作同一吸盘。
 
-### 5.13 `0x45 SetAbdomenSuction`
+### 5.16 `0x45 SetAbdomenSuction`
 
 | 字段         | 类型       | 说明                 |
 |------------|----------|--------------------|
-| `on`       | `uint16` | `0=关闭气泵`, `1=启动气泵` |
+| `on`       | `uint16` | `0=关闭气泵`, 非 `0` 启动气泵 |
 | `reserve0` | `uint16` | 预留，当前忽略            |
 | `reserve1` | `uint16` | 预留，当前忽略            |
 | `reserve2` | `uint16` | 预留，当前忽略            |
@@ -342,10 +388,10 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | finalHeight
 补充：
 
 - 该命令仅在 `PROJECT_PART_ENABLE_ABDOMEN_SUCTION=1` 时生效。
-- 控制车体腹部吸盘气泵（RELAY2），独立于 Grip 吸盘。
+- 控制车体腹部吸盘气泵（当前为 `RELAY0` GPIO），独立于 Grip 吸盘。
 - 当前不连接气压计，无吸附检测能力。
 
-### 5.14 `0x46 SetGripClaw`
+### 5.17 `0x46 SetGripClaw`
 
 | 字段         | 类型       | 说明                 |
 |------------|----------|--------------------|
@@ -360,5 +406,5 @@ cmd = 0x50 | type<<3 | dir<<2 | height<<1 | finalHeight
 
 - 该命令仅在 `PROJECT_PART_ENABLE_PC_CONTROL=1` 且 `PROJECT_PART_ENABLE_GRIP=1` 时生效。
 - 下位机要求 `Grip::grip` 已创建且已经 `enable()`；未完成回零校准或未使能时会忽略该命令。
-- 该命令仅控制夹爪 GPIO 开合，不会修改 arm/turn 关节轨迹，也不会触发 `toJointPose()`。
-- 上位机应在需要单纯控制夹爪时使用此命令，避免通过 `SetGripPose` 附带关节位姿。\
+- 该命令仅控制夹爪 GPIO 开合（当前为 `RELAY3` GPIO），不会修改 arm/turn 关节轨迹，也不会触发 `toJointPose()`。
+- 上位机应在需要单纯控制夹爪时使用此命令，避免通过 `SetGripPose` 附带关节位姿。

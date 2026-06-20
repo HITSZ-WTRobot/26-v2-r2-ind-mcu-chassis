@@ -78,9 +78,9 @@ The current hardware/software mapping in `UserCode/` is:
 - `USART6` (`huart6`) is the infrared receiver link at 57600 baud. It uses DMA circular
   single-byte receive on the CubeMX-configured pins.
 - Wheel motors are DJI motors: front wheel pair on `hcan1` with `id1 = 1, 2`, rear wheel pair on `hcan2` with `id1 = 3, 4`.
-- Lift motors are also DJI motors, tracked as `Device::Motor::lift[4]`: front lift pair on `hcan1` with `id1 = 3, 4`, rear lift pair on `hcan2` with `id1 = 5, 6`.
+- Lift motors are also DJI motors, tracked as `Device::Motor::lift[4]`: front lift pair on `hcan1` with `id1 = 3, 4`, rear lift pair on `hcan2` with `id1 = 1, 2`.
 - Grip uses two DM motors on `hcan2`: arm is DM4310 in internal velocity mode with `id0 = 0x09` and fixed zero from `Grip::Config::Motor`; turn is DM2325 in MIT torque mode with `id0 = 0x0A` and still uses `trajectory::HomingMotorTrajectory<1>` for stall homing. Both use DM feedback `master_id = 0x00`.
-- Grip suction uses `GRIP_SUCTION` as the pump GPIO. Its optional `XGZP6847D` pressure sensor sits on shared `I2C2` and is gated separately through `PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR`.
+- Grip suction currently uses `RELAY2` as the pump GPIO, the abdomen suction uses `RELAY0`, and the grip claw uses `RELAY3`. The optional grip suction `XGZP6847D` pressure sensor sits on shared `I2C2` and is gated separately through `PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR`.
 
 `Connection::table` and `Connection::Bit` in `UserCode/connection.hpp` define the canonical connection bitmap. The upper-host localization stream uses bit14 and is considered online only while its dedicated watchdog remains fed, currently for 200 watchdog ticks after each valid `LidarPosture` frame; the upper-host UART link itself uses bit15 directly. The four lift motors occupy four independent connection bits, and the grip suction pressure sensor uses bit11 only when `ProjectParts::EnableGripSuctionPressureSensor` is enabled; if you add, remove, or repurpose a device/protocol link, update the enum, required mask, table refresh logic, and connection wait path together.
 
@@ -92,18 +92,20 @@ Upper-host protocol behavior is likewise feature-gated:
 - Treat the first `LidarPosture` frame that satisfies the current intake conditions as the delayed initialization trigger when upper-host localization is enabled.
 - Keep step-action commands gated by `ProjectParts::EnableStepAction`, which currently means PC control + wheel chassis + lift all enabled.
 - When upper-host command IDs, payload layouts, or feedback layouts change, update `docs/upper_host_command_table.md` and `docs/upper_host_feedback_table.md` in the same change.
-- Step action commands occupy `0x30..0x34`: `0x30 StepUp200`, `0x31 StepUpResume`
+- Step action commands occupy `0x30..0x35`: `0x30 StepUp200`, `0x31 StepUpResume`
   shared by all step-up heights, `0x32 StepDown200`, `0x33 StepUp400`, and
-  `0x34 StepDown400`. `StepUp200/400` share the same payload and differ only by
+  `0x34 StepDown400`, plus `0x35 StepUpR1`. `StepUp200/400` share the same payload and differ only by
   `Action::Step::Height`; `StepDown200/400` do the same. These commands keep the
   original linear work-surface distance payload, but their fourth `uint16` is now
-  `endHeight` for both up and down actions (`0=Low 0.22m`, `1=High 0.42m`).
-  `0x31 StepUpResume` is a reserved legacy command and currently has no effect.
+  `endHeight` for both up and down actions (`0=Low lift target 0.015m`,
+  `1=High lift target 0.205m`). `0x31 StepUpResume` is a reserved legacy command
+  and currently has no effect. `0x35 StepUpR1` carries `StepTargetPos(x,y,yaw)`
+  plus direction and derives its end pose / final lift height from local R1 config.
 - Pose-based Step action commands occupy `0x50..0x5F`, encoded as
   `0x50 | type<<3 | dir<<2 | height<<1 | finalHeight`, where `type` selects
   up/down, `dir` selects Forward/Backward, `height` selects Step200/Step400, and
-  `finalHeight` selects the final chassis height for both up and down actions
-  (`0=Low 0.22m`, `1=High 0.42m`). The payload is
+  `finalHeight` selects the final lift target height for both up and down actions
+  (`0=Low lift target 0.015m`, `1=High lift target 0.205m`). The payload is
   `StepTargetPos(x,y,yaw) + EndPos(x,y,yaw)`. `StepTargetPos` is a world-frame pose
   on the selected step edge; Step internals use relative poses `R{x,y,yaw}` where
   Forward has relative yaw 0 and Backward has relative yaw 180.

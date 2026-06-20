@@ -83,7 +83,7 @@ infrared_receiver_state  = (table >> 11) & 0x3
 
 补充：
 
-- `StepStatus` 只反馈台阶动作流程状态，不区分当前动作来自 `StepUp200/StepDown200` 还是 `StepUp400/StepDown400`。
+- `StepStatus` 只反馈台阶动作流程状态，不区分当前动作来自距离式 `0x30..0x35` 命令还是姿态式 `0x50..0x5F` 命令。
 - `WaitingTake` 仅为兼容旧反馈布局保留；当前 Step 状态机没有等待取件流程。
 
 ### 3.2 `ChassisMode`
@@ -160,10 +160,10 @@ infrared_receiver_state  = (table >> 11) & 0x3
 | `1` | `0x0002` | `wheel[1]` | 前轮驱动，CAN1 `id1=2` |
 | `2` | `0x0004` | `wheel[2]` | 后轮驱动，CAN2 `id1=3` |
 | `3` | `0x0008` | `wheel[3]` | 后轮驱动，CAN2 `id1=4` |
-| `4` | `0x0010` | `lift[0]` | 前侧抬升 0 |
-| `5` | `0x0020` | `lift[1]` | 前侧抬升 1 |
-| `6` | `0x0040` | `lift[2]` | 后侧抬升 0 |
-| `7` | `0x0080` | `lift[3]` | 后侧抬升 1 |
+| `4` | `0x0010` | `lift[0]` | 前侧抬升 0，CAN1 `id1=3` |
+| `5` | `0x0020` | `lift[1]` | 前侧抬升 1，CAN1 `id1=4` |
+| `6` | `0x0040` | `lift[2]` | 后侧抬升 0，CAN2 `id1=1` |
+| `7` | `0x0080` | `lift[3]` | 后侧抬升 1，CAN2 `id1=2` |
 | `8` | `0x0100` | `grip_arm` | Grip 大臂电机 |
 | `9` | `0x0200` | `grip_turn` | Grip 转向电机 |
 | `10` | `0x0400` | `gyro_yaw` | 航向陀螺仪 |
