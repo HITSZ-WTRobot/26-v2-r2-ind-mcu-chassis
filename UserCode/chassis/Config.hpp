@@ -32,14 +32,21 @@ constexpr PIDMotor::Config PIDCfg{
 
 constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
 
-constexpr float MinToLimitMM = 1.25f;  /// 外侧辅助轮接地时离下限位距离
-constexpr float RangeMM      = 442.7f; ///  到上限位时离下限位
+constexpr float OuterAuxWheelToChassisMM = 193.0f;
+constexpr float MinWheelToChassisMM      = 192.5f;
+constexpr float InnerAuxWheelToChassisMM = 207.0f;
+
+/// 内侧辅助轮接地时离下限位距离
+constexpr float MinToLimitMM = InnerAuxWheelToChassisMM - MinWheelToChassisMM;
+
+constexpr float RangeMM = 442.7f; ///  到上限位时离下限位
 
 constexpr float LiftMaxMM    = RangeMM - MinToLimitMM; // 最高抬升位置 unit mm
 constexpr float LiftMinMM    = -MinToLimitMM;          // 最低抬升位置 unit mm
 constexpr float LiftOffsetMM = MinToLimitMM;           // 辅助轮接地时到机械限位的偏移 (>0) unit mm
 constexpr float GearRadiusMM = 25;                     // 抬升齿轮半径 mm
-constexpr float GroundingChassisHeightMM = 195.0f;     // 辅助轮接地时底盘离地高度 unit mm
+constexpr float GroundingChassisHeightMM = InnerAuxWheelToChassisMM; // 辅助轮接地时底盘离地高度
+                                                                     // unit mm
 
 constexpr float LiftMax                = LiftMaxMM * 1e-3f;
 constexpr float LiftMin                = LiftMinMM * 1e-3f;
@@ -88,10 +95,10 @@ namespace Position
 {
 using Lift::LiftMin;
 
-constexpr float Normal         = 0.02f;     // 行进默认保持高度 unit m
-constexpr float StepTransition = 0.008f;    // 上下台阶过程中的过渡高度 unit m
-constexpr float StepUp200      = 0.215f;    // 比 200mm 台阶略高 unit m
-constexpr float StepUp400      = 0.42f;     // 比 400mm 台阶略高 unit m
+constexpr float Normal         = 0.015f;    // 行进默认保持高度 unit m
+constexpr float StepTransition = 0.00f;     // 上下台阶过程中的过渡高度 unit m
+constexpr float StepUp200      = 0.205f;    // 比 200mm 台阶略高 unit m
+constexpr float StepUp400      = 0.405f;    // 比 400mm 台阶略高 unit m
 constexpr float StepFinalLow   = Normal;    // 0x50..0x5F 台阶动作结束低底盘高度 unit m
 constexpr float StepFinalHigh  = StepUp200; // 0x50..0x5F 台阶动作结束高底盘高度 unit m
 constexpr float UpR1           = LiftMax;   // 比 R1 的台阶高，在最后阶段 unit m
@@ -140,9 +147,9 @@ constexpr float WheelDistanceYMM = 401.08f; // 左右轮距 unit mm
 namespace ChassisInfo
 {
 constexpr float AuxiliaryWheelRadiusMM  = 20.0f;  // 辅助轮半径
-constexpr float AuxOuterWheelDistanceMM = 760.0f; // 外侧两个辅助轮中心距
-constexpr float AuxInnerWheelDistanceMM = 160.0f; // 内侧两个辅助轮中心距
-constexpr float ChassisDistanceXMM      = 800.0f; // 车体长度
+constexpr float AuxOuterWheelDistanceMM = 720.0f; // 外侧两个辅助轮中心距
+constexpr float AuxInnerWheelDistanceMM = 150.0f; // 内侧两个辅助轮中心距
+constexpr float ChassisDistanceXMM      = 760.0f; // 车体长度
 constexpr float ChassisDistanceYMM      = 510.0f; // 车体宽度
 
 constexpr float constexpr_sqrt_impl(const float x, const float curr, const float prev)
