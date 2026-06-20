@@ -55,7 +55,7 @@ void grip_suction_init()
         return;
 
     Suction::grip = new ::Suction::SuctionCup(
-            { .pump_gpio                     = { RELAY3_GPIO_Port, RELAY3_Pin },
+            { .pump_gpio                     = { RELAY2_GPIO_Port, RELAY2_Pin },
               .pressure_stale_ms             = 120U,
               .object_detect_on_pressure_pa  = ::Suction::Config::DetectOnPressurePa,
               .object_detect_off_pressure_pa = ::Suction::Config::DetectOffPressurePa },
