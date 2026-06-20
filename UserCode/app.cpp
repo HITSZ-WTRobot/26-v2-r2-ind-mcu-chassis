@@ -172,6 +172,13 @@ extern "C" void Init(void* argument)
     // - 有陀螺仪但无上位机定位包：构造本地下位机 EKF
     Chassis::initStandaloneLocCtrl();
 
+    // 矛头机构使能不需要上位机雷达数据，可以独立使能
+    if constexpr (ProjectParts::EnableGrip)
+    {
+        if (Grip::grip == nullptr || !Grip::grip->enable())
+            Error_Handler();
+    }
+
     // 这里统一等待“系统初始化完成”：
     // - 若启用了上位机串口辨识初始化，则必须先收到任意合法上位机帧；
     // - 若启用了上位机定位包，则还必须等待首个满足当前接入条件的位姿。
@@ -182,11 +189,6 @@ extern "C" void Init(void* argument)
 
     // 仅在底盘轮组启用时，才真正使能底盘控制器。
     Chassis::enable();
-    if constexpr (ProjectParts::EnableGrip)
-    {
-        if (Grip::grip == nullptr || !Grip::grip->enable())
-            Error_Handler();
-    }
 
     // 等待启动
     osDelay(1000);
