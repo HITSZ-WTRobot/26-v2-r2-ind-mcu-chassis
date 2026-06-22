@@ -22,7 +22,7 @@ namespace AppI2C
 {
 I2CBusDMA& bus2()
 {
-    static I2CBusDMA bus(Bus2Handle);
+    static I2CBusDMA bus(Bus2Handle, { GPIOB, GPIO_PIN_8, GPIOB, GPIO_PIN_9, GPIO_AF4_I2C1 });
     return bus;
 }
 
