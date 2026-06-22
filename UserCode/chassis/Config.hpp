@@ -231,9 +231,9 @@ constexpr TrajectoryTrackingThreshold DefaultTrajectoryTrackingThreshold{
 
 constexpr MasterConfig masterCfg = {
     .posture_error_pd_cfg = {
-        .vx = { .Kp = 3.0, .Kd = 0.3f, .abs_output_max = 0.6f },
-        .vy = { .Kp = 3.0, .Kd = 0.3f, .abs_output_max = 0.6f },
-        .wz = { .Kp = 3.0, .Kd = 0.3f, .abs_output_max = 135.0f },
+        .vx = { .Kp = 5.0, .Kd = 25.0f, .abs_output_max = 0.6f },
+        .vy = { .Kp = 5.0, .Kd = 25.0f, .abs_output_max = 0.6f },
+        .wz = { .Kp = 5.0, .Kd = 25.0f, .abs_output_max = 135.0f },
     },
     .limit              = DefaultTrajectoryLimit,
     .tracking_threshold = DefaultTrajectoryTrackingThreshold,
