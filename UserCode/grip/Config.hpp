@@ -135,7 +135,7 @@ constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg =
     .speed               = TurnCalibVel,
     .max_current         = TurnLockTorque, //
     .min_ticks           = lockedTicks,    //
-    .offset              = -150.0f,
+    .offset              = -129.0f,
     .target_after_homing = Poses::Standby.turn_pos,
     .dead_angle          = deadAngle
 };
