@@ -66,10 +66,10 @@ constexpr float MaxSpeed       = 0.18f; // unit: m/s
 constexpr float MaxOnloadAccel = 0.35f; // unit: m/s^2
 constexpr float MaxNoloadAccel = 0.60f; // unit: m/s^2
 #else
-constexpr float MaxSpeed       = 1.178; // unit: m/s
-constexpr float MaxOnloadAccel = 2.0;   // unit: m/s^2， 对车先好一点
-// constexpr float MaxOnloadAccel = 5.5;   // unit: m/s^2
-constexpr float MaxNoloadAccel = 30; // unit: m/s^2
+constexpr float MaxSpeed = 1.178; // unit: m/s
+// constexpr float MaxOnloadAccel = 2.0;   // unit: m/s^2， 对车先好一点
+constexpr float MaxOnloadAccel = 5.5; // unit: m/s^2
+constexpr float MaxNoloadAccel = 100; // unit: m/s^2
 #endif
 
 constexpr Limit OnloadLimit{ MaxSpeed, MaxOnloadAccel, MaxOnloadAccel * 50 };
@@ -96,7 +96,7 @@ namespace Position
 using Lift::LiftMin;
 
 constexpr float Normal         = 0.015f;    // 行进默认保持高度 unit m
-constexpr float StepTransition = 0.00f;     // 上下台阶过程中的过渡高度 unit m
+constexpr float StepTransition = 0.009f;    // 上下台阶过程中的过渡高度 unit m
 constexpr float StepUp200      = 0.205f;    // 比 200mm 台阶略高 unit m
 constexpr float StepUp400      = 0.405f;    // 比 400mm 台阶略高 unit m
 constexpr float StepFinalLow   = Normal;    // 0x50..0x5F 台阶动作结束低底盘高度 unit m
@@ -217,7 +217,7 @@ constexpr TrajectoryLimit MaxTrajectoryLimit = {
 };
 
 // 下调限速
-constexpr float TrajectoryLimitRatio = 0.3;
+constexpr float TrajectoryLimitRatio = 0.7;
 
 constexpr TrajectoryLimit DefaultTrajectoryLimit = MaxTrajectoryLimit * TrajectoryLimitRatio;
 
