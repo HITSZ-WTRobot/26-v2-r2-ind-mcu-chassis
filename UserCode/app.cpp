@@ -179,6 +179,12 @@ extern "C" void Init(void* argument)
             Error_Handler();
     }
 
+    if constexpr (ProjectParts::EnableLift)
+    {
+        Chassis::motion->liftAllTo(Chassis::Config::Lift::Position::Normal,
+                                   Chassis::Config::Lift::OnloadLimit * 0.3);
+    }
+
     // 这里统一等待“系统初始化完成”：
     // - 若启用了上位机串口辨识初始化，则必须先收到任意合法上位机帧；
     // - 若启用了上位机定位包，则还必须等待首个满足当前接入条件的位姿。

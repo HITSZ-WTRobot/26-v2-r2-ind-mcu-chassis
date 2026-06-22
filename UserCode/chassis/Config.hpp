@@ -36,8 +36,11 @@ constexpr float OuterAuxWheelToChassisMM = 193.0f;
 constexpr float MinWheelToChassisMM      = 192.5f;
 constexpr float InnerAuxWheelToChassisMM = 207.0f;
 
+constexpr float ReturnTripDifferenceMM = 5.0f; /// 测量估计的回程差
+
 /// 内侧辅助轮接地时离下限位距离
-constexpr float MinToLimitMM = InnerAuxWheelToChassisMM - MinWheelToChassisMM;
+constexpr float MinToLimitMM = InnerAuxWheelToChassisMM - MinWheelToChassisMM +
+                               ReturnTripDifferenceMM; /// 将该距离加上回程差
 
 constexpr float RangeMM = 442.7f; ///  到上限位时离下限位
 
@@ -58,8 +61,6 @@ constexpr float chassisHeightToLiftPosition(const float chassis_height)
 {
     return chassis_height - GroundingChassisHeight;
 }
-
-// TODO: 将回程差纳入考虑
 
 #if TEST_ENABLE_AUTO_MAPPING
 constexpr float MaxSpeed       = 0.18f; // unit: m/s
@@ -95,8 +96,8 @@ namespace Position
 {
 using Lift::LiftMin;
 
-constexpr float Normal         = 0.015f;    // 行进默认保持高度 unit m
-constexpr float StepTransition = 0.009f;    // 上下台阶过程中的过渡高度 unit m
+constexpr float Normal         = 0.008f;    // 行进默认保持高度 unit m
+constexpr float StepTransition = 0.004f;    // 上下台阶过程中的过渡高度 unit m
 constexpr float StepUp200      = 0.205f;    // 比 200mm 台阶略高 unit m
 constexpr float StepUp400      = 0.405f;    // 比 400mm 台阶略高 unit m
 constexpr float StepFinalLow   = Normal;    // 0x50..0x5F 台阶动作结束低底盘高度 unit m
@@ -112,14 +113,13 @@ constexpr chassis::Posture UpR1EndRelativePos = {
 };
 
 constexpr float CalibrationOffsetAngle = LiftOffset / GearRadius / M_PI * 180.0f;
-constexpr float PositionNormalAngle    = Position::Normal / GearRadius / M_PI * 180.0f;
 
 constexpr trajectory::HomingMotorTrajectory<2>::CalibrationConfig CalibrationCfg{
     .speed               = CalibrationRpm,
     .max_current         = CalibrationMaxCurrent,
     .min_ticks           = CalibrationMinTicks,
     .offset              = CalibrationOffsetAngle,
-    .target_after_homing = PositionNormalAngle,
+    .target_after_homing = -0.005 / GearRadius / M_PI * 180.0f,
     .dead_angle          = CalibrationDeadAngle,
 };
 } // namespace Lift
