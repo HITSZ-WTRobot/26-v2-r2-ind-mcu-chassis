@@ -126,7 +126,7 @@ bool Grip::toPrepareGrabPose()
 {
     // 准备夹取同样要求夹爪先张开，留给底盘切入和最终夹持动作余量。
     openClaw();
-    return planPose(Config::Poses::PrepareGrab);
+    return planPose(Config::Poses::PrepareGrab2);
 }
 
 bool Grip::toGrabPose()
@@ -159,6 +159,11 @@ bool Grip::toKfsReleasePose()
 bool Grip::toJointPose(const Config::JointPose& pose)
 {
     return planPose(pose);
+}
+
+float Grip::armPosition() const
+{
+    return arm_vel_controller_.getMotor()->getAngle();
 }
 
 void Grip::openClaw()

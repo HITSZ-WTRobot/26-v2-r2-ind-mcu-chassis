@@ -69,8 +69,11 @@ void SpearGrab::grab(const chassis::Posture& target_pos,
     if (state_ == State::Done)
         state_ = State::Idle;
 
-    constexpr float safe_distance = ::Grip::Config::SpearGrab::SafeDistance;
+    constexpr float pre_grab_approach_distance = ::Grip::Config::SpearGrab::PreGrabApproachDistance;
+    constexpr float safe_distance              = ::Grip::Config::SpearGrab::SafeDistance;
+    static_assert(pre_grab_approach_distance > 0.0f);
     static_assert(safe_distance > 0.0f);
+    static_assert(pre_grab_approach_distance < safe_distance);
 
     target_pos_            = target_pos;
     end_pos_               = end_pos;
@@ -81,18 +84,20 @@ void SpearGrab::grab(const chassis::Posture& target_pos,
     if (end_pos_rel_to_target_.x <= safe_distance)
         return;
 
-    prepare_pos_             = postureRelativeToTargetInWorld({ safe_distance, 0.0f, 0.0f });
+    prepare_safe_pos_     = postureRelativeToTargetInWorld({ safe_distance, 0.0f, 0.0f });
+    prepare_approach_pos_ = postureRelativeToTargetInWorld(
+            { pre_grab_approach_distance, 0.0f, 0.0f });
     leave_target_x_only_pos_ = postureRelativeToTargetInWorld(
             { end_pos_rel_to_target_.x, 0.0f, 0.0f });
 
     assert(end_pos_rel_to_target_.x > safe_distance);
 
-    // 先确认 grip 能进入准备姿态，再发底盘 / 抬升目标，避免流程半启动。
-    if (!::Grip::grip->toPrepareGrabPose())
+    // 启动后底盘、抬升、grip 可同时动作；底盘第一目标只到安全距离边界。
+    ::Grip::grip->openClaw();
+    if (!::Grip::grip->toJointPose(::Grip::Config::Poses::PrepareGrab1))
         return;
 
-    // 底盘先切入 prepare 位；这里不要求先完全到位，状态机后续会边走边判断。
-    Chassis::ctrl->setTargetPostureInWorld(prepare_pos_, Config::SpearGrab::PrepareGrabLimit);
+    Chassis::ctrl->setTargetPostureInWorld(prepare_safe_pos_, Config::SpearGrab::PrepareGrabLimit);
 
     if constexpr (ProjectParts::EnableLift)
     {
@@ -100,7 +105,7 @@ void SpearGrab::grab(const chassis::Posture& target_pos,
         Chassis::motion->liftAllTo(lift_execute_, Chassis::Config::Lift::OnloadLimit);
     }
 
-    state_ = State::MovingToPrepare;
+    state_ = State::MovingGripToPrepare1;
     osThreadFlagsSet(task_, FlagStart);
 }
 
@@ -146,29 +151,61 @@ void SpearGrab::update()
         return true;
     };
 
+    const auto is_lift_at_execute_position = [&]() -> bool
+    {
+        if constexpr (ProjectParts::EnableLift)
+        {
+            const auto lift_settled = [&](const Lift::LiftSide& l)
+            {
+                return std::fabs(l.getPosition() - lift_execute_) <
+                       Config::SpearGrab::PrepareLiftZThreshold;
+            };
+
+            return is_lift_finished() &&
+                   lift_settled(Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front)) &&
+                   lift_settled(Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear));
+        }
+
+        return true;
+    };
+
     switch (state_)
     {
     case State::Idle:
     case State::Done:
         break;
+    case State::MovingGripToPrepare1:
+        if (::Grip::grip->armPosition() >= ::Grip::Config::Poses::PrepareGrab1.arm_pos)
+        {
+            state_ = State::MovingToPrepare;
+        }
+        break;
     case State::MovingToPrepare:
     {
         const auto rel_pos = currentRelativeToTarget();
 
-        const auto lift_settled = [&](const Lift::LiftSide& l)
+        // lift 和 yaw 到位后才允许进入安全距离以内；此处不等待 y 收敛。
+        if (is_lift_at_execute_position() && ::Grip::grip->isFinished() &&
+            std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold)
         {
-            return std::fabs(l.getPosition() - lift_execute_) <
-                   Config::SpearGrab::PrepareLiftZThreshold;
-        };
+            if (!::Grip::grip->toJointPose(::Grip::Config::Poses::PrepareGrab2))
+            {
+                abort();
+                break;
+            }
+            Chassis::ctrl->setTargetPostureInWorld(prepare_approach_pos_,
+                                                   Master::TrajectoryLinkMode::PreviousCurve,
+                                                   Config::SpearGrab::PrepareGrabLimit);
+            state_ = State::MovingGripToPrepare2;
+        }
+        break;
+    }
+    case State::MovingGripToPrepare2:
+    {
+        const auto rel_pos = currentRelativeToTarget();
 
-        // prepare 阶段关注横向与朝向误差，而非要求底盘完全停在 prepare 点。
-        // 一旦侧向 / 偏航 / lift 高度收敛，且 grip 已到位，就可以直接衔接目标轨迹。
-        if (std::fabs(rel_pos.y) < ::Grip::Config::SpearGrab::PrepareYThreshold &&     // y 方向就位
-            std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold && // yaw 就位
-            is_lift_finished() &&
-            lift_settled(Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front)) &&
-            lift_settled(Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear)) &&
-            ::Grip::grip->isFinished())
+        if (Chassis::ctrl->isTrajectoryFinished() && ::Grip::grip->isFinished() &&
+            std::fabs(rel_pos.y) < ::Grip::Config::SpearGrab::PrepareYThreshold)
         {
             Chassis::ctrl->setTargetPostureInWorld(target_pos_,
                                                    Master::TrajectoryLinkMode::PreviousCurve,
