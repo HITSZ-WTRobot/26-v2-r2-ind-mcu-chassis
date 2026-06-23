@@ -31,12 +31,14 @@ namespace Poses
 {
 /// 待机姿态：系统空闲、KFS 释放完成后都应回到这里。
 constexpr JointPose Standby{ 75.0f, 0.0f };
-/// 准备夹取姿态：夹爪张开，等待底盘靠近目标。
-constexpr JointPose PrepareGrab{ 0.0f, 0.0f };
+/// 取矛启动时的第一预备姿态 unit deg
+constexpr JointPose PrepareGrab1{ 10.0f, 0.0f };
+/// 准备夹取姿态 2：夹爪张开，等待底盘进入最终目标。
+constexpr JointPose PrepareGrab2{ 0.0f, 0.0f };
 /// 夹取执行姿态：夹爪闭合，并把大臂推出完成矛头夹取。
 constexpr JointPose Grab{ 45.0f, 0.0f };
 /// 对接姿态：夹取完成后转向对接角度，等待底盘移动到最终位置。
-constexpr JointPose Docking{ 80.0f, -90.0f };
+constexpr JointPose Docking{ 90.0f, 0.0f };
 /// KFS 拾取姿态：吸盘对准取料位置。
 constexpr JointPose KfsPickup{ 90.0f, 0.0f };
 /// KFS 暂存姿态：吸住卷轴后转到暂存朝向。
@@ -87,10 +89,24 @@ constexpr TrajectoryLimit GrabLimit = {
 
 constexpr uint16_t TargetPosCount = std::size(TargetPoses);
 
-constexpr float SafeDistance = 0.25f; // 夹取后沿目标 x 方向先撤离的安全距离 unit m
+constexpr float PreGrabApproachDistance = 0.10f; // 夹取前沿目标 x 方向接近距离 unit m
+constexpr float SafeDistance            = 0.25f; // 夹取后沿目标 x 方向先撤离的安全距离 unit m
 
 // 矛头夹取执行高度 unit m
-constexpr float LiftExecute = Chassis::Config::Lift::chassisHeightToLiftPosition(0.4925);
+constexpr float 矛头架高度MM   = 500.0f;
+constexpr float 夹爪厚度MM     = 30.0f;
+constexpr float 小机械臂臂长MM = 274.1;
+constexpr float 小机械臂XMM    = -346.53f;
+constexpr float 小机械臂YMM    = -18.0f;
+constexpr float 小机械臂ZMM    = 81.5f;
+
+constexpr float 取矛Y绝对值MM = 小机械臂臂长MM + -小机械臂XMM;
+constexpr float 取矛Y绝对值   = 取矛Y绝对值MM * 1e-3f;
+
+constexpr float LiftExecuteChassisHeightMM = 矛头架高度MM + 夹爪厚度MM / 2 - 小机械臂ZMM + 12;
+
+constexpr float LiftExecute = Chassis::Config::Lift::chassisHeightToLiftPosition(
+        LiftExecuteChassisHeightMM * 1e-3f);
 
 constexpr uint32_t ClawCloseDelayMs  = 100U;  // 目标位合爪后的保持等待时间 unit ms
 constexpr float    PostGrabLiftRaise = 0.06f; // 合爪后 lift 继续抬高的距离 unit m
@@ -135,7 +151,7 @@ constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg =
     .speed               = TurnCalibVel,
     .max_current         = TurnLockTorque, //
     .min_ticks           = lockedTicks,    //
-    .offset              = -129.0f,
+    .offset              = -130.0f,
     .target_after_homing = Poses::Standby.turn_pos,
     .dead_angle          = deadAngle
 };

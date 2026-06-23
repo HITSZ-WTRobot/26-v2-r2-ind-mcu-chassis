@@ -14,7 +14,8 @@ namespace Grip::Action
 /**
  * @brief 矛头夹取动作
  *
- * 负责：底盘切入 prepare 区 -> 夹爪进入 ready -> 到 target_pos 合爪并抬升 ->
+ * 负责：启动时底盘切入 target_pos 安全距离边界、lift 抬升、夹爪进入预备 1 ->
+ *      lift 到位后进入近距离 prepare 区并切预备 2 -> 到 target_pos 合爪并抬升 ->
  *      先沿 target_pos 的 x 方向离开危险区 -> 再移动到 end_pos 并对接。
  *
  * 该类只编排高层状态机，不直接实现底层闭环：
@@ -58,8 +59,10 @@ private:
     enum class State
     {
         Idle,                 ///< 空闲，尚未开始。
-        MovingToPrepare,      ///< 底盘切入 prepare 区，同时 lift / grip 调整到预备状态。
-        MovingToTarget,       ///< 由 prepare 区继续切入目标位姿。
+        MovingGripToPrepare1, ///< 等待 arm 达到预备 1 高度。
+        MovingToPrepare,      ///< 等待 lift 到执行高度且 yaw 到位，暂不进入安全距离以内。
+        MovingGripToPrepare2, ///< lift 到位后切近距离 prepare 区，并等待 grip 预备 2。
+        MovingToTarget,       ///< 由近距离 prepare 区继续切入目标位姿。
         WaitingClawClose,     ///< 底盘已到位，合爪并等待夹紧。
         RaisingLiftAfterGrab, ///< 合爪后继续抬升 lift，等待矛头脱离。
         LeavingTargetToSafeX, ///< 沿目标 x 方向先脱离危险区。
@@ -98,8 +101,10 @@ private:
     chassis::Posture end_pos_{};
     /// end_pos_ 相对 target_pos_ 的位姿，用于安全区规划。
     chassis::Posture end_pos_rel_to_target_{};
-    /// 进入夹取前的 prepare 位姿。
-    chassis::Posture prepare_pos_{};
+    /// lift 到位前允许靠近的安全距离边界位姿。
+    chassis::Posture prepare_safe_pos_{};
+    /// lift 到位后进入夹取前的近距离 prepare 位姿。
+    chassis::Posture prepare_approach_pos_{};
     /// 仅沿目标 x 方向先撤离后的中间位姿。
     chassis::Posture leave_target_x_only_pos_{};
     /// 本轮动作传入的 lift 执行高度。

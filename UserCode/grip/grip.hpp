@@ -69,6 +69,9 @@ public:
     /** @brief 不附带夹爪语义，直接规划到指定双轴关节位姿。 */
     bool toJointPose(const Config::JointPose& pose);
 
+    /** @brief 当前大臂角度，单位 deg，基于 grip 自身校准零点。 */
+    [[nodiscard]] float armPosition() const;
+
     /** @brief 直接控制夹爪 GPIO 打开。 */
     void openClaw();
     /** @brief 直接控制夹爪 GPIO 闭合。 */
