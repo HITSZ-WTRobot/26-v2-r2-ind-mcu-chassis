@@ -181,11 +181,11 @@ void handleCommand(const Frame& frame)
             const float                  chassis_height = to_pos(read_i16(&data[0]));
             const Chassis::Config::Limit limit{
                 .max_spd  = read_positive_or_default(&data[2],
-                                                     1000.0f,
-                                                     Chassis::Config::Lift::OnloadLimit.max_spd),
+                                                    1000.0f,
+                                                    Chassis::Config::Lift::OnloadLimit.max_spd),
                 .max_acc  = read_positive_or_default(&data[4],
-                                                     100.0f,
-                                                     Chassis::Config::Lift::OnloadLimit.max_acc),
+                                                    100.0f,
+                                                    Chassis::Config::Lift::OnloadLimit.max_acc),
                 .max_jerk = read_positive_or_default(&data[6],
                                                      1.0f,
                                                      Chassis::Config::Lift::OnloadLimit.max_jerk),
@@ -251,7 +251,7 @@ void handleCommand(const Frame& frame)
                             ? Chassis::ChassisController::TrajectoryLinkMode::CurrentState
                             : Chassis::ChassisController::TrajectoryLinkMode::PreviousCurve;
 
-            Chassis::ctrl->setTargetPostureInWorld(target, link_mode, limit);
+            (void)Chassis::ctrl->setTargetPostureInWorld(target, link_mode, limit);
         }
         break;
     case PCCommand::SetMasterChassisVelocity:
@@ -525,11 +525,11 @@ void handleCommand(const Frame& frame)
 
         const bool type_down = (cmd & 0x08U) != 0U;
 
-        const Action::Step::Direction direction = (cmd & 0x04U) == 0U
-                                                          ? Action::Step::Direction::Forward
-                                                          : Action::Step::Direction::Backward;
-        const Action::Step::Height    height = (cmd & 0x02U) == 0U ? Action::Step::Height::Step200
-                                                                   : Action::Step::Height::Step400;
+        const Action::Step::Direction   direction = (cmd & 0x04U) == 0U
+                                                            ? Action::Step::Direction::Forward
+                                                            : Action::Step::Direction::Backward;
+        const Action::Step::Height      height = (cmd & 0x02U) == 0U ? Action::Step::Height::Step200
+                                                                     : Action::Step::Height::Step400;
         const Action::Step::FinalHeight final_height = (cmd & 0x01U) == 0U
                                                                ? Action::Step::FinalHeight::Low
                                                                : Action::Step::FinalHeight::High;

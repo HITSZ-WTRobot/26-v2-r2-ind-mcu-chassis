@@ -37,7 +37,7 @@ bool PCProtocol::decode(const uint8_t data[PayloadLen])
     if (crc != crc_in_data)
         return false;
 
-    // 来不及了不管这里的性能损失了
+    // RX 回调只做最小解析和入队；具体命令语义交给 PCCommandHandler 线程处理。
     Frame frame{};
     frame.protocol           = this;
     frame.from_main_protocol = isMainProtocol();
