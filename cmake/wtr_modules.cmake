@@ -15,13 +15,13 @@ set(WTR_MANAGED_REPOSITORIES
 )
 
 set(WTR_MANAGED_PACKAGE_DIRS
-    Modules/BasicComponents/libs/control/mit_pd
     Modules/MotorDrivers/core
     Modules/BasicComponents/libs/control/pid_motor
     Modules/MotorDrivers/controllers
     Modules/ChassisController/Core
     Modules/VelocityProfile/Core
     Modules/VelocityProfile/SCurve
+    Modules/BasicComponents/libs/control/pid_pd
     Modules/ChassisController/Controller/Master
     Modules/BasicComponents/libs/math/LinearAlgebra
     Modules/BasicComponents/libs/math/EKF
@@ -41,7 +41,6 @@ set(WTR_MANAGED_PACKAGE_DIRS
     Modules/BasicComponents/bsp/i2c_driver
     Modules/BasicComponents/services/i2c_update_manager
     Modules/Sensors/pressure/XGZP6847D
-    Modules/BasicComponents/libs/control/pid_pd
     Modules/TrajectoryControl/MotorTrajectory
     Modules/TrajectoryControl/HomingMotorTrajectory
     Modules/BasicComponents/bsp/gpio_driver
@@ -82,13 +81,13 @@ set(WTR_DIRECT_PACKAGE_TARGETS
 )
 
 set(WTR_RESOLVED_PACKAGE_TARGETS
-    libs::MIT_PD
     MotorDrivers::Core
     libs::PIDMotor
     MotorDrivers::Controller
     Chassis::Core
     VelocityProfile::Core
     VelocityProfile::SCurve
+    libs::PID_PD
     Chassis::ControllerMaster
     Math::LinearAlgebra
     Math::EKF
@@ -108,7 +107,6 @@ set(WTR_RESOLVED_PACKAGE_TARGETS
     bsp::I2CDriver
     services::I2CUpdateManager
     SensorPressure::XGZP6847D
-    libs::PID_PD
     Trajectory::MotorTrajectory
     Trajectory::HomingMotorTrajectory
     bsp::GPIO_Driver
