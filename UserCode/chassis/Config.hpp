@@ -108,9 +108,7 @@ constexpr float UpR1EndHeight  = 0.1f;      // TODO: 填入实际值，R1 动作
 
 /// 上R1台阶终点相对于 stepTargetPos 的位姿偏移
 /// 即登上 R1 后车体中心在台阶参考系下的位置
-constexpr chassis::Posture UpR1EndRelativePos = {
-    .x = 0.0f, .y = 0.0f, .yaw = 0.0f // TODO: 填入实际测量值
-};
+constexpr chassis::Posture UpR1EndRelativePos = { .x = 0.45f, .y = 0.0f, .yaw = 0.0f };
 
 constexpr float CalibrationOffsetAngle = LiftOffset / GearRadius / M_PI * 180.0f;
 
@@ -185,7 +183,7 @@ constexpr float HalfWheelDistanceY   = Motion::WheelDistanceYMM * 0.5f * 1e-3f;
 constexpr float HalfChassisDiagonal = constexpr_sqrt(HalfChassisDistanceX * HalfChassisDistanceX +
                                                      HalfChassisDistanceY * HalfChassisDistanceY);
 constexpr float HalfWheelDiagonal   = constexpr_sqrt(AbsWheelX * AbsWheelX +
-                                                   HalfWheelDistanceY * HalfWheelDistanceY);
+                                                     HalfWheelDistanceY * HalfWheelDistanceY);
 
 constexpr float SafeDistance = 0.01; // 1cm 安全距离（底盘方向）
 
