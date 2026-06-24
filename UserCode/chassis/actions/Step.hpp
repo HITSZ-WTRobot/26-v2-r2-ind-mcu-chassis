@@ -8,6 +8,7 @@
 #include "traits.hpp"
 #include "chassis/LiftSide.hpp"
 #include "chassis/chassis.hpp"
+#include "diagnostics/StepActionDiagnostics.hpp"
 
 namespace Action
 {
@@ -82,8 +83,15 @@ public:
 
     [[nodiscard]] bool isFinished() const
     {
-        return chassis_state_ == ChassisState::Done && front_state_ == LiftState::Done &&
-               rear_state_ == LiftState::Done;
+        // 失败态也视为 finished，外部等待者可据此解除阻塞，
+        // 再通过诊断记录判断这次动作是成功结束还是异常收敛。
+        return failed_ || (chassis_state_ == ChassisState::Done &&
+                           front_state_ == LiftState::Done && rear_state_ == LiftState::Done);
+    }
+
+    static bool dependencyReady()
+    {
+        return Chassis::motion != nullptr && Chassis::ctrl != nullptr && Chassis::loc != nullptr;
     }
 
     [[nodiscard]] bool isRunning() const { return !isFinished() && !isIdle(); }
@@ -183,6 +191,8 @@ private:
     LiftState    front_state_   = LiftState::Idle;
     LiftState    rear_state_    = LiftState::Idle;
 
+    bool failed_ = false;
+
     chassis::Posture step_target_pos_{};
     chassis::Posture end_pos_{};
 
@@ -215,6 +225,24 @@ private:
     [[nodiscard]] float stepUpPosition() const;
 
     [[nodiscard]] float selectedFinalPosition() const;
+
+    [[nodiscard]] Diagnostics::StepAction::Context diagnosticContext() const
+    {
+        return {
+            .chassis_stage    = static_cast<uint8_t>(chassis_state_),
+            .front_lift_stage = static_cast<uint8_t>(front_state_),
+            .rear_lift_stage  = static_cast<uint8_t>(rear_state_),
+        };
+    }
+
+    /// 停掉底盘与前后 lift 的当前动作，并把状态收敛到 Failed。
+    void abort();
+    /// 带轨迹衔接模式的底盘目标写入封装。
+    [[nodiscard]] bool setChassisTarget(const chassis::Posture& target);
+    /// 单侧 lift 目标写入封装，失败时自动上报诊断。
+    [[nodiscard]] bool moveLift(Lift::LiftSide*               side,
+                                float                         position,
+                                const Chassis::Config::Limit& limit);
 };
 
 } // namespace Action

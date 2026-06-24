@@ -26,6 +26,12 @@ public:
 
     [[nodiscard]] bool isFinished() const { return traj_.isFinished(); }
 
+    /// 返回最近一次升降轨迹规划失败详情，供上层动作诊断展开 S 曲线错误。
+    [[nodiscard]] const velocity_profile::SCurveProfile::FailureInfo& lastPlanFailureInfo() const
+    {
+        return traj_.lastFailureInfo();
+    }
+
     void waitFinished() const
     {
         while (!isFinished())

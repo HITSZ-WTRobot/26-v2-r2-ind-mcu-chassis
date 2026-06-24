@@ -5,6 +5,7 @@
  */
 #include "Step.hpp"
 #include "chassis/chassis.hpp"
+#include "main.h"
 
 #include <cmath>
 
@@ -106,6 +107,60 @@ float Step::selectedFinalPosition() const
     }
 }
 
+void Step::abort()
+{
+    // 失败后立即停止所有相关执行器，避免底盘和 lift 继续朝旧目标发散。
+    if (Chassis::ctrl != nullptr)
+        Chassis::ctrl->stop();
+    if (front_ != nullptr)
+        front_->stop();
+    if (rear_ != nullptr && rear_ != front_)
+        rear_->stop();
+    failed_ = true;
+}
+
+bool Step::setChassisTarget(const chassis::Posture& target)
+{
+    if (Chassis::ctrl == nullptr)
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::DependencyNotReady);
+        abort();
+        return false;
+    }
+    if (!Chassis::ctrl->setTargetPostureInWorld(target))
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::ChassisPlanFailed,
+                                        Chassis::ctrl->lastSCurveFailure());
+        abort();
+        return false;
+    }
+    return true;
+}
+
+bool Step::moveLift(Lift::LiftSide* side, const float position, const Chassis::Config::Limit& limit)
+{
+    if (side == nullptr)
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::DependencyNotReady);
+        abort();
+        return false;
+    }
+
+    if (side->to(position, limit) < 0.0f)
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::LiftPlanFailed,
+                                        side->lastPlanFailureInfo());
+        abort();
+        return false;
+    }
+
+    return true;
+}
+
 /**
  * 上台阶
  * @param startDistance2Step 开始时车体中心距离台阶的距离 unit: m
@@ -121,6 +176,13 @@ void Step::up(const float       startDistance2Step,
               const FinalHeight endHeight,
               const Height      height)
 {
+    if (!dependencyReady())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::DependencyNotReady);
+        return;
+    }
+
     const chassis::Posture start_pos = Chassis::loc->postureInWorld();
     const float            x_sign    = dir == Direction::Forward ? 1.0f : -1.0f;
     const float            step_yaw  = dir == Direction::Forward ? 0.0f : -180.0f;
@@ -140,8 +202,18 @@ void Step::up(const chassis::Posture& stepTargetPos,
               const Height            height)
 {
     if (isRunning())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(), Diagnostics::StepAction::Reason::Busy);
         return;
+    }
+    if (!dependencyReady())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::DependencyNotReady);
+        return;
+    }
 
+    failed_ = false;
     prepare(stepTargetPos, endPos, dir);
     final_height_ = endHeight;
     height_       = height;
@@ -150,11 +222,13 @@ void Step::up(const chassis::Posture& stepTargetPos,
     front_state_   = LiftState::Up1_Lifting;
     rear_state_    = LiftState::Up1_Lifting;
 
-    front_->to(stepUpPosition(), OnloadLimit);
-    rear_->to(stepUpPosition(), OnloadLimit);
+    if (!moveLift(front_, stepUpPosition(), OnloadLimit))
+        return;
+    if (!moveLift(rear_, stepUpPosition(), OnloadLimit))
+        return;
 
-    Chassis::ctrl->setTargetPostureInWorld(
-            stepRelativePosture(-(HalfChassisDiagonal + SafeDistance)));
+    if (!setChassisTarget(stepRelativePosture(-(HalfChassisDiagonal + SafeDistance))))
+        return;
 
     osThreadFlagsSet(task_, FlagStart);
 }
@@ -162,12 +236,22 @@ void Step::up(const chassis::Posture& stepTargetPos,
 void Step::upR1(const chassis::Posture& stepTargetPos, const Direction dir)
 {
     if (isRunning())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(), Diagnostics::StepAction::Reason::Busy);
         return;
+    }
+    if (!dependencyReady())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::DependencyNotReady);
+        return;
+    }
 
     const chassis::Posture endPos =
             chassis::loc::IChassisLoc::RelativePosture2WorldPosture(stepTargetPos,
                                                                     UpR1EndRelativePos);
 
+    failed_ = false;
     prepare(stepTargetPos, endPos, dir);
     final_height_ = FinalHeight::R1;
     height_       = Height::R1;
@@ -176,11 +260,13 @@ void Step::upR1(const chassis::Posture& stepTargetPos, const Direction dir)
     front_state_   = LiftState::Up1_Lifting;
     rear_state_    = LiftState::Up1_Lifting;
 
-    front_->to(stepUpPosition(), OnloadLimit);
-    rear_->to(stepUpPosition(), OnloadLimit);
+    if (!moveLift(front_, stepUpPosition(), OnloadLimit))
+        return;
+    if (!moveLift(rear_, stepUpPosition(), OnloadLimit))
+        return;
 
-    Chassis::ctrl->setTargetPostureInWorld(
-            stepRelativePosture(-(HalfChassisDiagonal + SafeDistance)));
+    if (!setChassisTarget(stepRelativePosture(-(HalfChassisDiagonal + SafeDistance))))
+        return;
 
     osThreadFlagsSet(task_, FlagStart);
 }
@@ -200,6 +286,18 @@ void Step::down(const float       startDistance2Step,
                 const FinalHeight endHeight,
                 const Height      height)
 {
+    if (isRunning())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(), Diagnostics::StepAction::Reason::Busy);
+        return;
+    }
+    if (!dependencyReady())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::DependencyNotReady);
+        return;
+    }
+
     const chassis::Posture start_pos = Chassis::loc->postureInWorld();
     const float            x_sign    = dir == Direction::Forward ? 1.0f : -1.0f;
     const float            step_yaw  = dir == Direction::Forward ? 0.0f : -180.0f;
@@ -219,8 +317,18 @@ void Step::down(const chassis::Posture& stepTargetPos,
                 const Height            height)
 {
     if (isRunning())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(), Diagnostics::StepAction::Reason::Busy);
         return;
+    }
+    if (!dependencyReady())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::DependencyNotReady);
+        return;
+    }
 
+    failed_ = false;
     prepare(stepTargetPos, endPos, dir);
     final_height_ = endHeight;
     height_       = height;
@@ -229,11 +337,14 @@ void Step::down(const chassis::Posture& stepTargetPos,
     front_state_   = LiftState::Down1_WaitDeploy;
     rear_state_    = LiftState::Down1_WaitDeploy;
 
-    front_->to(Position::StepTransition, OnloadLimit);
-    rear_->to(Position::StepTransition, OnloadLimit);
+    if (!moveLift(front_, Position::StepTransition, OnloadLimit))
+        return;
+    if (!moveLift(rear_, Position::StepTransition, OnloadLimit))
+        return;
 
-    Chassis::ctrl->setTargetPostureInWorld(
-            stepRelativePosture(-(HalfWheelDiagonal + WheelRadius + 3 * SafeDistance)));
+    if (!setChassisTarget(
+                stepRelativePosture(-(HalfWheelDiagonal + WheelRadius + 3 * SafeDistance))))
+        return;
 
     osThreadFlagsSet(task_, FlagStart);
 }
@@ -249,9 +360,8 @@ void Step::update()
     case ChassisState::Up0_PrepareYaw:
         if (yawPrepared())
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(
-                                                           -(HalfChassisDistanceX + SafeDistance)),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(stepRelativePosture(-(HalfChassisDistanceX + SafeDistance))))
+                return;
             chassis_state_ = ChassisState::Up1_ApproachEdge;
         }
         break;
@@ -261,9 +371,8 @@ void Step::update()
         if (front_->isFinished() && rear_->isFinished() &&
             std::fabs(currentRelativeToStep().y) < StepPrepareYThreshold)
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(-(AbsWheelOuterEdgeX +
-                                                                         3 * SafeDistance)),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(stepRelativePosture(-(AbsWheelOuterEdgeX + 3 * SafeDistance))))
+                return;
 
             chassis_state_ = ChassisState::Up2_WaitFrontRetract;
         }
@@ -273,9 +382,8 @@ void Step::update()
     case ChassisState::Up2_WaitFrontRetract:
         if (front_state_ == LiftState::Up4_WaitDeploy)
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(AbsWheelInnerEdgeX -
-                                                                       3 * SafeDistance),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(stepRelativePosture(AbsWheelInnerEdgeX - 3 * SafeDistance)))
+                return;
 
             chassis_state_ = ChassisState::Up3_WaitRearRetract;
         }
@@ -285,8 +393,8 @@ void Step::update()
     case ChassisState::Up3_WaitRearRetract:
         if (rear_state_ == LiftState::Up4_WaitDeploy)
         {
-            Chassis::ctrl->setTargetPostureInWorld(endXWithStepYaw(),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(endXWithStepYaw()))
+                return;
 
             chassis_state_ = ChassisState::Up4_MoveToEndX;
         }
@@ -296,8 +404,8 @@ void Step::update()
     case ChassisState::Up4_MoveToEndX:
         if (rear_state_ == LiftState::Up6_WaitRestoreNormal || rear_state_ == LiftState::Done)
         {
-            Chassis::ctrl->setTargetPostureInWorld(endXYWithStepYaw(),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(endXYWithStepYaw()))
+                return;
             chassis_state_ = ChassisState::Up5_MoveToEndXY;
         }
         break;
@@ -306,8 +414,8 @@ void Step::update()
     case ChassisState::Up5_MoveToEndXY:
         if (currentRelativeX() > HalfWheelDiagonal + WheelRadius + 3 * SafeDistance)
         {
-            Chassis::ctrl->setTargetPostureInWorld(end_pos_,
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(end_pos_))
+                return;
             chassis_state_ = ChassisState::Up6_FinalizePose;
         }
         break;
@@ -324,9 +432,8 @@ void Step::update()
     case ChassisState::Down0_PrepareYaw:
         if (yawPrepared())
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(-(AbsWheelOuterEdgeX +
-                                                                         3 * SafeDistance)),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(stepRelativePosture(-(AbsWheelOuterEdgeX + 3 * SafeDistance))))
+                return;
             chassis_state_ = ChassisState::Down1_ApproachFrontAux;
         }
         break;
@@ -335,9 +442,8 @@ void Step::update()
     case ChassisState::Down1_ApproachFrontAux:
         if (front_->isFinished() && rear_->isFinished())
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(
-                                                           -(AbsAuxInnerWheelX + 3 * SafeDistance)),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(stepRelativePosture(-(AbsAuxInnerWheelX + 3 * SafeDistance))))
+                return;
             chassis_state_ = ChassisState::Down2_WaitFrontDeploy;
         }
         break;
@@ -346,9 +452,8 @@ void Step::update()
     case ChassisState::Down2_WaitFrontDeploy:
         if (front_state_ == LiftState::Down3_WaitRestoreNormal)
         {
-            Chassis::ctrl->setTargetPostureInWorld(stepRelativePosture(AbsAuxOuterWheelX -
-                                                                       3 * SafeDistance),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(stepRelativePosture(AbsAuxOuterWheelX - 3 * SafeDistance)))
+                return;
 
             chassis_state_ = ChassisState::Down3_WaitRearDeploy;
         }
@@ -358,8 +463,8 @@ void Step::update()
     case ChassisState::Down3_WaitRearDeploy:
         if (rear_state_ == LiftState::Down3_WaitRestoreNormal)
         {
-            Chassis::ctrl->setTargetPostureInWorld(endXYWithStepYaw(),
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(endXYWithStepYaw()))
+                return;
 
             chassis_state_ = ChassisState::Down4_MoveToEndXY;
         }
@@ -369,8 +474,8 @@ void Step::update()
     case ChassisState::Down4_MoveToEndXY:
         if (currentRelativeX() > HalfChassisDiagonal + SafeDistance)
         {
-            Chassis::ctrl->setTargetPostureInWorld(end_pos_,
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(end_pos_))
+                return;
             chassis_state_ = ChassisState::Down5_FinalizePose;
         }
         break;
@@ -405,7 +510,8 @@ void Step::update()
                 Chassis::loc_ekf->setGyroEnabled(false);
                 Chassis::loc_ekf->setLidarEnabled(false);
             }
-            front_->to(LiftMin, NoloadLimit);
+            if (!moveLift(front_, LiftMin, NoloadLimit))
+                return;
             front_->setGrounding(false); // 离地
             front_state_ = LiftState::Up3_Retracting;
         }
@@ -418,7 +524,8 @@ void Step::update()
         // 前轮已经完全登上
         if (currentRelativeX() > -AbsWheelInnerEdgeX + 3 * SafeDistance)
         {
-            front_->to(Position::StepTransition, DeployLiftLimit);
+            if (!moveLift(front_, Position::StepTransition, DeployLiftLimit))
+                return;
             front_state_ = LiftState::Up5_Deploying;
         }
         break;
@@ -449,7 +556,8 @@ void Step::update()
         }
         if (currentRelativeX() > -AbsWheelInnerEdgeX + 3 * SafeDistance)
         {
-            front_->to(stepUpPosition(), NoloadLimit);
+            if (!moveLift(front_, stepUpPosition(), NoloadLimit))
+                return;
             front_state_ = LiftState::Down2_Deploying;
         }
         break;
@@ -486,7 +594,8 @@ void Step::update()
         if ((currentRelativeX() > AbsAuxInnerWheelX + AuxWheelRadius + 3 * SafeDistance) &&
             (front_state_ == LiftState::Done || front_state_ == LiftState::Up6_WaitRestoreNormal))
         {
-            rear_->to(LiftMin, NoloadLimit);
+            if (!moveLift(rear_, LiftMin, NoloadLimit))
+                return;
             rear_->setGrounding(false);
             rear_state_ = LiftState::Up3_Retracting;
         }
@@ -499,7 +608,8 @@ void Step::update()
         // 后轮已经完全登上
         if (currentRelativeX() > AbsWheelOuterEdgeX + 3 * SafeDistance)
         {
-            rear_->to(Position::StepTransition, DeployLiftLimit);
+            if (!moveLift(rear_, Position::StepTransition, DeployLiftLimit))
+                return;
             rear_state_ = LiftState::Up5_Deploying;
         }
         break;
@@ -513,8 +623,10 @@ void Step::update()
     case LiftState::Up6_WaitRestoreNormal:
     {
         const float final_position = selectedFinalPosition();
-        front_->to(final_position, DeployLiftLimit);
-        rear_->to(final_position, DeployLiftLimit);
+        if (!moveLift(front_, final_position, DeployLiftLimit))
+            return;
+        if (!moveLift(rear_, final_position, DeployLiftLimit))
+            return;
         front_state_ = LiftState::Up7_RestoringNormal;
         rear_state_  = LiftState::Up7_RestoringNormal;
         break;
@@ -536,7 +648,8 @@ void Step::update()
         }
         if (currentRelativeX() > AbsWheelOuterEdgeX + 3 * SafeDistance)
         {
-            rear_->to(stepUpPosition(), NoloadLimit);
+            if (!moveLift(rear_, stepUpPosition(), NoloadLimit))
+                return;
             rear_state_ = LiftState::Down2_Deploying;
         }
         break;
@@ -552,8 +665,10 @@ void Step::update()
         if (chassis_state_ == ChassisState::Down5_FinalizePose)
         {
             const float final_position = selectedFinalPosition();
-            front_->to(final_position, OnloadLimit);
-            rear_->to(final_position, OnloadLimit);
+            if (!moveLift(front_, final_position, OnloadLimit))
+                return;
+            if (!moveLift(rear_, final_position, OnloadLimit))
+                return;
             front_state_ = LiftState::Down4_RestoringNormal;
             rear_state_  = LiftState::Down4_RestoringNormal;
         }
