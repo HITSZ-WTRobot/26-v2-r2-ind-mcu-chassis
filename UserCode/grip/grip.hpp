@@ -10,6 +10,8 @@
 #include "motor_vel_controller.hpp"
 #include "traits.hpp"
 
+#include <array>
+
 namespace Grip
 {
 
@@ -84,6 +86,20 @@ public:
     /** @brief 阻塞等待当前双轴动作结束。 */
     void waitForFinish() const;
 
+    /**
+     * @brief 最近一次 planPose() 失败的轴掩码。
+     *
+     * bit0=arm，bit1=turn。上层动作只在 toXxxPose()/toJointPose() 返回 false 后读取该值，
+     * 用于生成 S 曲线诊断记录。
+     */
+    [[nodiscard]] uint8_t lastPlanFailureMask() const { return last_plan_failure_mask_; }
+    /// 读取最近一次对应轴的 S 曲线失败详情。
+    [[nodiscard]] const velocity_profile::SCurveProfile::FailureInfo& lastPlanFailureInfo(
+            const size_t axis) const
+    {
+        return last_plan_failure_[axis];
+    }
+
 private:
     bool enabled_{ false };
 
@@ -99,6 +115,11 @@ private:
 
     /// 夹爪气缸 / 电磁控制 GPIO。
     GPIO_t claw_{};
+
+    /// 最近一次姿态规划失败轴掩码；成功规划会清零。
+    uint8_t last_plan_failure_mask_{ 0 };
+    /// 最近一次姿态规划失败时，各轴底层轨迹对象给出的 FailureInfo。
+    std::array<velocity_profile::SCurveProfile::FailureInfo, 2> last_plan_failure_{};
 
     /**
      * @brief 按一组关节姿态统一规划两轴目标

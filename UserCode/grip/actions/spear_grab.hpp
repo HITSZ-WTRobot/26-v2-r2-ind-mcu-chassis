@@ -6,6 +6,7 @@
 
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
+#include "diagnostics/SpearGrabActionDiagnostics.hpp"
 #include "traits.hpp"
 
 namespace Grip::Action
@@ -88,12 +89,30 @@ private:
     /** @brief 检查当前硬件与功能开关是否允许启动动作。 */
     [[nodiscard]] bool canStart() const;
     /** @brief 发生不可继续的错误时停车并收敛到 Done。 */
-    void abort();
+    void abort(Diagnostics::SpearGrabAction::Reason reason);
+    /** @brief Grip 双轴姿态规划失败时上报详细轴信息并中止动作。 */
+    void reportGripPlanFailure();
+    /** @brief 底盘 Master 轨迹规划失败时上报详细轴信息并中止动作。 */
+    void reportChassisPlanFailure();
+    /** @brief 设置带限速的底盘目标，失败时自动走诊断上报路径。 */
+    [[nodiscard]] bool setChassisTarget(const chassis::Posture&                            target,
+                                        Chassis::ChassisController::TrajectoryLinkMode     mode,
+                                        const Chassis::ChassisController::TrajectoryLimit& limit);
+    /** @brief 设置普通底盘目标，失败时自动走诊断上报路径。 */
+    [[nodiscard]] bool setChassisTarget(const chassis::Posture&                        target,
+                                        Chassis::ChassisController::TrajectoryLinkMode mode);
+
+    [[nodiscard]] Diagnostics::SpearGrabAction::Context diagnosticContext() const
+    {
+        return { .stage = static_cast<uint8_t>(state_) };
+    }
 
     /// 后台状态机线程句柄。
     osThreadId_t task_{};
     /// 当前高层动作阶段。
     State state_ = State::Idle;
+    /// 本轮动作是否以失败方式收敛；Done 只表示状态机已经停下。
+    bool failed_ = false;
 
     /// 待取矛头的世界系位姿。
     chassis::Posture target_pos_{};

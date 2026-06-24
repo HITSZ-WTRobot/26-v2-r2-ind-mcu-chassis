@@ -6,6 +6,7 @@
 
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
+#include "diagnostics/KfsStoreActionDiagnostics.hpp"
 #include "traits.hpp"
 
 namespace Grip::Action
@@ -78,12 +79,22 @@ private:
     [[noreturn]] void loop();
 
     /** @brief 检查动作是否可启动 */
-    [[nodiscard]] bool canStart() const;
+    [[nodiscard]] bool    canStart() const;
+    void                  abort(Diagnostics::KfsStoreAction::Reason reason);
+    void                  reportGripPlanFailure();
+
+    [[nodiscard]] Diagnostics::KfsStoreAction::Context diagnosticContext() const
+    {
+        return { .stage          = static_cast<uint8_t>(state_),
+                 .workflow_phase = static_cast<uint8_t>(workflow_phase_) };
+    }
 
     /// 后台状态机线程句柄。
     osThreadId_t task_{};
     /// 当前 KFS 动作阶段。
     State state_ = State::Idle;
+    /// 记录本轮动作是否已发生不可恢复失败；失败后仍会收敛到 Done。
+    bool failed_ = false;
     /// 面向上位机反馈的动作流归属；暂存完成后会保持为 Store，直到发起回放。
     WorkflowPhase workflow_phase_ = WorkflowPhase::Idle;
     /// 进入等待吸上 / 放下确认阶段时的时间戳，用于无气压计保底判定。

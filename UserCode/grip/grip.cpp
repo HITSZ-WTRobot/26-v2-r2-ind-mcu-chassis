@@ -97,9 +97,16 @@ void Grip::startCalibration()
 
 bool Grip::planPose(const Config::JointPose& pose)
 {
+    // 每次新规划前清空旧失败信息，避免上层把上一轮失败误报到本轮动作。
+    last_plan_failure_mask_ = 0;
+    last_plan_failure_      = {};
+
     // 先规划大臂，再规划转向；任一失败都必须把两轴都停住。
     if (!arm_trajectory_.setTarget(pose.arm_pos))
     {
+        // bit0 固定表示 arm 轴，供动作诊断按 axis0 展开。
+        last_plan_failure_mask_ = 1U << 0U;
+        last_plan_failure_[0]   = arm_trajectory_.lastFailureInfo();
         arm_trajectory_.stop();
         turn_trajectory_.stop();
         return false;
@@ -107,6 +114,9 @@ bool Grip::planPose(const Config::JointPose& pose)
 
     if (!turn_trajectory_.setTarget(pose.turn_pos))
     {
+        // bit1 固定表示 turn 轴，供动作诊断按 axis1 展开。
+        last_plan_failure_mask_ = 1U << 1U;
+        last_plan_failure_[1]   = turn_trajectory_.lastFailureInfo();
         arm_trajectory_.stop();
         turn_trajectory_.stop();
         return false;

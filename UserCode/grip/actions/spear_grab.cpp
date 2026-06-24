@@ -51,11 +51,111 @@ bool SpearGrab::canStart() const
     return Chassis::motion != nullptr;
 }
 
-void SpearGrab::abort()
+void SpearGrab::abort(const Diagnostics::SpearGrabAction::Reason reason)
 {
+    // 失败后只保留诊断信息，不继续推进任何轨迹。
+    Diagnostics::SpearGrabAction::report(diagnosticContext(), reason);
     // 机械臂轨迹失败后不能继续跑底盘轨迹，否则会出现机构姿态与车体位置脱节。
+    if (Chassis::ctrl != nullptr)
+        Chassis::ctrl->stop();
+    if (::Grip::grip != nullptr)
+        ::Grip::grip->stop();
+    state_  = State::Done;
+    failed_ = true;
+}
+
+void SpearGrab::reportGripPlanFailure()
+{
+    if (::Grip::grip == nullptr)
+    {
+        abort(Diagnostics::SpearGrabAction::Reason::DependencyNotReady);
+        return;
+    }
+
+    const uint8_t mask = ::Grip::grip->lastPlanFailureMask();
+    if (mask == 0U)
+    {
+        // Grip 没有给出可拆解的轴失败信息时，退化成普通姿态规划失败。
+        abort(Diagnostics::SpearGrabAction::Reason::GripPlanFailed);
+        return;
+    }
+
+    Diagnostics::SpearGrabAction::GripFailureRecords axes{};
+    // Grip 姿态由 arm / turn 两轴组成，对应 axis0 / axis1。
+    for (uint8_t axis = 0; axis < Diagnostics::SpearGrabAction::GripAxisCount; ++axis)
+    {
+        if ((mask & static_cast<uint8_t>(1U << axis)) != 0U)
+        {
+            axes[axis] = {
+                .valid = true,
+                .axis  = axis,
+                .info  = ::Grip::grip->lastPlanFailureInfo(axis),
+            };
+        }
+    }
+    Diagnostics::SpearGrabAction::last_spear_grab_diagnostics = {
+        diagnosticContext(),
+        Diagnostics::SpearGrabAction::Reason::GripPlanFailed,
+        {},
+        axes,
+    };
+    if (Chassis::ctrl != nullptr)
+        Chassis::ctrl->stop();
+    ::Grip::grip->stop();
+    state_  = State::Done;
+    failed_ = true;
+}
+
+void SpearGrab::reportChassisPlanFailure()
+{
+    if (Chassis::ctrl == nullptr)
+    {
+        abort(Diagnostics::SpearGrabAction::Reason::DependencyNotReady);
+        return;
+    }
+
+    const auto& failure = Chassis::ctrl->lastSCurveFailure();
+    if (!failure.valid || failure.axis_mask == 0U)
+    {
+        // 底盘控制器没有可展开的 S 曲线失败细节时，只保留摘要。
+        abort(Diagnostics::SpearGrabAction::Reason::ChassisPlanFailed);
+        return;
+    }
+
+    Diagnostics::SpearGrabAction::last_spear_grab_diagnostics = {
+        diagnosticContext(),
+        Diagnostics::SpearGrabAction::Reason::ChassisPlanFailed,
+        failure,
+        {},
+    };
     Chassis::ctrl->stop();
-    state_ = State::Done;
+    if (::Grip::grip != nullptr)
+        ::Grip::grip->stop();
+    state_  = State::Done;
+    failed_ = true;
+}
+
+bool SpearGrab::setChassisTarget(const chassis::Posture&                              target,
+                                 const Chassis::ChassisController::TrajectoryLinkMode mode,
+                                 const Chassis::ChassisController::TrajectoryLimit&   limit)
+{
+    if (Chassis::ctrl == nullptr || !Chassis::ctrl->setTargetPostureInWorld(target, mode, limit))
+    {
+        reportChassisPlanFailure();
+        return false;
+    }
+    return true;
+}
+
+bool SpearGrab::setChassisTarget(const chassis::Posture&                              target,
+                                 const Chassis::ChassisController::TrajectoryLinkMode mode)
+{
+    if (Chassis::ctrl == nullptr || !Chassis::ctrl->setTargetPostureInWorld(target, mode))
+    {
+        reportChassisPlanFailure();
+        return false;
+    }
+    return true;
 }
 
 void SpearGrab::grab(const chassis::Posture& target_pos,
@@ -64,10 +164,17 @@ void SpearGrab::grab(const chassis::Posture& target_pos,
 {
     // 若上次已结束，则允许复位到 Idle 重新启动一轮动作。
     if (!canStart())
+    {
+        Diagnostics::SpearGrabAction::report(
+                diagnosticContext(),
+                isRunning() ? Diagnostics::SpearGrabAction::Reason::Busy
+                            : Diagnostics::SpearGrabAction::Reason::DependencyNotReady);
         return;
+    }
 
     if (state_ == State::Done)
         state_ = State::Idle;
+    failed_ = false;
 
     constexpr float pre_grab_approach_distance = ::Grip::Config::SpearGrab::PreGrabApproachDistance;
     constexpr float safe_distance              = ::Grip::Config::SpearGrab::SafeDistance;
@@ -82,7 +189,11 @@ void SpearGrab::grab(const chassis::Posture& target_pos,
     end_pos_rel_to_target_ = Chassis::ChassisLoc::WorldPosture2RelativePosture(target_pos_,
                                                                                end_pos_);
     if (end_pos_rel_to_target_.x <= safe_distance)
+    {
+        Diagnostics::SpearGrabAction::report(diagnosticContext(),
+                                             Diagnostics::SpearGrabAction::Reason::InvalidArgument);
         return;
+    }
 
     prepare_safe_pos_     = postureRelativeToTargetInWorld({ safe_distance, 0.0f, 0.0f });
     prepare_approach_pos_ = postureRelativeToTargetInWorld(
@@ -95,9 +206,15 @@ void SpearGrab::grab(const chassis::Posture& target_pos,
     // 启动后底盘、抬升、grip 可同时动作；底盘第一目标只到安全距离边界。
     ::Grip::grip->openClaw();
     if (!::Grip::grip->toJointPose(::Grip::Config::Poses::PrepareGrab1))
+    {
+        reportGripPlanFailure();
         return;
+    }
 
-    Chassis::ctrl->setTargetPostureInWorld(prepare_safe_pos_, Config::SpearGrab::PrepareGrabLimit);
+    if (!setChassisTarget(prepare_safe_pos_,
+                          Master::TrajectoryLinkMode::CurrentState,
+                          Config::SpearGrab::PrepareGrabLimit))
+        return;
 
     if constexpr (ProjectParts::EnableLift)
     {
@@ -188,14 +305,16 @@ void SpearGrab::update()
         if (is_lift_at_execute_position() && ::Grip::grip->isFinished() &&
             std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold)
         {
+            // 先把 grip 切到第二个预备姿态，再把底盘推进到更近的 prepare 区。
             if (!::Grip::grip->toJointPose(::Grip::Config::Poses::PrepareGrab2))
             {
-                abort();
+                reportGripPlanFailure();
                 break;
             }
-            Chassis::ctrl->setTargetPostureInWorld(prepare_approach_pos_,
-                                                   Master::TrajectoryLinkMode::PreviousCurve,
-                                                   Config::SpearGrab::PrepareGrabLimit);
+            if (!setChassisTarget(prepare_approach_pos_,
+                                  Master::TrajectoryLinkMode::PreviousCurve,
+                                  Config::SpearGrab::PrepareGrabLimit))
+                break;
             state_ = State::MovingGripToPrepare2;
         }
         break;
@@ -207,9 +326,10 @@ void SpearGrab::update()
         if (Chassis::ctrl->isTrajectoryFinished() && ::Grip::grip->isFinished() &&
             std::fabs(rel_pos.y) < ::Grip::Config::SpearGrab::PrepareYThreshold)
         {
-            Chassis::ctrl->setTargetPostureInWorld(target_pos_,
-                                                   Master::TrajectoryLinkMode::PreviousCurve,
-                                                   Config::SpearGrab::GrabLimit);
+            if (!setChassisTarget(target_pos_,
+                                  Master::TrajectoryLinkMode::PreviousCurve,
+                                  Config::SpearGrab::GrabLimit))
+                break;
             state_ = State::MovingToTarget;
         }
         break;
@@ -218,6 +338,7 @@ void SpearGrab::update()
         // 底盘到达目标位后先合爪，避免行进中提前夹住矛头。
         if (Chassis::ctrl->isTrajectoryFinished())
         {
+            // 合爪后进入定时保持阶段，给气缸 / 机构夹紧留出时间。
             ::Grip::grip->closeClaw();
             wait_state_since_ms_ = HAL_GetTick();
             state_               = State::WaitingClawClose;
@@ -237,7 +358,7 @@ void SpearGrab::update()
             // 合爪和抬升完成后先切到对接姿态；若姿态切换失败，整套动作立即中止。
             if (!::Grip::grip->toDockingPose())
             {
-                abort();
+                reportGripPlanFailure();
                 break;
             }
 
@@ -252,8 +373,9 @@ void SpearGrab::update()
             }
 
             // 第一段撤离只放开 x 方向，尽快离开危险区，再进入最终轨迹。
-            Chassis::ctrl->setTargetPostureInWorld(leave_target_x_only_pos_,
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(leave_target_x_only_pos_,
+                                  Master::TrajectoryLinkMode::PreviousCurve))
+                break;
             state_ = State::LeavingTargetToSafeX;
         }
         break;
@@ -273,8 +395,8 @@ void SpearGrab::update()
                 }
             }
             // 到达安全区后再切终点轨迹，避免在目标附近做大幅横移。
-            Chassis::ctrl->setTargetPostureInWorld(end_pos_,
-                                                   Master::TrajectoryLinkMode::PreviousCurve);
+            if (!setChassisTarget(end_pos_, Master::TrajectoryLinkMode::PreviousCurve))
+                break;
             state_ = State::MovingToEnd;
         }
         break;
