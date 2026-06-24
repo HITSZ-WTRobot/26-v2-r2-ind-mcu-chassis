@@ -32,7 +32,7 @@ ChassisLocEKF::Config make_loc_ekf_config(const chassis::Posture& init_posture)
         .noiseQ = { .xy = sq(0.05f), .yaw = sq(0.5f), .yaw_offset = sq(0.01f) },
         .noiseR = {
             .gyro  = { .yaw = sq(0.1f) },
-            .lidar = { .xy = sq(0.01f), .yaw = sq(0.5f) },
+            .lidar = { .xy = sq(0.03f), .yaw = sq(1.0f) },
         },
     };
 }
