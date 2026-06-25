@@ -305,12 +305,6 @@ void SpearGrab::update()
         if (is_lift_at_execute_position() && ::Grip::grip->isFinished() &&
             std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold)
         {
-            // 先把 grip 切到第二个预备姿态，再把底盘推进到更近的 prepare 区。
-            if (!::Grip::grip->toJointPose(::Grip::Config::Poses::PrepareGrab2))
-            {
-                reportGripPlanFailure();
-                break;
-            }
             if (!setChassisTarget(prepare_approach_pos_,
                                   Master::TrajectoryLinkMode::PreviousCurve,
                                   Config::SpearGrab::PrepareGrabLimit))
@@ -323,8 +317,27 @@ void SpearGrab::update()
     {
         const auto rel_pos = currentRelativeToTarget();
 
-        if (Chassis::ctrl->isTrajectoryFinished() && ::Grip::grip->isFinished() &&
-            std::fabs(rel_pos.y) < ::Grip::Config::SpearGrab::PrepareYThreshold)
+        // chassis 到达 approach，且 lift / yaw 仍保持就位后，才把 grip 切到第二预备姿态。
+        if (Chassis::ctrl->isTrajectoryFinished() && is_lift_at_execute_position() &&
+            std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold)
+        {
+            if (!::Grip::grip->toJointPose(::Grip::Config::Poses::PrepareGrab2))
+            {
+                reportGripPlanFailure();
+                break;
+            }
+            state_ = State::WaitingTargetEntry;
+        }
+        break;
+    }
+    case State::WaitingTargetEntry:
+    {
+        const auto rel_pos = currentRelativeToTarget();
+
+        // grip、侧向、yaw、lift 均就位后，才允许底盘从 approach 切入最终夹取位。
+        if (::Grip::grip->isFinished() && is_lift_at_execute_position() &&
+            std::fabs(rel_pos.y) < ::Grip::Config::SpearGrab::PrepareYThreshold &&
+            std::fabs(rel_pos.yaw) < ::Grip::Config::SpearGrab::PrepareYawThreshold)
         {
             if (!setChassisTarget(target_pos_,
                                   Master::TrajectoryLinkMode::PreviousCurve,
@@ -335,10 +348,9 @@ void SpearGrab::update()
         break;
     }
     case State::MovingToTarget:
-        // 底盘到达目标位后先合爪，避免行进中提前夹住矛头。
+        // chassis 到达目标位后先合爪，避免行进中提前夹住矛头。
         if (Chassis::ctrl->isTrajectoryFinished())
         {
-            // 合爪后进入定时保持阶段，给气缸 / 机构夹紧留出时间。
             ::Grip::grip->closeClaw();
             wait_state_since_ms_ = HAL_GetTick();
             state_               = State::WaitingClawClose;
@@ -347,7 +359,7 @@ void SpearGrab::update()
     case State::WaitingClawClose:
         if (HAL_GetTick() - wait_state_since_ms_ >= ::Grip::Config::SpearGrab::ClawCloseDelayMs)
         {
-            // 合爪夹紧后先上抬，让矛头脱离取料位置，再进入撤离轨迹。
+            // 合爪保持完成后再启动 lift 抬升，让夹爪先建立稳定夹持。
             Chassis::motion->liftAllTo(post_grab_lift_pos_, Chassis::Config::Lift::OnloadLimit);
             state_ = State::RaisingLiftAfterGrab;
         }

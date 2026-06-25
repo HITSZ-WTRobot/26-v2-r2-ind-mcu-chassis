@@ -89,7 +89,7 @@ constexpr TrajectoryLimit GrabLimit = {
 
 constexpr uint16_t TargetPosCount = std::size(TargetPoses);
 
-constexpr float PreGrabApproachDistance = 0.10f; // 夹取前沿目标 x 方向接近距离 unit m
+constexpr float PreGrabApproachDistance = 0.06f; // 夹取前沿目标 x 方向接近距离 unit m
 constexpr float SafeDistance            = 0.25f; // 夹取后沿目标 x 方向先撤离的安全距离 unit m
 
 // 矛头夹取执行高度 unit m

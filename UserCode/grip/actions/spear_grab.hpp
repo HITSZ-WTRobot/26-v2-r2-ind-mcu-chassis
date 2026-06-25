@@ -16,8 +16,10 @@ namespace Grip::Action
  * @brief 矛头夹取动作
  *
  * 负责：启动时底盘切入 target_pos 安全距离边界、lift 抬升、夹爪进入预备 1 ->
- *      lift 到位后进入近距离 prepare 区并切预备 2 -> 到 target_pos 合爪并抬升 ->
- *      先沿 target_pos 的 x 方向离开危险区 -> 再移动到 end_pos 并对接。
+ *      lift 到位后进入近距离 prepare 区 -> 到达 prepare 后切预备 2 ->
+ *      grip / y / yaw / lift 就位后到 target_pos，合爪并保持 ->
+ *      保持完成后抬升 lift，lift 就位后先沿 target_pos 的 x 方向离开危险区 ->
+ *      再移动到 end_pos 并对接。
  *
  * 该类只编排高层状态机，不直接实现底层闭环：
  * - 底盘轨迹由 Chassis::ctrl 执行；
@@ -61,12 +63,13 @@ private:
     {
         Idle,                 ///< 空闲，尚未开始。
         MovingGripToPrepare1, ///< 等待 arm 达到预备 1 高度。
-        MovingToPrepare,      ///< 等待 lift 到执行高度且 yaw 到位，暂不进入安全距离以内。
-        MovingGripToPrepare2, ///< lift 到位后切近距离 prepare 区，并等待 grip 预备 2。
-        MovingToTarget,       ///< 由近距离 prepare 区继续切入目标位姿。
-        WaitingClawClose,     ///< 底盘已到位，合爪并等待夹紧。
+        MovingToPrepare,      ///< 等待 lift 到执行高度且 yaw 到位，再切近距离 prepare 区。
+        MovingGripToPrepare2, ///< 等待 chassis 到达 prepare 后切 grip 预备 2。
+        WaitingTargetEntry,   ///< 等待 grip / y / yaw / lift 就位，再切入目标位姿。
+        MovingToTarget,       ///< 等待 chassis 到 target，随后合爪并开始保持。
+        WaitingClawClose,     ///< 合爪后等待夹紧保持时间。
         RaisingLiftAfterGrab, ///< 合爪后继续抬升 lift，等待矛头脱离。
-        LeavingTargetToSafeX, ///< 沿目标 x 方向先脱离危险区。
+        LeavingTargetToSafeX, ///< lift 就位后沿目标 x 方向先脱离危险区。
         MovingToEnd,          ///< 从安全 x 位置移动到最终结束位姿。
         Done                  ///< 全流程结束，或因失败中止。
     };
@@ -130,7 +133,7 @@ private:
     float lift_execute_{};
     /// 本轮合爪后继续抬升的 lift 目标高度。
     float post_grab_lift_pos_{};
-    /// 进入合爪等待阶段时的时间戳。
+    /// 进入合爪保持阶段时的时间戳。
     uint32_t wait_state_since_ms_{};
 };
 
