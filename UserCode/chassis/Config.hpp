@@ -139,6 +139,11 @@ constexpr float WheelDistanceXMM = 458.1f;  // 前后轮距 unit mm
 constexpr float WheelDistanceYMM = 401.08f; // 左右轮距 unit mm
 } // namespace Motion
 
+namespace BlockInfo
+{
+constexpr float BlockSize = 1.2f;
+}
+
 /**
  * 底盘在 X-Y 方向上的位置信息
  */
@@ -183,12 +188,13 @@ constexpr float HalfWheelDistanceY   = Motion::WheelDistanceYMM * 0.5f * 1e-3f;
 constexpr float HalfChassisDiagonal = constexpr_sqrt(HalfChassisDistanceX * HalfChassisDistanceX +
                                                      HalfChassisDistanceY * HalfChassisDistanceY);
 constexpr float HalfWheelDiagonal   = constexpr_sqrt(AbsWheelX * AbsWheelX +
-                                                     HalfWheelDistanceY * HalfWheelDistanceY);
+                                                   HalfWheelDistanceY * HalfWheelDistanceY);
 
 constexpr float SafeDistance = 0.01; // 1cm 安全距离（底盘方向）
 
-constexpr float StepPrepareYThreshold   = 0.05f; // 上台阶预备阶段 y 方向允许误差 unit m
-constexpr float StepPrepareYawThreshold = 1.0f;  // 台阶动作预备阶段 yaw 允许误差 unit deg
+constexpr float StepPrepareYThreshold = 0.5f * BlockInfo::BlockSize - HalfChassisDistanceY -
+                                        3 * SafeDistance; // 上台阶预备阶段 y 方向允许误差 unit m
+constexpr float StepPrepareYawThreshold = 1.0f;           // 台阶动作预备阶段 yaw 允许误差 unit deg
 } // namespace ChassisInfo
 
 /**

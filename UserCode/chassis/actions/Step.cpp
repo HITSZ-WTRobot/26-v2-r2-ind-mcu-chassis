@@ -64,6 +64,10 @@ bool Step::yawPrepared() const
     return std::fabs(chassis::Posture::yawError(currentRelativeToStep().yaw, dir_relative_yaw_)) <
            StepPrepareYawThreshold;
 }
+bool Step::yPrepared() const
+{
+    return std::fabs(currentRelativeToStep().y) < StepPrepareYThreshold;
+}
 
 chassis::Posture Step::endXWithStepYaw() const
 {
@@ -229,14 +233,27 @@ void Step::up(const chassis::Posture& stepTargetPos,
     final_height_ = endHeight;
     height_       = height;
 
-    chassis_state_ = ChassisState::Up0_PrepareYaw;
-    front_state_   = LiftState::Up1_Lifting;
-    rear_state_    = LiftState::Up1_Lifting;
+    chassis_state_              = ChassisState::Up0_PrepareYaw;
+    const auto lift_pos         = Chassis::motion->getLiftPosition();
+    const auto step_up_position = stepUpPosition();
+    if (lift_pos > step_up_position)
+    {
+        // 如果当前底盘高度已经更高，可能是贴着另一个更高的台阶
+        // 下降可能撞到台阶, 此时先进入等待态
+        front_state_ = LiftState::Up0_WaitingLifting;
+        rear_state_  = LiftState::Up0_WaitingLifting;
+    }
+    else
+    {
+        // 遵循正常上台阶流程
+        front_state_ = LiftState::Up1_Lifting;
+        rear_state_  = LiftState::Up1_Lifting;
 
-    if (!moveLift(front_, stepUpPosition(), OnloadLimit))
-        return;
-    if (!moveLift(rear_, stepUpPosition(), OnloadLimit))
-        return;
+        if (!moveLift(front_, stepUpPosition(), OnloadLimit))
+            return;
+        if (!moveLift(rear_, stepUpPosition(), OnloadLimit))
+            return;
+    }
 
     if (!setChassisTarget(stepRelativePosture(-(HalfChassisDiagonal + SafeDistance))))
         return;
@@ -379,8 +396,11 @@ void Step::update()
 
     // 上台阶靠近边缘：等待两侧升到台阶高度，并确认 y 偏差足够小。
     case ChassisState::Up1_ApproachEdge:
-        if (front_->isFinished() && rear_->isFinished() &&
-            std::fabs(currentRelativeToStep().y) < StepPrepareYThreshold)
+        if ((front_state_ == LiftState::Up2_WaitRetract ||
+             front_state_ == LiftState::Up0_WaitingLifting) &&
+            (rear_state_ == LiftState::Up2_WaitRetract ||
+             rear_state_ == LiftState::Up0_WaitingLifting) &&
+            yPrepared())
         {
             if (!setChassisTarget(stepRelativePosture(-(AbsWheelOuterEdgeX + 3 * SafeDistance))))
                 return;
@@ -503,9 +523,27 @@ void Step::update()
         break;
     }
 
+    if (front_state_ == LiftState::Up0_WaitingLifting &&
+        rear_state_ == LiftState::Up0_WaitingLifting)
+    {
+        if (yPrepared() && yawPrepared())
+        {
+            front_state_ = LiftState::Up1_Lifting;
+            rear_state_  = LiftState::Up1_Lifting;
+
+            if (!moveLift(front_, stepUpPosition(), OnloadLimit))
+                return;
+            if (!moveLift(rear_, stepUpPosition(), OnloadLimit))
+                return;
+        }
+        return;
+    }
+
     switch (front_state_)
     {
     case LiftState::Idle:
+        break;
+    case LiftState::Up0_WaitingLifting:
         break;
     case LiftState::Up1_Lifting:
         if (front_->isFinished())
@@ -596,6 +634,8 @@ void Step::update()
     switch (rear_state_)
     {
     case LiftState::Idle:
+        break;
+    case LiftState::Up0_WaitingLifting:
         break;
     case LiftState::Up1_Lifting:
         if (rear_->isFinished())

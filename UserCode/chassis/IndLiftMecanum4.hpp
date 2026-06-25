@@ -104,6 +104,14 @@ public:
                         lift(LiftType::Rear).to(pos, limit, link_mode));
     }
 
+    float getLiftPosition()
+    {
+        if constexpr (!ProjectParts::EnableLift)
+            return 0.0f;
+
+        return 0.5f * (lift(LiftType::Front).getPosition() + lift(LiftType::Rear).getPosition());
+    }
+
     [[nodiscard]] bool isLiftAllFinished()
     {
         if constexpr (ProjectParts::EnableLift)

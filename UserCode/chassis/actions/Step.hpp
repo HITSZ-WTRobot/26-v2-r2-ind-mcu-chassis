@@ -163,6 +163,7 @@ private:
     {
         Idle,
 
+        Up0_WaitingLifting,
         Up1_Lifting,
         Up2_WaitRetract,
         Up3_Retracting,
@@ -217,6 +218,7 @@ private:
     [[nodiscard]] float currentRelativeX() const { return currentRelativeToStep().x; }
 
     [[nodiscard]] bool yawPrepared() const;
+    [[nodiscard]] bool yPrepared() const;
 
     [[nodiscard]] chassis::Posture endXWithStepYaw() const;
 
