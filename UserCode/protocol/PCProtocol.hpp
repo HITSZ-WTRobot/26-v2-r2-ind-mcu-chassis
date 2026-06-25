@@ -58,7 +58,7 @@ protected:
 
     bool decode(const uint8_t data[PayloadLen]) override;
 
-    [[nodiscard]] uint32_t timeout() const override { return 250; }
+    [[nodiscard]] uint32_t timeout() const override { return 500; }
 
 private:
     enum class TxState

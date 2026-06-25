@@ -20,6 +20,76 @@
 #include "tests/tests.hpp"
 #include "tim.h"
 
+namespace
+{
+constexpr uint32_t GuardStopFlag = 1U << 0;
+
+osThreadId_t guard_task{};
+
+void guardStopAll()
+{
+    if constexpr (ProjectParts::EnableWheelChassis)
+    {
+        if (Chassis::ctrl != nullptr)
+            Chassis::ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
+    }
+
+    if constexpr (ProjectParts::EnableLift)
+    {
+        if (Chassis::motion != nullptr)
+        {
+            Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front).stop();
+            Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear).stop();
+        }
+    }
+
+    if constexpr (ProjectParts::EnableGrip)
+    {
+        if (Grip::grip != nullptr)
+        {
+            Grip::grip->stop();
+            Grip::grip->openClaw();
+        }
+    }
+
+    if constexpr (ProjectParts::EnableGripSuction)
+    {
+        if (Device::Suction::grip != nullptr)
+            Device::Suction::grip->deactivate();
+    }
+
+    if constexpr (ProjectParts::EnableAbdomenSuction)
+    {
+        if (Device::Suction::abdomen != nullptr)
+            Device::Suction::abdomen->deactivate();
+    }
+}
+
+[[noreturn]] void GuardTask(void* argument)
+{
+    (void)argument;
+
+    for (;;)
+    {
+        osThreadFlagsWait(GuardStopFlag, osFlagsWaitAny, osWaitForever);
+        guardStopAll();
+    }
+}
+
+void guardInit()
+{
+    constexpr osThreadAttr_t attr{
+        .name       = "guard",
+        .stack_size = 512U * sizeof(uint32_t),
+        .priority   = osPriorityRealtime,
+    };
+
+    guard_task = osThreadNew(GuardTask, nullptr, &attr);
+    if (guard_task == nullptr)
+        Error_Handler();
+}
+} // namespace
+
 void TIM_Callback_1kHz_1(TIM_HandleTypeDef* htim)
 {
     static uint32_t grip_prescaler_500Hz = 0;
@@ -50,9 +120,33 @@ void TIM_Callback_1kHz_2(TIM_HandleTypeDef* htim)
     Connection::updateTable();
     service::Watchdog::EatAll();
 
-    if (Protocol::pc_rx != nullptr && Chassis::ctrl != nullptr && !Protocol::pc_rx->isConnected())
+    bool need_stop = false;
+    if (System::Init::inited())
     {
-        // Chassis::ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
+        if constexpr (ProjectParts::EnableUpperHostProtocol)
+        {
+            if (Protocol::pc_rx != nullptr && !Protocol::pc_rx->isConnected())
+                need_stop = true;
+        }
+        if constexpr (ProjectParts::EnablePcLocalization)
+        {
+            if (!Protocol::isPcLocalizationConnected())
+                need_stop = true;
+        }
+    }
+
+    static uint32_t guard_rate_limit = 0;
+    if (need_stop && guard_task != nullptr)
+    {
+        if (++guard_rate_limit >= 50) // 50ms 间隔
+        {
+            guard_rate_limit = 0;
+            (void)osThreadFlagsSet(guard_task, GuardStopFlag);
+        }
+    }
+    else
+    {
+        guard_rate_limit = 0; // 恢复连接后立即重置计数器
     }
 }
 
@@ -115,6 +209,8 @@ extern "C" void Init(void* argument)
     // 检查看门狗是否已满
     if (service::Watchdog::isFull())
         Error_Handler();
+
+    guardInit();
 
     // 启动定时器
     // 使用 1 kHz 周期中断 + 半周期后比较中断，把“控制计算”和“CAN 发送 / 管理刷新”分到两个半拍。

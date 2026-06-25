@@ -75,7 +75,7 @@ trajectory::LinkMode read_lift_link_mode(const uint8_t* data)
 
 constexpr uint32_t MsgReceived = 1 << 0;
 
-constexpr uint32_t LidarPostureTimeoutTicks = 200U;
+constexpr uint32_t LidarPostureTimeoutTicks = 400U;
 
 libs::RingBuffer<Frame, 10> command_buffer_{};
 
