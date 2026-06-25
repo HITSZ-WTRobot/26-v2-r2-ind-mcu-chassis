@@ -221,6 +221,9 @@ constexpr TrajectoryLimit DefaultTrajectoryLimit = MaxTrajectoryLimit * Trajecto
 
 #endif
 
+/// 上 R1 动作专用底盘轨迹限制，初始与默认限制一致，便于单独调参。
+constexpr TrajectoryLimit UpR1TrajectoryLimit = MaxTrajectoryLimit * 0.2;
+
 constexpr TrajectoryTrackingThreshold DefaultTrajectoryTrackingThreshold{
     .x   = 0.01f,
     .y   = 0.01f,

@@ -128,7 +128,18 @@ bool Step::setChassisTarget(const chassis::Posture& target)
         abort();
         return false;
     }
-    if (!Chassis::ctrl->setTargetPostureInWorld(target))
+    bool plan_succeeded = false;
+    if (height_ == Height::R1)
+    {
+        plan_succeeded = Chassis::ctrl->setTargetPostureInWorld(
+                target, Chassis::Config::Control::UpR1TrajectoryLimit);
+    }
+    else
+    {
+        plan_succeeded = Chassis::ctrl->setTargetPostureInWorld(target);
+    }
+
+    if (!plan_succeeded)
     {
         Diagnostics::StepAction::report(diagnosticContext(),
                                         Diagnostics::StepAction::Reason::ChassisPlanFailed,
