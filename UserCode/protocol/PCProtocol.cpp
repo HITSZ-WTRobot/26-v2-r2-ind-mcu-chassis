@@ -65,10 +65,14 @@ void PCProtocol::transmitFeedbackFrame(const std::array<uint8_t, FeedbackFrameLe
     }
     else
     {
-        HAL_UART_AbortTransmit(huart());
-        if (huart()->hdmatx != nullptr)
-            huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
-        tx_state_ = TxState::Idle;
+        // HAL_UART_AbortTransmit 内部同步调用 TX Complete 回调，会先写入 tx_state_ = Idle，
+        // 仅 abort 成功时才在此处安全重置状态。
+        if (HAL_UART_AbortTransmit(huart()) == HAL_OK)
+        {
+            if (huart()->hdmatx != nullptr)
+                huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
+            tx_state_ = TxState::Idle;
+        }
 #ifdef DEBUG
         tx_fail_cnt_++;
 #endif
@@ -85,10 +89,14 @@ void PCProtocol::transmitIdentifyByte()
     }
     else
     {
-        HAL_UART_AbortTransmit(huart());
-        if (huart()->hdmatx != nullptr)
-            huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
-        tx_state_ = TxState::Idle;
+        // HAL_UART_AbortTransmit 内部同步调用 TX Complete 回调，会先写入 tx_state_ = Idle，
+        // 仅 abort 成功时才在此处安全重置状态。
+        if (HAL_UART_AbortTransmit(huart()) == HAL_OK)
+        {
+            if (huart()->hdmatx != nullptr)
+                huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
+            tx_state_ = TxState::Idle;
+        }
 #ifdef DEBUG
         tx_fail_cnt_++;
 #endif
@@ -107,10 +115,13 @@ void PCProtocol::transmitTaskStep(const std::array<uint8_t, FeedbackFrameLen>& f
     {
         if (!tx_watchdog_.isFed())
         {
-            HAL_UART_AbortTransmit(huart());
-            if (huart()->hdmatx != nullptr)
-                huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
-            tx_state_ = TxState::Idle;
+            if (HAL_UART_AbortTransmit(huart()) == HAL_OK)
+            {
+                if (huart()->hdmatx != nullptr)
+                    huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
+                tx_state_ = TxState::Idle;
+                // HAL_UART_AbortTransmit 内部同步调用 TX Complete 回调；此处再写入 Idle 是预期行为。
+            }
 #ifdef DEBUG
             tx_timeout_cnt_++;
 #endif
@@ -129,8 +140,14 @@ void PCProtocol::transmitTaskStep(const std::array<uint8_t, FeedbackFrameLen>& f
     {
         if (huart()->gState == HAL_UART_STATE_BUSY_TX)
         {
-            HAL_UART_AbortTransmit(huart());
-            tx_state_ = TxState::Idle;
+            if (HAL_UART_AbortTransmit(huart()) == HAL_OK)
+            {
+                if (huart()->hdmatx != nullptr)
+                    huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
+                tx_state_ = TxState::Idle;
+                // HAL_UART_AbortTransmit 内部同步调用 TX Complete 回调，transmitCallback()
+                // 会在 AbortTransmit 返回前执行并写入 tx_state_ = Idle，此处的再写入是预期行为。
+            }
         }
         if (huart()->gState != HAL_UART_STATE_READY)
             return;
