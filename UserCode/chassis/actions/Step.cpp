@@ -30,6 +30,8 @@ Step::Step()
         .priority   = osPriorityNormal,
     };
     task_ = osThreadNew(TaskEntry, this, &attr);
+
+    pending_mutex_ = osMutexNew(nullptr);
 }
 
 Step& Step::inst()
@@ -121,6 +123,7 @@ void Step::abort()
     if (rear_ != nullptr && rear_ != front_)
         rear_->stop();
     failed_ = true;
+    pending_steps_.clear();
 }
 
 bool Step::setChassisTarget(const chassis::Posture& target)
@@ -221,10 +224,12 @@ void Step::up(const chassis::Posture& stepTargetPos,
         const StepAction step{
             StepAction::Type::Up, stepTargetPos, endPos, dir, endHeight, height
         };
+        osMutexAcquire(pending_mutex_, osWaitForever);
         if (!isDuplicateStep(step))
         {
             pending_steps_.push(step);
         }
+        osMutexRelease(pending_mutex_);
         return;
     }
     if (!dependencyReady())
@@ -238,6 +243,11 @@ void Step::up(const chassis::Posture& stepTargetPos,
     osThreadFlagsSet(task_, FlagStart);
 }
 
+/**
+ * 上R1台阶 - 系统收尾动作，不参与 pending_steps_ 排队。
+ * @param stepTargetPos 台阶边缘在世界坐标系下的位姿
+ * @param dir 上台阶方向
+ */
 void Step::upR1(const chassis::Posture& stepTargetPos, const Direction dir)
 {
     if (isRunning())
@@ -321,10 +331,12 @@ void Step::down(const chassis::Posture& stepTargetPos,
         const StepAction step{
             StepAction::Type::Down, stepTargetPos, endPos, dir, endHeight, height
         };
+        osMutexAcquire(pending_mutex_, osWaitForever);
         if (!isDuplicateStep(step))
         {
             pending_steps_.push(step);
         }
+        osMutexRelease(pending_mutex_);
         return;
     }
     if (!dependencyReady())
@@ -473,7 +485,10 @@ void Step::update()
     case ChassisState::Up6_FinalizePose:
         if (height_ != Height::R1)
         {
-            if (const StepAction* next = pending_steps_.pop(); next != nullptr)
+            osMutexAcquire(pending_mutex_, osWaitForever);
+            const StepAction* next = pending_steps_.pop();
+            osMutexRelease(pending_mutex_);
+            if (next != nullptr)
             {
                 startFromPending(*next);
                 break;
@@ -539,7 +554,11 @@ void Step::update()
 
     // 下台阶收尾：有下一条则立即接续，否则等待底盘轨迹完成。
     case ChassisState::Down5_FinalizePose:
-        if (const StepAction* next = pending_steps_.pop(); next != nullptr)
+    {
+        osMutexAcquire(pending_mutex_, osWaitForever);
+        const StepAction* next = pending_steps_.pop();
+        osMutexRelease(pending_mutex_);
+        if (next != nullptr)
         {
             startFromPending(*next);
             break;
@@ -549,6 +568,7 @@ void Step::update()
             chassis_state_ = ChassisState::Done;
         }
         break;
+    }
 
     case ChassisState::Done:
         break;

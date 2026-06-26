@@ -41,7 +41,8 @@ public:
         R1
     };
 
-    void up(float       startDistance2Step,
+    [[deprecated("Use posture-based overload instead")]] void up(
+            float       startDistance2Step,
             float       endDistance2Step,
             Direction   dir       = Direction::Forward,
             FinalHeight endHeight = FinalHeight::Low,
@@ -53,11 +54,12 @@ public:
             FinalHeight             endHeight = FinalHeight::Low,
             Height                  height    = Height::Step200);
 
-    void down(float       startDistance2Step,
-              float       endDistance2Step,
-              Direction   dir       = Direction::Forward,
-              FinalHeight endHeight = FinalHeight::Low,
-              Height      height    = Height::Step200);
+    [[deprecated("Use posture-based overload instead")]] void down(
+            float       startDistance2Step,
+            float       endDistance2Step,
+            Direction   dir       = Direction::Forward,
+            FinalHeight endHeight = FinalHeight::Low,
+            Height      height    = Height::Step200);
 
     void down(const chassis::Posture& stepTargetPos,
               const chassis::Posture& endPos,
@@ -108,6 +110,7 @@ public:
 
 private:
     osThreadId_t task_;
+    osMutexId_t  pending_mutex_{};
 
     void prepare(const chassis::Posture& stepTargetPos,
                  const chassis::Posture& endPos,

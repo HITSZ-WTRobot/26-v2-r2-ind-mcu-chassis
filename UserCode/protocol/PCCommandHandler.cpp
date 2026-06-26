@@ -352,6 +352,7 @@ void handleCommand(const Frame& frame)
     case PCCommand::StepUp200:
     case PCCommand::StepUp400:
     {
+        /*
         // 台阶动作不是单一协议能力，而是“控制命令 + 底盘 + 升降”的组合能力。
         if constexpr (!ProjectParts::EnableStepAction)
             break;
@@ -377,6 +378,7 @@ void handleCommand(const Frame& frame)
 
         // 状态机步入逻辑
         Action::Step::inst().up(startDistance, endDistance, direction, endHeight, height);
+        */
         break;
     }
     case PCCommand::StepUpResume:
@@ -386,6 +388,7 @@ void handleCommand(const Frame& frame)
     case PCCommand::StepDown200:
     case PCCommand::StepDown400:
     {
+        /*
         // 与 StepUp200/400 相同，只有完整动作链启用时才处理下台阶命令。
         if constexpr (!ProjectParts::EnableStepAction)
             break;
@@ -410,6 +413,7 @@ void handleCommand(const Frame& frame)
             break;
 
         Action::Step::inst().down(startDistance, endDistance, direction, endHeight, height);
+        */
         break;
     }
     case PCCommand::StepUpR1:
