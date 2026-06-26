@@ -59,7 +59,20 @@ PCProtocol::PCProtocol(UART_HandleTypeDef* huart, const bool is_main_protocol) :
 void PCProtocol::transmitFeedbackFrame(const std::array<uint8_t, FeedbackFrameLen>& frame)
 {
     if (HAL_UART_Transmit_DMA(huart(), frame.data(), frame.size()) == HAL_OK)
-        tx_state_ = TxState::DMAActive;
+    {
+        tx_state_      = TxState::DMAActive;
+        tx_watchdog_.feed(TxTimeoutTicks);
+    }
+    else
+    {
+        HAL_UART_AbortTransmit(huart());
+        if (huart()->hdmatx != nullptr)
+            huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
+        tx_state_ = TxState::Idle;
+#ifdef DEBUG
+        tx_fail_cnt_++;
+#endif
+    }
 }
 
 void PCProtocol::transmitIdentifyByte()
@@ -67,7 +80,18 @@ void PCProtocol::transmitIdentifyByte()
     if (HAL_UART_Transmit_DMA(huart(), identify_tx_buffer_.data(), identify_tx_buffer_.size()) ==
         HAL_OK)
     {
-        tx_state_ = TxState::DMAActive;
+        tx_state_      = TxState::DMAActive;
+        tx_watchdog_.feed(TxTimeoutTicks);
+    }
+    else
+    {
+        HAL_UART_AbortTransmit(huart());
+        if (huart()->hdmatx != nullptr)
+            huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
+        tx_state_ = TxState::Idle;
+#ifdef DEBUG
+        tx_fail_cnt_++;
+#endif
     }
 }
 
@@ -78,9 +102,39 @@ void PCProtocol::transmitCallback()
 
 void PCProtocol::transmitTaskStep(const std::array<uint8_t, FeedbackFrameLen>& feedback_frame)
 {
-    if (tx_state_ == TxState::Stopped || tx_state_ == TxState::DMAActive ||
-        huart()->gState != HAL_UART_STATE_READY)
+    // 1. DMAActive 超时恢复：DMA Complete 中断丢失时看门狗复位
+    if (tx_state_ == TxState::DMAActive)
+    {
+        if (!tx_watchdog_.isFed())
+        {
+            HAL_UART_AbortTransmit(huart());
+            if (huart()->hdmatx != nullptr)
+                huart()->hdmatx->ErrorCode = HAL_DMA_ERROR_NONE;
+            tx_state_ = TxState::Idle;
+#ifdef DEBUG
+            tx_timeout_cnt_++;
+#endif
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    if (tx_state_ == TxState::Stopped)
         return;
+
+    // 2. gState 非 READY 恢复：HAL 状态机被污染时自愈
+    if (huart()->gState != HAL_UART_STATE_READY)
+    {
+        if (huart()->gState == HAL_UART_STATE_BUSY_TX)
+        {
+            HAL_UART_AbortTransmit(huart());
+            tx_state_ = TxState::Idle;
+        }
+        if (huart()->gState != HAL_UART_STATE_READY)
+            return;
+    }
 
     if constexpr (ProjectParts::NeedUpperHostIdentifyInit)
     {

@@ -8,6 +8,7 @@
 #include "PCCommandDef.hpp"
 #include "UartRxSync.hpp"
 #include "sync/Clock.hpp"
+#include "watchdog.hpp"
 #include <array>
 
 namespace Protocol
@@ -73,6 +74,13 @@ private:
     bool is_main_protocol_{ false };
 
     std::array<uint8_t, 1> identify_tx_buffer_{ IdentifyInitByte };
+
+    static constexpr uint32_t TxTimeoutTicks = 5;
+    service::Watchdog tx_watchdog_{};
+#ifdef DEBUG
+    uint32_t tx_timeout_cnt_{0};
+    uint32_t tx_fail_cnt_{0};
+#endif
 };
 
 /// 当前工程的 Main PCProtocol。
