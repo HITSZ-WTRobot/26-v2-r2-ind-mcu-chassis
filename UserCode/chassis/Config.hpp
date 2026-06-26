@@ -85,6 +85,9 @@ constexpr float CalibrationRpm   = -CalibrationSpeed / GearRadius * 60.0f / (2.0
 constexpr float    CalibrationMaxCurrent = 4000.0f; // 约 2 * 1.22 Nm
 constexpr uint32_t CalibrationMinTicks   = 800;     // 堵转最小保持时间 (ms)
 constexpr float    CalibrationDeadAngle  = 0.1f;    // 堵转检测
+
+constexpr float LiftFinishThresholdMM    = 10.0f;
+constexpr float LiftFinishThresholdAngle = LiftFinishThresholdMM / GearRadiusMM / M_PI * 180.0f;
 // 允许的角度误差 (deg)
 
 /**

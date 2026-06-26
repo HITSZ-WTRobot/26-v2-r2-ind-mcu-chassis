@@ -47,7 +47,8 @@ static constexpr float toPosition(const float motor_angle)
 
 LiftSide::LiftSide(motors::IMotor* motor0, motors::IMotor* motor1) :
     ctrl_{ { motor0, { PIDCfg } }, { motor1, { PIDCfg } } },
-    traj_(trajectory::MotorTrajectory<MotorNum>(ctrl_, max_motor_limit, PDErrorCfg), CalibrationCfg)
+    traj_(trajectory::MotorTrajectory(ctrl_, max_motor_limit, PDErrorCfg, LiftFinishThresholdAngle),
+          CalibrationCfg)
 {
 }
 
