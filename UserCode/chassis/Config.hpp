@@ -198,6 +198,8 @@ constexpr float SafeDistance = 0.01; // 1cm 安全距离（底盘方向）
 constexpr float StepPrepareYThreshold = 0.5f * BlockInfo::BlockSize - HalfChassisDistanceY -
                                         3 * SafeDistance; // 上台阶预备阶段 y 方向允许误差 unit m
 constexpr float StepPrepareYawThreshold = 1.0f;           // 台阶动作预备阶段 yaw 允许误差 unit deg
+
+constexpr float StepPrepareDownYThreshold = 0.5f * BlockInfo::BlockSize - HalfChassisDiagonal;
 } // namespace ChassisInfo
 
 /**
