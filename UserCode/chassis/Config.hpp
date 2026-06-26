@@ -226,7 +226,7 @@ constexpr TrajectoryLimit MaxTrajectoryLimit = {
 };
 
 // 下调限速
-constexpr float TrajectoryLimitRatio = 0.7;
+constexpr float TrajectoryLimitRatio = 0.5;
 
 constexpr TrajectoryLimit DefaultTrajectoryLimit = MaxTrajectoryLimit * TrajectoryLimitRatio;
 
@@ -238,7 +238,7 @@ constexpr TrajectoryLimit UpR1TrajectoryLimit = MaxTrajectoryLimit * 0.2;
 constexpr TrajectoryTrackingThreshold DefaultTrajectoryTrackingThreshold{
     .x   = 0.01f,
     .y   = 0.01f,
-    .yaw = 0.5f,
+    .yaw = 1.0f,
 };
 
 constexpr MasterConfig masterCfg = {

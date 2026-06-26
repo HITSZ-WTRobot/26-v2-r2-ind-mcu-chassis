@@ -115,8 +115,8 @@ constexpr float    PostGrabLiftRaise = 0.06f; // 合爪后 lift 继续抬高的�
 constexpr float LiftDocking = Chassis::Config::Lift::chassisHeightToLiftPosition(0.265);
 
 constexpr float PrepareYThreshold     = 0.003f; // prepare 阶段允许的侧向误差 unit m
-constexpr float PrepareYawThreshold   = 0.5f;   // prepare 阶段允许的偏航误差 unit deg
-constexpr float PrepareLiftZThreshold = 0.002f; // prepare 阶段允许的 lift 高度误差 unit m
+constexpr float PrepareYawThreshold   = 2.0f;   // prepare 阶段允许的偏航误差 unit deg
+constexpr float PrepareLiftZThreshold = 0.005f; // prepare 阶段允许的 lift 高度误差 unit m
 } // namespace SpearGrab
 
 namespace Motor
