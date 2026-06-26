@@ -176,6 +176,7 @@ private:
         Up6_WaitRestoreNormal,
         Up7_RestoringNormal,
 
+        Down0_WaitingLower,
         Down1_WaitDeploy,
         Down2_Deploying,
         Down3_WaitRestoreNormal,
@@ -258,6 +259,7 @@ private:
 
     [[nodiscard]] bool yawPrepared() const;
     [[nodiscard]] bool yPrepared() const;
+    [[nodiscard]] bool yDownPrepared() const;
 
     [[nodiscard]] chassis::Posture endXWithStepYaw() const;
 

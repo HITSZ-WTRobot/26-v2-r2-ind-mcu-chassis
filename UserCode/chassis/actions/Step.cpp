@@ -71,6 +71,11 @@ bool Step::yPrepared() const
     return std::fabs(currentRelativeToStep().y) < StepPrepareYThreshold;
 }
 
+bool Step::yDownPrepared() const
+{
+    return std::fabs(currentRelativeToStep().y) < StepPrepareDownYThreshold;
+}
+
 chassis::Posture Step::endXWithStepYaw() const
 {
     const auto end_rel = chassis::loc::IChassisLoc::WorldPosture2RelativePosture(step_target_pos_,
@@ -387,12 +392,20 @@ void Step::startFromPending(const StepAction& step)
     else // Type::Down
     {
         chassis_state_ = ChassisState::Down0_PrepareYaw;
-        front_state_   = LiftState::Down1_WaitDeploy;
-        rear_state_    = LiftState::Down1_WaitDeploy;
-        if (!moveLift(front_, Position::StepTransition, OnloadLimit))
-            return;
-        if (!moveLift(rear_, Position::StepTransition, OnloadLimit))
-            return;
+        if (!yDownPrepared())
+        {
+            front_state_ = LiftState::Down0_WaitingLower;
+            rear_state_  = LiftState::Down0_WaitingLower;
+        }
+        else
+        {
+            front_state_ = LiftState::Down1_WaitDeploy;
+            rear_state_  = LiftState::Down1_WaitDeploy;
+            if (!moveLift(front_, Position::StepTransition, OnloadLimit))
+                return;
+            if (!moveLift(rear_, Position::StepTransition, OnloadLimit))
+                return;
+        }
         if (!setChassisTarget(
                     stepRelativePosture(-(HalfWheelDiagonal + WheelRadius + 3 * SafeDistance))))
             return;
@@ -512,7 +525,9 @@ void Step::update()
 
     // 等待两侧腿到过渡高度，之后下台阶靠近辅助轮内侧前侧边缘，准备下放前腿。
     case ChassisState::Down1_ApproachFrontAux:
-        if (front_->isFinished() && rear_->isFinished())
+        if (front_state_ != LiftState::Down0_WaitingLower &&
+            rear_state_ != LiftState::Down0_WaitingLower && front_->isFinished() &&
+            rear_->isFinished())
         {
             if (!setChassisTarget(stepRelativePosture(-(AbsAuxInnerWheelX + 3 * SafeDistance))))
                 return;
@@ -590,6 +605,21 @@ void Step::update()
         return;
     }
 
+    if (front_state_ == LiftState::Down0_WaitingLower &&
+        rear_state_ == LiftState::Down0_WaitingLower)
+    {
+        if (yDownPrepared())
+        {
+            front_state_ = LiftState::Down1_WaitDeploy;
+            rear_state_  = LiftState::Down1_WaitDeploy;
+            if (!moveLift(front_, Position::StepTransition, OnloadLimit))
+                return;
+            if (!moveLift(rear_, Position::StepTransition, OnloadLimit))
+                return;
+        }
+        return;
+    }
+
     switch (front_state_)
     {
     case LiftState::Idle:
@@ -644,6 +674,8 @@ void Step::update()
             front_state_ = LiftState::Done;
         break;
         // 等待离地之后并具备放下前腿条件之后开始放腿
+    case LiftState::Down0_WaitingLower:
+        break;
     case LiftState::Down1_WaitDeploy:
         if (chassis_state_ == ChassisState::Down0_PrepareYaw ||
             chassis_state_ == ChassisState::Down1_ApproachFrontAux)
@@ -738,6 +770,8 @@ void Step::update()
             rear_state_ = LiftState::Done;
         break;
         // 等待离地之后并具备放下后腿条件之后开始放腿
+    case LiftState::Down0_WaitingLower:
+        break;
     case LiftState::Down1_WaitDeploy:
         if (chassis_state_ == ChassisState::Down0_PrepareYaw ||
             chassis_state_ == ChassisState::Down1_ApproachFrontAux)
