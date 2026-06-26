@@ -9,6 +9,7 @@
 #include "chassis/LiftSide.hpp"
 #include "chassis/chassis.hpp"
 #include "diagnostics/StepActionDiagnostics.hpp"
+#include "RingBuffer.hpp"
 
 namespace Action
 {
@@ -193,6 +194,41 @@ private:
     LiftState    rear_state_    = LiftState::Idle;
 
     bool failed_ = false;
+
+    struct StepAction
+    {
+        enum class Type : uint8_t
+        {
+            None,
+            Up,
+            Down
+        };
+
+        Type             type{ Type::None };
+        chassis::Posture step_target_pos{};
+        chassis::Posture end_pos{};
+        Direction        direction{ Direction::Forward };
+        FinalHeight      final_height{ FinalHeight::Low };
+        Height           height{ Height::Step200 };
+
+        bool operator==(const StepAction& other) const
+        {
+            return type == other.type && direction == other.direction &&
+                   final_height == other.final_height && height == other.height &&
+                   step_target_pos.x == other.step_target_pos.x &&
+                   step_target_pos.y == other.step_target_pos.y &&
+                   step_target_pos.yaw == other.step_target_pos.yaw &&
+                   end_pos.x == other.end_pos.x && end_pos.y == other.end_pos.y &&
+                   end_pos.yaw == other.end_pos.yaw;
+        }
+    };
+
+    libs::RingBuffer<StepAction, 6> pending_steps_{};
+    StepAction                      current_step_{};
+
+    void startFromPending(const StepAction& step);
+
+    [[nodiscard]] bool isDuplicateStep(const StepAction& step) const;
 
     chassis::Posture step_target_pos_{};
     chassis::Posture end_pos_{};

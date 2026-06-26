@@ -218,7 +218,13 @@ void Step::up(const chassis::Posture& stepTargetPos,
 {
     if (isRunning())
     {
-        Diagnostics::StepAction::report(diagnosticContext(), Diagnostics::StepAction::Reason::Busy);
+        const StepAction step{
+            StepAction::Type::Up, stepTargetPos, endPos, dir, endHeight, height
+        };
+        if (!isDuplicateStep(step))
+        {
+            pending_steps_.push(step);
+        }
         return;
     }
     if (!dependencyReady())
@@ -228,36 +234,7 @@ void Step::up(const chassis::Posture& stepTargetPos,
         return;
     }
 
-    failed_ = false;
-    prepare(stepTargetPos, endPos, dir);
-    final_height_ = endHeight;
-    height_       = height;
-
-    chassis_state_              = ChassisState::Up0_PrepareYaw;
-    const auto lift_pos         = Chassis::motion->getLiftPosition();
-    const auto step_up_position = stepUpPosition();
-    if (lift_pos > step_up_position)
-    {
-        // 如果当前底盘高度已经更高，可能是贴着另一个更高的台阶
-        // 下降可能撞到台阶, 此时先进入等待态
-        front_state_ = LiftState::Up0_WaitingLifting;
-        rear_state_  = LiftState::Up0_WaitingLifting;
-    }
-    else
-    {
-        // 遵循正常上台阶流程
-        front_state_ = LiftState::Up1_Lifting;
-        rear_state_  = LiftState::Up1_Lifting;
-
-        if (!moveLift(front_, stepUpPosition(), OnloadLimit))
-            return;
-        if (!moveLift(rear_, stepUpPosition(), OnloadLimit))
-            return;
-    }
-
-    if (!setChassisTarget(stepRelativePosture(-(HalfChassisDiagonal + SafeDistance))))
-        return;
-
+    startFromPending({ StepAction::Type::Up, stepTargetPos, endPos, dir, endHeight, height });
     osThreadFlagsSet(task_, FlagStart);
 }
 
@@ -314,11 +291,6 @@ void Step::down(const float       startDistance2Step,
                 const FinalHeight endHeight,
                 const Height      height)
 {
-    if (isRunning())
-    {
-        Diagnostics::StepAction::report(diagnosticContext(), Diagnostics::StepAction::Reason::Busy);
-        return;
-    }
     if (!dependencyReady())
     {
         Diagnostics::StepAction::report(diagnosticContext(),
@@ -346,7 +318,13 @@ void Step::down(const chassis::Posture& stepTargetPos,
 {
     if (isRunning())
     {
-        Diagnostics::StepAction::report(diagnosticContext(), Diagnostics::StepAction::Reason::Busy);
+        const StepAction step{
+            StepAction::Type::Down, stepTargetPos, endPos, dir, endHeight, height
+        };
+        if (!isDuplicateStep(step))
+        {
+            pending_steps_.push(step);
+        }
         return;
     }
     if (!dependencyReady())
@@ -356,25 +334,65 @@ void Step::down(const chassis::Posture& stepTargetPos,
         return;
     }
 
-    failed_ = false;
-    prepare(stepTargetPos, endPos, dir);
-    final_height_ = endHeight;
-    height_       = height;
-
-    chassis_state_ = ChassisState::Down0_PrepareYaw;
-    front_state_   = LiftState::Down1_WaitDeploy;
-    rear_state_    = LiftState::Down1_WaitDeploy;
-
-    if (!moveLift(front_, Position::StepTransition, OnloadLimit))
-        return;
-    if (!moveLift(rear_, Position::StepTransition, OnloadLimit))
-        return;
-
-    if (!setChassisTarget(
-                stepRelativePosture(-(HalfWheelDiagonal + WheelRadius + 3 * SafeDistance))))
-        return;
-
+    startFromPending({ StepAction::Type::Down, stepTargetPos, endPos, dir, endHeight, height });
     osThreadFlagsSet(task_, FlagStart);
+}
+
+void Step::startFromPending(const StepAction& step)
+{
+    current_step_ = step;
+
+    failed_ = false;
+    prepare(step.step_target_pos, step.end_pos, step.direction);
+    final_height_ = step.final_height;
+    height_       = step.height;
+
+    if (step.type == StepAction::Type::Up)
+    {
+        chassis_state_              = ChassisState::Up0_PrepareYaw;
+        const auto lift_pos         = Chassis::motion->getLiftPosition();
+        const auto step_up_position = stepUpPosition();
+        if (lift_pos > step_up_position)
+        {
+            // 如果当前底盘高度已经更高，可能是贴着另一个更高的台阶
+            // 下降可能撞到台阶, 此时先进入等待态
+            front_state_ = LiftState::Up0_WaitingLifting;
+            rear_state_  = LiftState::Up0_WaitingLifting;
+        }
+        else
+        {
+            // 遵循正常上台阶流程
+            front_state_ = LiftState::Up1_Lifting;
+            rear_state_  = LiftState::Up1_Lifting;
+            if (!moveLift(front_, stepUpPosition(), OnloadLimit))
+                return;
+            if (!moveLift(rear_, stepUpPosition(), OnloadLimit))
+                return;
+        }
+        if (!setChassisTarget(stepRelativePosture(-(HalfChassisDiagonal + SafeDistance))))
+            return;
+    }
+    else // Type::Down
+    {
+        chassis_state_ = ChassisState::Down0_PrepareYaw;
+        front_state_   = LiftState::Down1_WaitDeploy;
+        rear_state_    = LiftState::Down1_WaitDeploy;
+        if (!moveLift(front_, Position::StepTransition, OnloadLimit))
+            return;
+        if (!moveLift(rear_, Position::StepTransition, OnloadLimit))
+            return;
+        if (!setChassisTarget(
+                    stepRelativePosture(-(HalfWheelDiagonal + WheelRadius + 3 * SafeDistance))))
+            return;
+    }
+    // 不调 osThreadFlagsSet —— task 已在 while(isRunning()) 中运行
+}
+
+bool Step::isDuplicateStep(const StepAction& step) const
+{
+    if (pending_steps_.empty())
+        return step == current_step_;
+    return step == *pending_steps_.back();
 }
 
 void Step::update()
@@ -451,8 +469,16 @@ void Step::update()
         }
         break;
 
-    // 上台阶收尾：等待底盘最终位姿轨迹完成。
+    // 上台阶收尾：有下一条则立即接续，否则等待底盘轨迹完成。
     case ChassisState::Up6_FinalizePose:
+        if (height_ != Height::R1)
+        {
+            if (const StepAction* next = pending_steps_.pop(); next != nullptr)
+            {
+                startFromPending(*next);
+                break;
+            }
+        }
         if (Chassis::ctrl->isTrajectoryFinished())
         {
             chassis_state_ = ChassisState::Done;
@@ -511,8 +537,13 @@ void Step::update()
         }
         break;
 
-    // 下台阶收尾：等待底盘最终位姿轨迹完成。
+    // 下台阶收尾：有下一条则立即接续，否则等待底盘轨迹完成。
     case ChassisState::Down5_FinalizePose:
+        if (const StepAction* next = pending_steps_.pop(); next != nullptr)
+        {
+            startFromPending(*next);
+            break;
+        }
         if (Chassis::ctrl->isTrajectoryFinished())
         {
             chassis_state_ = ChassisState::Done;
