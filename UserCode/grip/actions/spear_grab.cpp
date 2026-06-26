@@ -260,7 +260,7 @@ chassis::Posture SpearGrab::currentRelativeToTarget() const
 void SpearGrab::update()
 {
     // lift 不是所有配置都启用，因此统一折叠成一个“是否完成”的判断。
-    const auto is_lift_finished = []() -> bool
+    constexpr auto is_lift_finished = []() -> bool
     {
         if constexpr (ProjectParts::EnableLift)
             return Chassis::motion->isLiftAllFinished();
@@ -292,7 +292,7 @@ void SpearGrab::update()
     case State::Done:
         break;
     case State::MovingGripToPrepare1:
-        if (::Grip::grip->armPosition() >= ::Grip::Config::Poses::PrepareGrab1.arm_pos)
+        if (::Grip::grip->armPosition() >= ::Grip::Config::Poses::PrepareGrab2.arm_pos + 5)
         {
             state_ = State::MovingToPrepare;
         }
