@@ -11,7 +11,6 @@
 #include "pid_motor.hpp"
 #include "pid_pd.hpp"
 #include "s_curve.hpp"
-#include "tests/tests.hpp"
 
 #ifndef M_PI
 #    define M_PI 3.14159265358979323846f
@@ -62,16 +61,10 @@ constexpr float chassisHeightToLiftPosition(const float chassis_height)
     return chassis_height - GroundingChassisHeight;
 }
 
-#if TEST_ENABLE_AUTO_MAPPING
-constexpr float MaxSpeed       = 0.18f; // unit: m/s
-constexpr float MaxOnloadAccel = 0.35f; // unit: m/s^2
-constexpr float MaxNoloadAccel = 0.60f; // unit: m/s^2
-#else
 constexpr float MaxSpeed = 1.178; // unit: m/s
 // constexpr float MaxOnloadAccel = 2.0;   // unit: m/s^2， 对车先好一点
 constexpr float MaxOnloadAccel = 5.5; // unit: m/s^2
 constexpr float MaxNoloadAccel = 100; // unit: m/s^2
-#endif
 
 constexpr Limit OnloadLimit{ MaxSpeed, MaxOnloadAccel, MaxOnloadAccel * 50 };
 

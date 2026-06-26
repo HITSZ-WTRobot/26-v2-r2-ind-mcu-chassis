@@ -17,7 +17,6 @@
 #include "project_parts.hpp"
 #include "protocol.hpp"
 #include "system.hpp"
-#include "tests/tests.hpp"
 #include "tim.h"
 
 namespace
@@ -296,7 +295,6 @@ extern "C" void Init(void* argument)
     osDelay(1000);
 
     // 创建其他 tasks
-    Tests::init();
 
     usage = Arena::get_usage_ratio();
 
