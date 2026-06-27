@@ -294,6 +294,54 @@ void Step::upR1(const chassis::Posture& stepTargetPos, const Direction dir)
     osThreadFlagsSet(task_, FlagStart);
 }
 
+void Step::upR1_direct(const Direction dir)
+{
+    if (isRunning())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(), Diagnostics::StepAction::Reason::Busy);
+        return;
+    }
+    if (!dependencyReady())
+    {
+        Diagnostics::StepAction::report(diagnosticContext(),
+                                        Diagnostics::StepAction::Reason::DependencyNotReady);
+        return;
+    }
+
+    const chassis::Posture currentPos = Chassis::loc->postureInWorld();
+
+    // 计算收腿阈值距离，减去微小 epsilon 以满足严格不等式
+    constexpr float retractThreshold = AbsAuxOuterWheelX - AuxWheelRadius - 3 * SafeDistance;
+    constexpr float stepAheadDist    = retractThreshold - 0.005f;
+
+    const chassis::Posture stepOffset = {
+        .x = dir == Direction::Forward ? stepAheadDist : -stepAheadDist, .y = 0.0f, .yaw = 0.0f
+    };
+    const chassis::Posture stepTargetPos =
+            chassis::loc::IChassisLoc::RelativePosture2WorldPosture(currentPos, stepOffset);
+
+    const chassis::Posture endPos =
+            chassis::loc::IChassisLoc::RelativePosture2WorldPosture(stepTargetPos,
+                                                                    UpR1EndRelativePos);
+
+    failed_ = false;
+    prepare(stepTargetPos, endPos, dir);
+    final_height_ = FinalHeight::R1;
+    height_       = Height::R1;
+
+    if (Chassis::loc_ekf != nullptr)
+    {
+        Chassis::loc_ekf->setGyroEnabled(false);
+        Chassis::loc_ekf->setLidarEnabled(false);
+    }
+
+    chassis_state_ = ChassisState::Up2_WaitFrontRetract;
+    front_state_   = LiftState::Up2_WaitRetract;
+    rear_state_    = LiftState::Up2_WaitRetract;
+
+    osThreadFlagsSet(task_, FlagStart);
+}
+
 /**
  * 下台阶
  * @param startDistance2Step 开始时车体中心距离台阶的距离 unit: m

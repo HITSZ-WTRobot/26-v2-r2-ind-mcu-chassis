@@ -434,6 +434,23 @@ void handleCommand(const Frame& frame)
         Action::Step::inst().upR1(stepTarget, direction);
         break;
     }
+    case PCCommand::StepUpR1Direct:
+    {
+        if constexpr (!ProjectParts::EnableStepAction)
+            break;
+
+        const uint16_t          dir = read_u16(&data[0]);
+        Action::Step::Direction direction;
+        if (dir == 0)
+            direction = Action::Step::Direction::Forward;
+        else if (dir == 1)
+            direction = Action::Step::Direction::Backward;
+        else
+            break;
+
+        Action::Step::inst().upR1_direct(direction);
+        break;
+    }
     case PCCommand::TakeSpear:
     {
         if constexpr (!ProjectParts::EnableSpearGrabAction)

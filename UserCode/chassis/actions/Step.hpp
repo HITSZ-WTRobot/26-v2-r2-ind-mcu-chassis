@@ -81,6 +81,13 @@ public:
      */
     void upR1(const chassis::Posture& stepTargetPos, Direction dir = Direction::Forward);
 
+    /**
+     * 上R1台阶（直接版本）
+     * 以当前位置作为收腿点，立即关闭雷达和陀螺仪并直接进入收腿阶段。
+     * @param dir 上台阶方向
+     */
+    void upR1_direct(Direction dir = Direction::Forward);
+
     static void TaskEntry(void* self) { static_cast<Step*>(self)->loop(); }
 
     [[noreturn]] void loop();

@@ -111,6 +111,12 @@ enum class PCCommand : uint8_t
     ///                   1 Backward，车头朝后上台阶
     StepUpR1 = 0x35,
 
+    /// 上R1台阶（直接版本），使用当前位置作为收腿点
+    /// |   uint16  | uint16  | uint16  | uint16  | uint16  | uint16  |
+    /// | direction | reserve | reserve | reserve | reserve | reserve |
+    /// @param direction: 0 Forward，1 Backward
+    StepUpR1Direct = 0x36,
+
     /// `0x50..0x5F` 为平面台阶动作命令组，不在枚举中逐项展开，统一由命令分发层按位解析：
     /// cmd = 0x50 | type(1bit)<<3 | dir(1bit)<<2 | height(1bit)<<1 | finalHeight(1bit)
     /// type: 0=up, 1=down; dir: 0=Forward, 1=Backward; height: 0=Step200, 1=Step400.
