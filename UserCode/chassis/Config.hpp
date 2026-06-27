@@ -92,14 +92,15 @@ namespace Position
 {
 using Lift::LiftMin;
 
-constexpr float Normal         = 0.008f;    // 行进默认保持高度 unit m
-constexpr float StepTransition = 0.004f;    // 上下台阶过程中的过渡高度 unit m
-constexpr float StepUp200      = 0.205f;    // 比 200mm 台阶略高 unit m
-constexpr float StepUp400      = 0.405f;    // 比 400mm 台阶略高 unit m
-constexpr float StepFinalLow   = Normal;    // 0x50..0x5F 台阶动作结束低底盘高度 unit m
-constexpr float StepFinalHigh  = StepUp200; // 0x50..0x5F 台阶动作结束高底盘高度 unit m
-constexpr float UpR1           = LiftMax;   // 比 R1 的台阶高，在最后阶段 unit m
-constexpr float UpR1EndHeight  = 0.1f;      // TODO: 填入实际值，R1 动作结束后 lift 恢复高度 unit m
+constexpr float Normal             = 0.008f;    // 行进默认保持高度 unit m
+constexpr float StepTransitionUp   = 0.004f;    // 上台阶过程中的过渡高度 unit m
+constexpr float StepTransitionDown = 0.000f;    // 下台阶过程中的过渡高度 unit m
+constexpr float StepUp200          = 0.205f;    // 比 200mm 台阶略高 unit m
+constexpr float StepUp400          = 0.405f;    // 比 400mm 台阶略高 unit m
+constexpr float StepFinalLow       = Normal;    // 0x50..0x5F 台阶动作结束低底盘高度 unit m
+constexpr float StepFinalHigh      = StepUp200; // 0x50..0x5F 台阶动作结束高底盘高度 unit m
+constexpr float UpR1               = LiftMax;   // 比 R1 的台阶高，在最后阶段 unit m
+constexpr float UpR1EndHeight      = 0.1f; // TODO: 填入实际值，R1 动作结束后 lift 恢复高度 unit m
 } // namespace Position
 
 /// 上R1台阶终点相对于 stepTargetPos 的位姿偏移
@@ -226,7 +227,8 @@ constexpr TrajectoryLimit DefaultTrajectoryLimit = MaxTrajectoryLimit * Trajecto
 #endif
 
 /// 上 R1 动作专用底盘轨迹限制，初始与默认限制一致，便于单独调参。
-constexpr TrajectoryLimit UpR1TrajectoryLimit = MaxTrajectoryLimit * 0.2;
+constexpr TrajectoryLimit UpR1TrajectoryLimit    = MaxTrajectoryLimit * 0.2;
+constexpr TrajectoryLimit Down400TrajectoryLimit = MaxTrajectoryLimit * 0.3;
 
 constexpr TrajectoryTrackingThreshold DefaultTrajectoryTrackingThreshold{
     .x   = 0.01f,

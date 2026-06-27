@@ -41,6 +41,13 @@ public:
         R1
     };
 
+    enum class Type : uint8_t
+    {
+        None,
+        Up,
+        Down
+    };
+
     [[deprecated("Use posture-based overload instead")]] void up(
             float       startDistance2Step,
             float       endDistance2Step,
@@ -191,6 +198,8 @@ private:
 
     Direction direction_ = Direction::Forward;
 
+    Type type_{ Type::None };
+
     float dir_relative_yaw_ = 0.0f;
 
     ChassisState chassis_state_ = ChassisState::Idle;
@@ -201,13 +210,6 @@ private:
 
     struct StepAction
     {
-        enum class Type : uint8_t
-        {
-            None,
-            Up,
-            Down
-        };
-
         Type             type{ Type::None };
         chassis::Posture step_target_pos{};
         chassis::Posture end_pos{};

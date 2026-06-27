@@ -146,6 +146,11 @@ bool Step::setChassisTarget(const chassis::Posture& target)
         plan_succeeded = Chassis::ctrl->setTargetPostureInWorld(
                 target, Chassis::Config::Control::UpR1TrajectoryLimit);
     }
+    else if (height_ == Height::Step400 && type_ == Type::Down)
+    {
+        plan_succeeded = Chassis::ctrl->setTargetPostureInWorld(
+                target, Chassis::Config::Control::Down400TrajectoryLimit);
+    }
     else
     {
         plan_succeeded = Chassis::ctrl->setTargetPostureInWorld(target);
@@ -226,9 +231,7 @@ void Step::up(const chassis::Posture& stepTargetPos,
 {
     if (isRunning())
     {
-        const StepAction step{
-            StepAction::Type::Up, stepTargetPos, endPos, dir, endHeight, height
-        };
+        const StepAction step{ Type::Up, stepTargetPos, endPos, dir, endHeight, height };
         osMutexAcquire(pending_mutex_, osWaitForever);
         if (!isDuplicateStep(step))
         {
@@ -244,7 +247,7 @@ void Step::up(const chassis::Posture& stepTargetPos,
         return;
     }
 
-    startFromPending({ StepAction::Type::Up, stepTargetPos, endPos, dir, endHeight, height });
+    startFromPending({ Type::Up, stepTargetPos, endPos, dir, endHeight, height });
     osThreadFlagsSet(task_, FlagStart);
 }
 
@@ -333,9 +336,7 @@ void Step::down(const chassis::Posture& stepTargetPos,
 {
     if (isRunning())
     {
-        const StepAction step{
-            StepAction::Type::Down, stepTargetPos, endPos, dir, endHeight, height
-        };
+        const StepAction step{ Type::Down, stepTargetPos, endPos, dir, endHeight, height };
         osMutexAcquire(pending_mutex_, osWaitForever);
         if (!isDuplicateStep(step))
         {
@@ -351,7 +352,7 @@ void Step::down(const chassis::Posture& stepTargetPos,
         return;
     }
 
-    startFromPending({ StepAction::Type::Down, stepTargetPos, endPos, dir, endHeight, height });
+    startFromPending({ Type::Down, stepTargetPos, endPos, dir, endHeight, height });
     osThreadFlagsSet(task_, FlagStart);
 }
 
@@ -363,8 +364,9 @@ void Step::startFromPending(const StepAction& step)
     prepare(step.step_target_pos, step.end_pos, step.direction);
     final_height_ = step.final_height;
     height_       = step.height;
+    type_         = step.type;
 
-    if (step.type == StepAction::Type::Up)
+    if (step.type == Type::Up)
     {
         chassis_state_              = ChassisState::Up0_PrepareYaw;
         const auto lift_pos         = Chassis::motion->getLiftPosition();
@@ -401,9 +403,9 @@ void Step::startFromPending(const StepAction& step)
         {
             front_state_ = LiftState::Down1_WaitDeploy;
             rear_state_  = LiftState::Down1_WaitDeploy;
-            if (!moveLift(front_, Position::StepTransition, OnloadLimit))
+            if (!moveLift(front_, Position::StepTransitionDown, OnloadLimit))
                 return;
-            if (!moveLift(rear_, Position::StepTransition, OnloadLimit))
+            if (!moveLift(rear_, Position::StepTransitionDown, OnloadLimit))
                 return;
         }
         if (!setChassisTarget(
@@ -612,9 +614,9 @@ void Step::update()
         {
             front_state_ = LiftState::Down1_WaitDeploy;
             rear_state_  = LiftState::Down1_WaitDeploy;
-            if (!moveLift(front_, Position::StepTransition, OnloadLimit))
+            if (!moveLift(front_, Position::StepTransitionDown, OnloadLimit))
                 return;
-            if (!moveLift(rear_, Position::StepTransition, OnloadLimit))
+            if (!moveLift(rear_, Position::StepTransitionDown, OnloadLimit))
                 return;
         }
         return;
@@ -654,7 +656,7 @@ void Step::update()
         // 前轮已经完全登上
         if (currentRelativeX() > -AbsWheelInnerEdgeX + 3 * SafeDistance)
         {
-            if (!moveLift(front_, Position::StepTransition, DeployLiftLimit))
+            if (!moveLift(front_, Position::StepTransitionUp, DeployLiftLimit))
                 return;
             front_state_ = LiftState::Up5_Deploying;
         }
@@ -742,7 +744,7 @@ void Step::update()
         // 后轮已经完全登上
         if (currentRelativeX() > AbsWheelOuterEdgeX + 3 * SafeDistance)
         {
-            if (!moveLift(rear_, Position::StepTransition, DeployLiftLimit))
+            if (!moveLift(rear_, Position::StepTransitionUp, DeployLiftLimit))
                 return;
             rear_state_ = LiftState::Up5_Deploying;
         }
