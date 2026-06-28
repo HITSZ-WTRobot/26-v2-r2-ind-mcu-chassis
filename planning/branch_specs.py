@@ -38,8 +38,6 @@ BRANCHES: tuple[BranchSpec, ...] = (
         anchors={
             "top_start": (8.55, 4.865, 0.0, 0.3),
             "top_end": (11.23, 4.865, 0.0, 0.3),
-            "lower_down_start": (11.23, 3.94, 0.0, 0.412),
-            "lower_finish_start": (11.23, 2.79, -45.0, 0.412),
         },
     ),
 )
