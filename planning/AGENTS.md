@@ -57,4 +57,8 @@ The current firmware artifacts are:
 - `dist/trajectory_traj_3.hpp`
 - `dist/trajectory_all.hpp`
 
+The generated trajectory HPPs are resampled at 500 Hz and exported in per-
+trajectory namespaces with `kSampleHz`, `kDt`, `kPointCount`, `kDuration`, and
+`kPoints`.
+
 Keep CSVs in `dist/` synchronized with the headers when regenerating trajectories.

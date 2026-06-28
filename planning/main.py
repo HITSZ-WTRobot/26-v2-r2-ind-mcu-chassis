@@ -154,6 +154,21 @@ def _check_exported_files(results: dict[str, ExportedTrajectoryResult]) -> None:
     for path in required:
         print(f"  OK {path} ({path.stat().st_size} bytes)")
 
+    for name, result in results.items():
+        path = Path("dist") / f"trajectory_{name}.hpp"
+        text = path.read_text()
+        expected_ns = f"namespace planning::trajectory::{name} {{"
+        if expected_ns not in text:
+            raise AssertionError(f"missing namespace in {path}: {expected_ns}")
+        for token in ("kSampleHz", "kDt", "kPointCount", "kDuration", "kPoints"):
+            if token not in text:
+                raise AssertionError(f"missing {token} in {path}")
+        if "kTrajectory_" in text:
+            raise AssertionError(f"legacy global trajectory symbol still present in {path}")
+        if "500.000000" not in text or "0.002000" not in text:
+            raise AssertionError(f"500Hz metadata missing in {path}")
+        print(f"  OK {path}: {result.n_points} source pts, 500Hz header verified")
+
 
 if __name__ == "__main__":
     main()

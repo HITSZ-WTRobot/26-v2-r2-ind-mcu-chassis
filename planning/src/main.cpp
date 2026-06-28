@@ -3,6 +3,7 @@
 #include "trajectory_optimizer.hpp"
 
 #include <chrono>
+#include <cstddef>
 #include <iostream>
 #include <map>
 #include <string>
@@ -50,10 +51,11 @@ int main()
     std::cout << ">>> Exporting HPP/CSV files...\n";
     const std::string dist_dir = "dist";
     export_trajectory_point_hpp(dist_dir);
+    std::size_t total_pts = 0;
     for (const auto& name : names) {
         auto it = results.find(name);
         if (it != results.end() && it->second.success) {
-            export_trajectory_hpp(name, it->second, dist_dir);
+            total_pts += export_trajectory_hpp(name, it->second, dist_dir);
             export_trajectory_csv(name, it->second, dist_dir);
         }
     }
@@ -61,12 +63,10 @@ int main()
 
     std::cout << "\n=== Summary ===\n";
     int succeeded = 0;
-    size_t total_pts = 0;
     for (const auto& name : names) {
         auto it = results.find(name);
         if (it != results.end() && it->second.success) {
             ++succeeded;
-            total_pts += it->second.n_points;
             std::cout << "  " << name << ": " << it->second.total_time << "s, "
                       << it->second.n_points << " pts, " << it->second.branch << "\n";
         } else {

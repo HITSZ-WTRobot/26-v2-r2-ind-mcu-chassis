@@ -25,9 +25,9 @@ validation stage in `main.py` is mandatory: it checks boundary states, velocity
 continuity, h-axis limits, the exact `master/path_mecanum4` wheel-speed transform
 and wheel speed/acceleration limits, Zone2 yaw/h requirements, analytic
 safe-corridor certificates, swept inflated-footprint collision samples between
-exported 100 Hz points, and the proportion of trajectory time spent near wheel
-speed/acceleration limits.  Limit-saturation is implemented only in the verifier
-as an evaluation gate; it is not added to the optimizer objective.
+exported trajectory samples, and the proportion of trajectory time spent near
+wheel speed/acceleration limits.  Limit-saturation is implemented only in the
+verifier as an evaluation gate; it is not added to the optimizer objective.
 
 The generator solves Zone2 yaw branches explicitly (`0deg` and `-90deg`) and
 exports the shortest feasible branch for each start.
@@ -108,9 +108,9 @@ run the Python verifier or regenerate plots/GIFs, so use the full
 The C++ exporter writes these firmware-facing headers:
 
 - `dist/trajectory_point.hpp`: defines `TrajectoryPoint8`.
-- `dist/trajectory_traj_1.hpp`: defines `kTrajectory_traj_1`.
-- `dist/trajectory_traj_2.hpp`: defines `kTrajectory_traj_2`.
-- `dist/trajectory_traj_3.hpp`: defines `kTrajectory_traj_3`.
+- `dist/trajectory_traj_1.hpp`: defines `planning::trajectory::traj_1::kPoints`.
+- `dist/trajectory_traj_2.hpp`: defines `planning::trajectory::traj_2::kPoints`.
+- `dist/trajectory_traj_3.hpp`: defines `planning::trajectory::traj_3::kPoints`.
 - `dist/trajectory_all.hpp`: includes all generated trajectory headers.
 
 Each `TrajectoryPoint8` contains one sampled trajectory state:
@@ -118,11 +118,18 @@ Each `TrajectoryPoint8` contains one sampled trajectory state:
 - `x`, `y`, `yaw`, `h`
 - `dx`, `dy`, `dyaw`, `dh`
 
-The default export is sampled at about 100 Hz (`sample_dt = 0.01`). CSV files
-with the same trajectory data are written as `dist/traj_1.csv`,
-`dist/traj_2.csv`, and `dist/traj_3.csv` for inspection, verification, and
-plotting. Do not hand-edit files under `dist/`; change the config or optimizer
-inputs and regenerate them.
+The generated HPP trajectories are resampled to 500 Hz (`kSampleHz = 500`,
+`kDt = 0.002`) and exposed in per-trajectory namespaces:
+
+- `planning::trajectory::traj_1::kPoints`
+- `planning::trajectory::traj_2::kPoints`
+- `planning::trajectory::traj_3::kPoints`
+
+Each generated HPP also exports `kPointCount` and `kDuration` beside the point
+array. CSV files with the same underlying trajectory data are written as
+`dist/traj_1.csv`, `dist/traj_2.csv`, and `dist/traj_3.csv` for inspection,
+verification, and plotting. Do not hand-edit files under `dist/`; change the
+config or optimizer inputs and regenerate them.
 
 Generated diagnostic images are:
 
