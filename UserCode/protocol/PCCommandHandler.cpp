@@ -112,6 +112,13 @@ bool to_grip_preset_pose(const uint16_t preset_id)
     }
 }
 
+/// 如果离线轨迹正在执行，打断它并将控制权归还 Master。
+void ensureMasterControl()
+{
+    if (Chassis::offline_trajectory != nullptr && Chassis::offline_trajectory->isActive())
+        Chassis::stopOfflineTrajectory();
+}
+
 void handleCommand(const Frame& frame)
 {
     if (frame.protocol == nullptr)
@@ -153,6 +160,7 @@ void handleCommand(const Frame& frame)
         // 当该能力关闭时，协议层收到该帧也会直接忽略。
         if constexpr (ProjectParts::EnablePcControl)
         {
+            ensureMasterControl();
             if (Chassis::ctrl != nullptr)
                 Chassis::ctrl->stop();
         }
@@ -160,6 +168,7 @@ void handleCommand(const Frame& frame)
     case PCCommand::SetChassisHeight:
         if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableLift)
         {
+            ensureMasterControl();
             if (Chassis::motion == nullptr || !Chassis::motion->isReady())
                 break;
 
@@ -240,6 +249,7 @@ void handleCommand(const Frame& frame)
     case PCCommand::SetMasterChassisTargetPreviousCurve:
         if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableWheelChassis)
         {
+            ensureMasterControl();
             if (Chassis::ctrl == nullptr)
                 break;
             const chassis::Posture target = { .x   = to_pos(read_i16(&data[0])),
@@ -293,6 +303,7 @@ void handleCommand(const Frame& frame)
     case PCCommand::SetMasterChassisVelocity:
         if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableWheelChassis)
         {
+            ensureMasterControl();
             if (Chassis::ctrl == nullptr)
                 break;
 
@@ -390,6 +401,8 @@ void handleCommand(const Frame& frame)
         if constexpr (!ProjectParts::EnableStepAction)
             break;
 
+        ensureMasterControl();
+
         const chassis::Posture  stepTarget = read_posture(0);
         const uint16_t          dir        = read_u16(&data[6]);
         Action::Step::Direction direction;
@@ -408,6 +421,8 @@ void handleCommand(const Frame& frame)
         if constexpr (!ProjectParts::EnableStepAction)
             break;
 
+        ensureMasterControl();
+
         const uint16_t          dir = read_u16(&data[0]);
         Action::Step::Direction direction;
         if (dir == 0)
@@ -425,6 +440,8 @@ void handleCommand(const Frame& frame)
         if constexpr (!ProjectParts::EnableSpearGrabAction)
             break;
 
+        ensureMasterControl();
+
         const chassis::Posture target = { .x   = to_pos(read_i16(&data[0])),
                                           .y   = to_pos(read_i16(&data[2])),
                                           .yaw = to_angle(read_i16(&data[4])) };
@@ -439,6 +456,8 @@ void handleCommand(const Frame& frame)
     {
         if constexpr (!ProjectParts::EnableSpearGrabAction)
             break;
+
+        ensureMasterControl();
 
         const uint16_t spear_id = read_u16(&data[0]);
         if (spear_id >= Grip::Config::SpearGrab::TargetPosCount)
@@ -512,6 +531,8 @@ void handleCommand(const Frame& frame)
 
         if constexpr (!ProjectParts::EnableStepAction)
             break;
+
+        ensureMasterControl();
 
         const bool type_down = (cmd & 0x08U) != 0U;
 

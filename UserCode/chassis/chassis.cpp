@@ -221,6 +221,20 @@ fail:
     if (Chassis::ctrl != nullptr)
         Chassis::ctrl->enable();
 }
+
+void stopOfflineTrajectory()
+{
+    if (offline_trajectory == nullptr || !offline_trajectory->isActive())
+        return;
+
+    offline_trajectory->cleanup();
+
+    if (motion != nullptr)
+        motion->enableLift();
+
+    if (ctrl != nullptr)
+        ctrl->enable();
+}
 } // namespace Chassis
 
 // 系统初始化钩子

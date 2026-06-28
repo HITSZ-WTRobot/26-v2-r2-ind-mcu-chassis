@@ -50,4 +50,6 @@ void update_100Hz();
 
 void startOfflineTrajectory(int traj_id, bool mirror);
 
+void stopOfflineTrajectory();
+
 } // namespace Chassis
