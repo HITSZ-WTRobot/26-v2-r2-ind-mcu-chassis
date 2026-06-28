@@ -29,7 +29,7 @@ constexpr PIDMotor::Config PIDCfg{
     .Kp = 200.0f, .Ki = 3.0f, .Kd = 0.00f, .abs_output_max = 16384 * 0.75
 };
 
-constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
+constexpr PD::Config PDErrorCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 450 };
 
 constexpr float OuterAuxWheelToChassisMM = 193.0f;
 constexpr float MinWheelToChassisMM      = 192.5f;
