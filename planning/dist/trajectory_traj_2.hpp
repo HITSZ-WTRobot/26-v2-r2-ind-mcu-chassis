@@ -10,7 +10,7 @@ inline constexpr double kDt = 0.002000;
 inline constexpr std::size_t kPointCount = 2534;
 inline constexpr double kDuration = 5.065807;
 
-inline constexpr std::array<TrajectoryPoint8, kPointCount> kPoints{{{
+inline constexpr std::array<TrajectoryPoint8, kPointCount> kPoints{{
     {8.430000f, 3.000000f, 0.000000f, 0.412000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f},
     {8.430000f, 3.000000f, 0.000000f, 0.412000f, 0.000167f, 0.009073f, 0.000000f, -0.004139f},
     {8.430000f, 3.000000f, 0.000000f, 0.412000f, 0.000335f, 0.018145f, 0.000000f, -0.008279f},
@@ -2545,7 +2545,6 @@ inline constexpr std::array<TrajectoryPoint8, kPointCount> kPoints{{{
     {11.250022f, 2.500501f, -90.000000f, 0.411742f, -0.000727f, -0.016860f, 0.000000f, 0.008682f},
     {11.250010f, 2.500238f, -90.000000f, 0.411877f, -0.000345f, -0.008002f, 0.000000f, 0.004121f},
     {11.250000f, 2.500000f, -90.000000f, 0.412000f, 0.000000f, 0.000000f, 0.000000f, 0.000000f}
-}}};
+}};
 
-} // namespace traj_2
 } // namespace planning::trajectory
