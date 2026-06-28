@@ -54,13 +54,10 @@
 | `0x15`       | `SetMasterChassisVelocity`            | `vx(int16), vy(int16), wz(int16), reserve(uint16), reserve(uint16), reserve(uint16)`                          | Master 模式车体系速度指令。                                       |
 | `0x16`       | `SetGripPose`                         | `arm_pos(int16), turn_pos(int16), clawMode(uint16), reserve(uint16), reserve(uint16), reserve(uint16)`        | 设置 Grip 双轴关节目标和可选夹爪状态。                                  |
 | `0x17`       | `SetGripPresetPose`                   | `presetId(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16)`       | 设置 Grip 到预设姿态。                                          |
+| `0x18`       | `StartOfflineTrajectory`              | `traj_id(uint16), mirror(uint16), reserve(uint16), reserve(uint16), reserve(uint16), reserve(uint16)`        | 启动离线轨迹跟随，仅姿态在轨迹起点容差内时接受。                              |
 | `0x21`       | `LidarPosture`                        | `x(int16), y(int16), yaw(int16), lidarTimestamp(uint32)`                                                      | 上位机定位位姿输入。                                              |
-| `0x30`       | `StepUp200`                           | `startDistance(int16), endDistance(int16), direction(uint16), endHeight(uint16)`                              | 上 200mm 台阶动作组。                                          |
-| `0x31`       | `StepUpResume`                        | 无                                                                                                             | 旧恢复上台阶命令，当前保留无动作。                                      |
-| `0x32`       | `StepDown200`                         | `startDistance(int16), endDistance(int16), direction(uint16), endHeight(uint16)`                              | 下 200mm 台阶动作组。                                          |
-| `0x33`       | `StepUp400`                           | 与 `StepUp200` 相同                                                                                              | 上 400mm 台阶动作组。                                          |
-| `0x34`       | `StepDown400`                         | 与 `StepDown200` 相同                                                                                            | 下 400mm 台阶动作组。                                          |
 | `0x35`       | `StepUpR1`                            | `stepTarget_x(int16), stepTarget_y(int16), stepTarget_yaw(int16), direction(uint16), reserve(uint16) x2`     | 上 R1 台阶动作组，终点由下位机配置常量生成。                               |
+| `0x36`       | `StepUpR1Direct`                      | `direction(uint16), reserve(uint16) x5`                                                                       | 上 R1 台阶动作组（直接版），使用当前位置作为收腿点。                           |
 | `0x50..0x5F` | `StepPose`                            | `stepTarget_x(int16), stepTarget_y(int16), stepTarget_yaw(int16), end_x(int16), end_y(int16), end_yaw(int16)` | 平面台阶动作组，cmd 低 4 位编码动作类型、方向、台阶高度和最终 lift 目标高度。            |
 | `0x40`       | `TakeSpear`                           | `target_x(int16), target_y(int16), target_yaw(int16), end_x(int16), end_y(int16), end_yaw(int16)`             | 直接指定待取矛头位姿和结束位姿。                                        |
 | `0x41`       | `TakeSpearById`                       | `spearId(uint16), end_x(int16), end_y(int16), end_yaw(int16), reserve(uint16), reserve(uint16)`               | 通过固定矛位索引启动取矛头。                                          |
@@ -178,45 +175,45 @@
 - 预设命令走现有语义姿态接口；例如 `Standby/PrepareGrab` 会张开夹爪，`Grab` 会闭合夹爪。
 - 这是低层直接姿态命令；若高层 Grip 动作组仍在运行，后续动作阶段可能再次下发自己的姿态目标，上位机应避免混用。
 
-### 5.6 `0x21 LidarPosture`
+### 5.6 `0x18 StartOfflineTrajectory`
+
+| 字段         | 类型       | 说明                                |
+|------------|----------|-----------------------------------|
+| `traj_id`  | `uint16` | 轨迹编号，当前合法范围 `1..3`                |
+| `mirror`   | `uint16` | `0=normal`, `1=mirrored across X-axis` |
+| `reserve0` | `uint16` | 预留，当前忽略                           |
+| `reserve1` | `uint16` | 预留，当前忽略                           |
+| `reserve2` | `uint16` | 预留，当前忽略                           |
+| `reserve3` | `uint16` | 预留，当前忽略                           |
+
+补充：
+
+- 该命令仅在 `PROJECT_PART_ENABLE_PC_CONTROL=1` 且 `PROJECT_PART_ENABLE_WHEEL_CHASSIS=1` 时生效。
+- 离线轨迹点为编译期静态数组，原始采样率 500Hz，下位机运行时降采样至 100Hz。
+- `mirror=1` 时，轨迹会按 X 轴对称翻转（`y -> -y`, `yaw -> -yaw`, `dy -> -dy`, `dyaw -> -dyaw`）。
+- 仅在当前位置与轨迹起点误差 < 5cm(x), 5cm(y), 5deg(yaw) 时接受。
+- 启动后底盘进入 Slave 控制模式；收到其他底盘命令（`StopChassis`, `SetChassisHeight`, `SetMasterChassisTarget*`, `SetMasterChassisVelocity`, Step 命令, Grip 动作组）会自动停止离线轨迹，恢复 Master 控制。
+
+**当前轨迹起点与终点：**
+
+三条轨迹的终点相同，起点 Y 坐标递增：
+
+| `traj_id` | 起点 (x, y, yaw, h) | 终点 (x, y, yaw, h) | 时长 |
+|-----------|---------------------|---------------------|------|
+| `1` | (8.43, 1.80, 0°, 0.412m) | (11.25, 2.50, -90°, 0.412m) | ~5.4s |
+| `2` | (8.43, 3.00, 0°, 0.412m) | (11.25, 2.50, -90°, 0.412m) | ~5.07s |
+| `3` | (8.43, 4.20, 0°, 0.412m) | (11.25, 2.50, -90°, 0.412m) | ~4.61s |
+
+注意：轨迹点为编译期常量，修改需通过 `planning/` 子项目重新生成。
+
+### 5.7 `0x21 LidarPosture`
 
 - `lidarTimestamp` 为上位机定位数据原始时间戳，单位 ms。
 - 该命令仅在启用了上位机定位模式时参与处理。
 - 当前实现只接受来自主上位机链路、且对时已稳定的 `LidarPosture`；未满足这两个条件时，该帧不会喂定位 watchdog，也不会进入定位更新。
 - 当工程启用了上位机定位模式时，首个满足上述接入条件的 `LidarPosture` 会承担系统初始位姿的延迟初始化职责。
 
-### 5.7 `0x30 StepUp200 / 0x33 StepUp400`
-
-| 字段              | 类型       | 说明                              |
-|-----------------|----------|---------------------------------|
-| `startDistance` | `int16`  | 开始时车体中心距离台阶边缘的距离，编码为 `m * 2000` |
-| `endDistance`   | `int16`  | 结束时车体中心距离台阶边缘的距离，编码为 `m * 2000` |
-| `direction`     | `uint16` | `0=Forward`, `1=Backward`       |
-| `endHeight`     | `uint16` | 动作结束后的 lift 目标高度：`0=Low(0.015m)`, `1=High(0.205m)` |
-
-补充：
-
-- `0x30 StepUp200` 使用 200mm 台阶高度配置。
-- `0x33 StepUp400` 使用 400mm 台阶高度配置。
-- `0x31 StepUpResume` 为旧恢复命令，当前保留无动作。
-- `endHeight` 选择的是下位机 lift 内部目标高度；反馈帧里的底盘离地高度还会再加上当前 `GroundingChassisHeight`，当前默认约 `0.207m`，因此 Low / High 对应反馈高度约为 `0.222m / 0.412m`。
-
-### 5.8 `0x32 StepDown200 / 0x34 StepDown400`
-
-| 字段              | 类型       | 说明                              |
-|-----------------|----------|---------------------------------|
-| `startDistance` | `int16`  | 开始时车体中心距离台阶边缘的距离，编码为 `m * 2000` |
-| `endDistance`   | `int16`  | 结束时车体中心距离台阶边缘的距离，编码为 `m * 2000` |
-| `direction`     | `uint16` | `0=Forward`, `1=Backward`       |
-| `endHeight`     | `uint16` | 动作结束后的 lift 目标高度：`0=Low(0.015m)`, `1=High(0.205m)` |
-
-补充：
-
-- `0x32 StepDown200` 使用 200mm 台阶高度配置。
-- `0x34 StepDown400` 使用 400mm 台阶高度配置。
-- `endHeight` 选择的是下位机 lift 内部目标高度；反馈帧里的底盘离地高度还会再加上当前 `GroundingChassisHeight`，当前默认约 `0.207m`，因此 Low / High 对应反馈高度约为 `0.222m / 0.412m`。
-
-### 5.9 `0x35 StepUpR1`
+### 5.8 `0x35 StepUpR1`
 
 该命令用于上 R1 台阶。上位机只给出台阶边缘参考位姿和方向；动作终点由下位机内部配置
 `Chassis::Config::UpR1EndRelativePos` 相对 `stepTargetPos` 生成，结束 lift 目标高度固定为
@@ -237,6 +234,25 @@
 
 - `direction` 非 `0/1` 时，该命令会被忽略。
 - R1 动作当前仍依赖下位机侧 TODO 标定值；使用前需要确认 `UpR1EndRelativePos` 和 `UpR1EndHeight` 已按实车更新。
+
+### 5.9 `0x36 StepUpR1Direct`
+
+该命令为 `StepUpR1` 的直接版本，使用当前位置作为台阶收腿点（等价于将 `stepTarget` 设为当前位姿）。仅需指定方向：
+
+| 字段         | 类型       | 说明                          |
+|------------|----------|-----------------------------|
+| `direction` | `uint16` | `0=Forward`, `1=Backward`   |
+| `reserve0` | `uint16` | 预留，当前忽略                     |
+| `reserve1` | `uint16` | 预留，当前忽略                     |
+| `reserve2` | `uint16` | 预留，当前忽略                     |
+| `reserve3` | `uint16` | 预留，当前忽略                     |
+| `reserve4` | `uint16` | 预留，当前忽略                     |
+
+补充：
+
+- `direction` 非 `0/1` 时，该命令会被忽略。
+- 该命令仅在 `ProjectParts::EnableStepAction` 派生能力成立时生效。
+- 启动后会自动打断正在执行的离线轨迹。
 
 ### 5.10 `0x50..0x5F StepPose`
 
