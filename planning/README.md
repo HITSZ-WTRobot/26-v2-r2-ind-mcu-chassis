@@ -27,10 +27,11 @@ and wheel speed/acceleration limits, Zone2 yaw/h requirements, analytic
 safe-corridor certificates, swept inflated-footprint collision samples between
 exported trajectory samples, and the proportion of trajectory time spent near
 wheel speed/acceleration limits.  Limit-saturation is implemented only in the
-verifier as an evaluation gate; it is not added to the optimizer objective.
+verifier as an evaluation gate with a 75% minimum combined limited-time ratio; it
+is not added to the optimizer objective.
 
-The generator solves Zone2 yaw branches explicitly (`0deg` and `-90deg`) and
-exports the shortest feasible branch for each start.
+The generator fixes Zone2 yaw at `0deg` and solves the `z2yaw0` branch for each
+start.
 
 Current `path_mecanum4` wheel limits used by both the C++ optimizer and Python
 verifier are `MAX_WHEEL_SPEED = 160 rad/s` and
@@ -60,10 +61,8 @@ branch definitions in both files:
 - `src/trajectory_optimizer.cpp`
 
 Those branch definitions describe the corridor sequence, node counts, and branch
-anchors used by the two Zone2 yaw candidates. The current `z2yaw-90` anchors are
-soft initial-guess points, so the optimizer may move away from them. The current
-`z2yaw0` anchors are hard constraints, so changing them changes required
-intermediate states.
+anchors used by the `z2yaw0` candidate. The branch anchors are initial guess
+points only, so the optimizer may move away from them.
 
 After editing boundary poses or branch anchors, regenerate and verify:
 

@@ -61,7 +61,6 @@ struct BranchSpec {
     double zone2_yaw_deg;
     std::vector<PhaseSpec> phases;
     std::vector<Anchor> anchors;
-    bool anchors_are_hard;
 };
 
 constexpr Rect kFreeCertLeft{"left_zone1_clear", 8.00, 9.30, 1.23, 6.00};
@@ -71,35 +70,20 @@ constexpr Rect kFreeCertLowRight{"low_zone3_clear", 9.50, 12.00, 0.20, 4.47};
 
 const std::vector<Corridor> kBaseCorridors{
         {"approach", 8.43, 8.58, 1.80, 5.16, 0.0, 0.0, kFreeCertLeft, false},
-        {"rotate", 8.53, 8.58, 5.05, 5.15, 0.0, 90.0, kFreeCertLeft, false},
-        {"rotate-90", 8.53, 8.58, 5.05, 5.15, -90.0, 0.0, kFreeCertLeft, false},
-        {"top-90", 8.53, 11.15, 5.05, 5.15, -90.0, -90.0, kFreeCertTop, true},
-        {"right_down-90", 11.10, 11.25, 2.48, 5.15, -90.0, -90.0, kFreeCertRight, false},
-        {"right_exit-90", 11.10, 11.35, 4.78, 5.15, -90.0, -90.0, kFreeCertRight, true},
-        {"finish-90", 11.10, 11.35, 2.45, 4.78, -90.0, -90.0, kFreeCertRight, false},
-        {"top0", 8.53, 11.24, 5.64, 5.65, 0.0, 0.0, kFreeCertTop, true},
-        {"right_down0", 11.22, 11.24, 2.78, 5.65, 0.0, 0.0, kFreeCertRight, false},
-        {"finish_rotate", 11.05, 11.35, 2.78, 2.80, -90.0, 0.0, kFreeCertLowRight, false},
-        {"finish", 11.05, 11.35, 2.45, 2.55, -90.0, -90.0, kFreeCertLowRight, false},
+        {"top0", 8.53, 11.24, 4.86, 4.87, 0.0, 0.0, kFreeCertTop, true},
+        {"right_down0", 11.22, 11.24, 3.94, 4.87, 0.0, 0.0, kFreeCertRight, false},
+        {"lower_down", 10.05, 11.35, 2.78, 3.94, -90.0, 0.0, kFreeCertLowRight, false},
+        {"lower_finish", 10.05, 11.35, 2.45, 2.80, -90.0, 0.0, kFreeCertLowRight, false},
 };
 
 const std::vector<BranchSpec> kBranches{
-        {"z2yaw-90",
-         -90.0,
-         {{"approach", 28}, {"rotate-90", 20}, {"top-90", 36}, {"right_exit-90", 12}, {"finish-90", 40}},
-         {{"approach_end", 8.55, 5.10, 0.0, 0.412},
-          {"rotate_end", 8.55, 5.10, -90.0, 0.3},
-          {"top_end", 11.15, 5.10, -90.0, 0.3},
-          {"right_exit_end", 11.35, 4.78, -90.0, 0.3}},
-         false},
         {"z2yaw0",
          0.0,
-         {{"approach", 28}, {"top0", 36}, {"right_down0", 32}, {"finish_rotate", 20}, {"finish", 20}},
-         {{"approach_end", 8.55, 5.10, 0.0, 0.412},
-          {"top_end", 11.23, 5.645, 0.0, 0.3},
-          {"right_down_end", 11.23, 2.79, 0.0, 0.412},
-          {"finish_rotate_end", 11.35, 2.79, -90.0, 0.412}},
-         true},
+         {{"approach", 28}, {"top0", 36}, {"right_down0", 16}, {"lower_down", 32}, {"lower_finish", 32}},
+         {{"top_start", 8.55, 4.865, 0.0, 0.3},
+          {"top_end", 11.23, 4.865, 0.0, 0.3},
+          {"lower_down_start", 11.23, 3.94, 0.0, 0.412},
+          {"lower_finish_start", 11.23, 2.79, -45.0, 0.412}}},
 };
 
 struct NodeGuess {
@@ -237,17 +221,6 @@ std::vector<int> interval_phase_indices(const BranchSpec& branch)
     for (int i = 0; i < static_cast<int>(branch.phases.size()); ++i)
         for (int j = 0; j < branch.phases[i].nodes; ++j)
             indices.push_back(i);
-    return indices;
-}
-
-std::vector<int> anchor_indices(const BranchSpec& branch)
-{
-    std::vector<int> indices;
-    int idx = 0;
-    for (int phase_i = 0; phase_i < static_cast<int>(branch.phases.size()) - 1; ++phase_i) {
-        idx += branch.phases[phase_i].nodes;
-        indices.push_back(idx);
-    }
     return indices;
 }
 
@@ -428,7 +401,6 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
     const int nodes = intervals + 1;
     const auto phase_names = node_phase_names(branch);
     const auto phase_indices = interval_phase_indices(branch);
-    const auto anchors = anchor_indices(branch);
     const auto corridors = corridors_for_start(start.y);
 
     Opti opti;
@@ -438,20 +410,14 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
     MX DT_PHASE = opti.variable(branch.phases.size());
     MX T = sum1(DT_PHASE);
 
-    opti.subject_to(opti.bounded(0.2, DT_PHASE, 20.0));
+    for (int phase_i = 0; phase_i < static_cast<int>(branch.phases.size()); ++phase_i) {
+        opti.subject_to(opti.bounded(0.2, DT_PHASE(phase_i), 20.0));
+    }
 
     opti.subject_to(X(Slice(), 0) == DM({start.x, start.y, start.yaw_deg, start.h}));
     opti.subject_to(V(Slice(), 0) == DM({0.0, 0.0, 0.0, 0.0}));
     opti.subject_to(X(Slice(), nodes - 1) == DM({end.x, end.y, end.yaw_deg, end.h}));
     opti.subject_to(V(Slice(), nodes - 1) == DM({0.0, 0.0, 0.0, 0.0}));
-
-    if (branch.anchors_are_hard) {
-        for (int i = 0; i < static_cast<int>(anchors.size()); ++i) {
-            const auto& anchor = branch.anchors[i];
-            int idx = anchors[i];
-            opti.subject_to(X(Slice(), idx) == DM({anchor.x, anchor.y, anchor.yaw_deg, anchor.h}));
-        }
-    }
 
     for (int k = 0; k < nodes; ++k) {
         const auto& corridor = corridor_by_name(corridors, phase_names[k]);

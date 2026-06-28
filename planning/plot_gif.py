@@ -11,7 +11,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Polygon, Rectangle
 from PIL import Image
 
-from branch_specs import anchor_points_for_branch, initial_guess_points_for_branch
+from branch_specs import initial_guess_points_for_branch
 from config import HALF_L, HALF_W, MAX_WHEEL_ACCEL, MAX_WHEEL_SPEED, ZONE1, ZONE2, ZONE3
 from mecanum import wheel_speeds_np
 
@@ -302,7 +302,6 @@ def _setup_field(ax, result, frame_idx):
     ax.plot(s[frame_idx, 0], s[frame_idx, 1], "k.", markersize=1.5, alpha=0.25)
     ax.plot(s[0, 0], s[0, 1], "go", markersize=8, label="start")
     ax.plot(s[-1, 0], s[-1, 1], "r*", markersize=12, label="end")
-    _plot_forced_anchors(ax, result)
     _plot_initial_guess_points(ax, result)
     ax.set_title("Chassis Rectangle Replay")
     ax.grid(True, alpha=0.3)
@@ -357,28 +356,6 @@ def _gif_frame_durations_ms(frame_times: np.ndarray) -> list[int]:
     return durations_list
 
 
-def _plot_forced_anchors(ax, result):
-    branch = getattr(result, "branch", "")
-    if not branch:
-        return
-    try:
-        anchors = anchor_points_for_branch(branch)
-    except KeyError:
-        return
-    for i, (label, x, y, _yaw, _h) in enumerate(anchors):
-        ax.plot(
-            x,
-            y,
-            marker="x",
-            color="purple",
-            markersize=8,
-            markeredgewidth=1.6,
-            linestyle="None",
-            label="forced anchor" if i == 0 else None,
-        )
-        ax.text(x + 0.025, y + 0.025, label, fontsize=7, color="purple")
-
-
 def _plot_initial_guess_points(ax, result):
     branch = getattr(result, "branch", "")
     if not branch:
@@ -387,9 +364,7 @@ def _plot_initial_guess_points(ax, result):
         points = initial_guess_points_for_branch(branch)
     except KeyError:
         return
-    hard_labels = {label for label, *_ in anchor_points_for_branch(branch)}
-    soft_points = [(label, x, y, yaw, h) for label, x, y, yaw, h in points if label not in hard_labels]
-    for i, (label, x, y, _yaw, _h) in enumerate(soft_points):
+    for i, (label, x, y, _yaw, _h) in enumerate(points):
         ax.plot(
             x,
             y,

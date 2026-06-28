@@ -18,7 +18,7 @@ class ExportedTrajectoryResult:
         self.t_array = t_array
         self.s_array = s_array
         self.success = len(t_array) > 0
-        self.branch = "z2yaw-90"
+        self.branch = "z2yaw0"
         self.total_time = float(t_array[-1]) if self.success else 0.0
 
     @property

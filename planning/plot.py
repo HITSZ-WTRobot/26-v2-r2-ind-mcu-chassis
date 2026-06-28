@@ -5,7 +5,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from branch_specs import anchor_points_for_branch, initial_guess_points_for_branch
+from branch_specs import initial_guess_points_for_branch
 from config import ZONE1, ZONE2, ZONE3, ENTRY_POINTS, EXIT_POINT
 
 
@@ -38,7 +38,6 @@ def _plot_field(ax, results):
             continue
         ax.plot(r.s_array[:, 0], r.s_array[:, 1], linewidth=0.8, alpha=0.6, label=name)
         _plot_initial_guess_path(ax, r)
-        _plot_forced_anchors(ax, r)
         _plot_initial_guess_points(ax, r)
     for ep in ENTRY_POINTS:
         ax.plot(ep[0], ep[1], "ko", markersize=6)
@@ -51,28 +50,6 @@ def _plot_field(ax, results):
     ax.legend(fontsize=7, loc="lower right")
 
 
-def _plot_forced_anchors(ax, result):
-    branch = getattr(result, "branch", "")
-    if not branch:
-        return
-    try:
-        anchors = anchor_points_for_branch(branch)
-    except KeyError:
-        return
-    for i, (label, x, y, _yaw, _h) in enumerate(anchors):
-        ax.plot(
-            x,
-            y,
-            marker="x",
-            color="purple",
-            markersize=7,
-            markeredgewidth=1.5,
-            linestyle="None",
-            label="forced anchor" if i == 0 else None,
-        )
-        ax.text(x + 0.025, y + 0.025, label, fontsize=6, color="purple")
-
-
 def _plot_initial_guess_points(ax, result):
     branch = getattr(result, "branch", "")
     if not branch:
@@ -81,9 +58,7 @@ def _plot_initial_guess_points(ax, result):
         points = initial_guess_points_for_branch(branch)
     except KeyError:
         return
-    hard_labels = {label for label, *_ in anchor_points_for_branch(branch)}
-    soft_points = [(label, x, y, yaw, h) for label, x, y, yaw, h in points if label not in hard_labels]
-    for i, (label, x, y, _yaw, _h) in enumerate(soft_points):
+    for i, (label, x, y, _yaw, _h) in enumerate(points):
         ax.plot(
             x,
             y,

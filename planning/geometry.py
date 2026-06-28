@@ -89,74 +89,12 @@ CORRIDORS: dict[str, SafeCorridor] = {
         yaw_max_deg=0.0,
         certificate=FREE_CERT_LEFT,
     ),
-    "rotate": SafeCorridor(
-        "rotate",
-        x_min=8.53,
-        x_max=8.58,
-        y_min=5.05,
-        y_max=5.15,
-        yaw_min_deg=0.0,
-        yaw_max_deg=90.0,
-        certificate=FREE_CERT_LEFT,
-    ),
-    "rotate-90": SafeCorridor(
-        "rotate-90",
-        x_min=8.53,
-        x_max=8.58,
-        y_min=5.05,
-        y_max=5.15,
-        yaw_min_deg=-90.0,
-        yaw_max_deg=0.0,
-        certificate=FREE_CERT_LEFT,
-    ),
-    "top-90": SafeCorridor(
-        "top-90",
-        x_min=8.53,
-        x_max=11.15,
-        y_min=5.05,
-        y_max=5.15,
-        yaw_min_deg=-90.0,
-        yaw_max_deg=-90.0,
-        certificate=FREE_CERT_TOP,
-        requires_h_03=True,
-    ),
-    "right_down-90": SafeCorridor(
-        "right_down-90",
-        x_min=11.10,
-        x_max=11.25,
-        y_min=2.48,
-        y_max=5.15,
-        yaw_min_deg=-90.0,
-        yaw_max_deg=-90.0,
-        certificate=FREE_CERT_RIGHT,
-    ),
-    "right_exit-90": SafeCorridor(
-        "right_exit-90",
-        x_min=11.10,
-        x_max=11.35,
-        y_min=4.78,
-        y_max=5.15,
-        yaw_min_deg=-90.0,
-        yaw_max_deg=-90.0,
-        certificate=FREE_CERT_RIGHT,
-        requires_h_03=True,
-    ),
-    "finish-90": SafeCorridor(
-        "finish-90",
-        x_min=11.10,
-        x_max=11.35,
-        y_min=2.45,
-        y_max=4.78,
-        yaw_min_deg=-90.0,
-        yaw_max_deg=-90.0,
-        certificate=FREE_CERT_RIGHT,
-    ),
     "top0": SafeCorridor(
         "top0",
         x_min=8.53,
         x_max=11.24,
-        y_min=5.64,
-        y_max=5.65,
+        y_min=4.86,
+        y_max=4.87,
         yaw_min_deg=0.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_TOP,
@@ -166,30 +104,30 @@ CORRIDORS: dict[str, SafeCorridor] = {
         "right_down0",
         x_min=11.22,
         x_max=11.24,
-        y_min=2.78,
-        y_max=5.65,
+        y_min=3.94,
+        y_max=4.87,
         yaw_min_deg=0.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_RIGHT,
     ),
-    "finish_rotate": SafeCorridor(
-        "finish_rotate",
-        x_min=11.05,
+    "lower_down": SafeCorridor(
+        "lower_down",
+        x_min=10.05,
         x_max=11.35,
         y_min=2.78,
-        y_max=2.80,
+        y_max=3.94,
         yaw_min_deg=-90.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_LOW_RIGHT,
     ),
-    "finish": SafeCorridor(
-        "finish",
-        x_min=11.05,
+    "lower_finish": SafeCorridor(
+        "lower_finish",
+        x_min=10.05,
         x_max=11.35,
         y_min=2.45,
-        y_max=2.55,
+        y_max=2.80,
         yaw_min_deg=-90.0,
-        yaw_max_deg=-90.0,
+        yaw_max_deg=0.0,
         certificate=FREE_CERT_LOW_RIGHT,
     ),
 }
@@ -197,16 +135,10 @@ CORRIDORS: dict[str, SafeCorridor] = {
 
 PHASE_ORDER = [
     "approach",
-    "rotate",
-    "rotate-90",
-    "top-90",
-    "right_down-90",
-    "right_exit-90",
-    "finish-90",
     "top0",
     "right_down0",
-    "finish_rotate",
-    "finish",
+    "lower_down",
+    "lower_finish",
 ]
 
 
@@ -255,13 +187,13 @@ def point_in_free_space_strict(x: float, y: float, eps: float = EPS_CLEARANCE) -
 
 
 def footprint_intersects_zone2(x: float, y: float, yaw_deg: float) -> bool:
-    """Conservative Zone2 contact predicate used for the h/yaw rule."""
+    """Exact inflated-footprint/Zone2 intersection predicate for h/yaw rules."""
     points = footprint_sample_points(x, y, yaw_deg)
     if any(ZONE2.contains(float(px), float(py)) for px, py in points):
         return True
 
     poly = footprint_polygon(x, y, yaw_deg)
-    zone2_corners = np.array(
+    zone2_poly = np.array(
         [
             [ZONE2.x_min, ZONE2.y_min],
             [ZONE2.x_max, ZONE2.y_min],
@@ -270,7 +202,14 @@ def footprint_intersects_zone2(x: float, y: float, yaw_deg: float) -> bool:
         ],
         dtype=float,
     )
-    return any(_point_in_convex_polygon(corner, poly, include_boundary=True) for corner in zone2_corners)
+    if any(_point_in_convex_polygon(corner, poly, include_boundary=True) for corner in zone2_poly):
+        return True
+
+    return any(
+        _segments_intersect(foot_a, foot_b, zone_a, zone_b)
+        for foot_a, foot_b in _polygon_edges(poly)
+        for zone_a, zone_b in _polygon_edges(zone2_poly)
+    )
 
 
 def footprint_collision_free(x: float, y: float, yaw_deg: float) -> bool:

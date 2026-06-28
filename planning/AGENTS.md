@@ -42,10 +42,13 @@ The Python/CasADi implementation is the current generator:
 - `src/exporter.cpp` writes both firmware headers and CSV inspection copies under
   `dist/`; Python should only inspect those exported artifacts.
 
-Zone2 yaw is solved as explicit `0deg` and `-90deg` branches.  Export the shortest
-feasible branch per start.  Do not add an explicit “hug the limit” reward to the
-optimizer; keep that as a verifier/evaluation gate based on sustained time near
-wheel speed/acceleration limits.
+Zone2 yaw is fixed to `0deg`; solve and export only the `z2yaw0` branch.  Do not
+add hard intermediate-point constraints other than the start/end boundary states;
+branch anchor points are initial guesses only.  The verifier requires at least
+75% of each trajectory's duration to stay near wheel speed or wheel acceleration
+limits.  Do not add an explicit “hug the limit” reward to the optimizer; keep
+that as a verifier/evaluation gate based on sustained time near wheel
+speed/acceleration limits.
 
 ## Output Artifacts
 

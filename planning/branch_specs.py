@@ -19,7 +19,6 @@ class BranchSpec:
     zone2_yaw_deg: float
     phases: tuple[PhaseSpec, ...]
     anchors: dict[str, tuple[float, float, float, float]]
-    anchors_are_hard: bool = True
 
     @property
     def suffix(self) -> str:
@@ -28,36 +27,19 @@ class BranchSpec:
 
 BRANCHES: tuple[BranchSpec, ...] = (
     BranchSpec(
-        zone2_yaw_deg=-90.0,
-        phases=(
-            PhaseSpec("approach", 28),
-            PhaseSpec("rotate-90", 20),
-            PhaseSpec("top-90", 36),
-            PhaseSpec("right_exit-90", 12),
-            PhaseSpec("finish-90", 40),
-        ),
-        anchors={
-            "approach_end": (8.55, 5.10, 0.0, 0.412),
-            "rotate_end": (8.55, 5.10, -90.0, 0.3),
-            "top_end": (11.15, 5.10, -90.0, 0.3),
-            "right_exit_end": (11.35, 4.78, -90.0, 0.3),
-        },
-        anchors_are_hard=False,
-    ),
-    BranchSpec(
         zone2_yaw_deg=0.0,
         phases=(
             PhaseSpec("approach", 28),
             PhaseSpec("top0", 36),
-            PhaseSpec("right_down0", 32),
-            PhaseSpec("finish_rotate", 20),
-            PhaseSpec("finish", 20),
+            PhaseSpec("right_down0", 16),
+            PhaseSpec("lower_down", 32),
+            PhaseSpec("lower_finish", 32),
         ),
         anchors={
-            "approach_end": (8.55, 5.10, 0.0, 0.412),
-            "top_end": (11.23, 5.645, 0.0, 0.3),
-            "right_down_end": (11.23, 2.79, 0.0, 0.412),
-            "finish_rotate_end": (11.35, 2.79, -90.0, 0.412),
+            "top_start": (8.55, 4.865, 0.0, 0.3),
+            "top_end": (11.23, 4.865, 0.0, 0.3),
+            "lower_down_start": (11.23, 3.94, 0.0, 0.412),
+            "lower_finish_start": (11.23, 2.79, -45.0, 0.412),
         },
     ),
 )
@@ -68,13 +50,6 @@ def branch_by_suffix(suffix: str) -> BranchSpec:
         if branch.suffix == suffix:
             return branch
     raise KeyError(f"unknown branch suffix: {suffix}")
-
-
-def anchor_points_for_branch(suffix: str) -> list[tuple[str, float, float, float, float]]:
-    branch = branch_by_suffix(suffix)
-    if not branch.anchors_are_hard:
-        return []
-    return [(name, *state) for name, state in branch.anchors.items()]
 
 
 def initial_guess_points_for_branch(suffix: str) -> list[tuple[str, float, float, float, float]]:

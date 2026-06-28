@@ -29,7 +29,7 @@ from geometry import (
 from mecanum import wheel_limit_report, wheel_speeds_np
 
 
-MIN_COMBINED_LIMITED_RATIO = 0.45
+MIN_COMBINED_LIMITED_RATIO = 0.75
 
 
 def verify_all(results) -> bool:
@@ -185,14 +185,14 @@ def _check_zone2(results) -> list[str]:
             x, y, yaw, h = map(float, state[:4])
             if footprint_intersects_zone2(x, y, yaw):
                 in_zone2_count += 1
-                if min(abs(yaw + 90.0), abs(yaw - 0.0)) > 1e-3:
+                if abs(yaw) > 1e-3:
                     errors.append(f"  [FAIL] {name}: Zone2 yaw {yaw:.6f} at x={x:.3f}, y={y:.3f}")
                     break
                 if abs(h - 0.3) > 2e-3:
                     errors.append(f"  [FAIL] {name}: Zone2 h {h:.6f} at x={x:.3f}, y={y:.3f}")
                     break
         print(f"  [OK] {name}: Zone2-contact samples checked = {in_zone2_count}")
-    _print_status("Zone2 yaw/h 约束", errors)
+    _print_status("Zone2 yaw=0/h 约束", errors)
     return errors
 
 
