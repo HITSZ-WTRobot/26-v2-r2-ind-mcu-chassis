@@ -7,9 +7,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Polygon, Rectangle
+from PIL import Image
 
 from branch_specs import anchor_points_for_branch, initial_guess_points_for_branch
 from config import HALF_L, HALF_W, MAX_WHEEL_ACCEL, MAX_WHEEL_SPEED, ZONE1, ZONE2, ZONE3
@@ -81,6 +81,8 @@ def generate_gif(result, save_path: str, step: int = 5):
     frame_idx = list(range(0, n, step))
     if frame_idx[-1] != n - 1:
         frame_idx.append(n - 1)
+    frame_times = t[frame_idx]
+    frame_durations_ms = _gif_frame_durations_ms(frame_times)
 
     fig = plt.figure(figsize=(18, 12))
     grid = GridSpec(4, 2, width_ratios=[1.05, 1.0], height_ratios=[0.85, 1.0, 0.9, 1.0], figure=fig)
@@ -243,9 +245,30 @@ def generate_gif(result, save_path: str, step: int = 5):
             wheel_text,
         )
 
-    ani = FuncAnimation(fig, animate, frames=len(frame_idx), interval=100, blit=False)
-    writer = PillowWriter(fps=10)
-    ani.save(save_path, writer=writer)
+    frames = []
+    for frame in range(len(frame_idx)):
+        animate(frame)
+        fig.canvas.draw()
+        width, height = fig.canvas.get_width_height()
+        frame_image = Image.frombuffer(
+            "RGBA",
+            (width, height),
+            fig.canvas.buffer_rgba(),
+            "raw",
+            "RGBA",
+            0,
+            1,
+        ).copy()
+        frames.append(frame_image)
+
+    frames[0].save(
+        save_path,
+        save_all=True,
+        append_images=frames[1:],
+        duration=frame_durations_ms,
+        loop=0,
+        disposal=2,
+    )
     plt.close(fig)
     print(f"  GIF saved: {save_path}")
 
@@ -284,6 +307,54 @@ def _setup_field(ax, result, frame_idx):
     ax.set_title("Chassis Rectangle Replay")
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=8, loc="lower right")
+
+
+def _gif_frame_durations_ms(frame_times: np.ndarray) -> list[int]:
+    """Return per-frame GIF durations in milliseconds.
+
+    The durations are derived from the actual trajectory timestamps so the replay
+    length tracks the true execution time instead of a fixed display rate.
+    """
+    if len(frame_times) <= 1:
+        return [1000]
+
+    motion_times_ms = np.diff(frame_times) * 1000.0
+    total_ms = max(1, int(round(float(frame_times[-1] - frame_times[0]) * 1000.0)))
+    final_hold_ms = 1 if total_ms > 1 else 0
+    motion_budget_ms = max(total_ms - final_hold_ms, len(motion_times_ms))
+
+    durations = np.floor(motion_times_ms).astype(int)
+    durations = np.maximum(durations, 1)
+
+    remainder = motion_budget_ms - int(np.sum(durations))
+    if remainder != 0:
+        fractional = motion_times_ms - np.floor(motion_times_ms)
+        if remainder > 0:
+            order = np.argsort(-fractional)
+            while remainder > 0:
+                for idx in order:
+                    durations[idx] += 1
+                    remainder -= 1
+                    if remainder == 0:
+                        break
+        else:
+            order = np.argsort(fractional)
+            while remainder < 0:
+                progressed = False
+                for idx in order:
+                    if durations[idx] > 1:
+                        durations[idx] -= 1
+                        remainder += 1
+                        progressed = True
+                        if remainder == 0:
+                            break
+                if not progressed:
+                    break
+
+    durations_list = durations.tolist()
+    if final_hold_ms:
+        durations_list.append(final_hold_ms)
+    return durations_list
 
 
 def _plot_forced_anchors(ax, result):
