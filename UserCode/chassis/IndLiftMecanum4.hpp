@@ -129,6 +129,30 @@ public:
             osDelay(1);
     }
 
+    /// 禁用/启用抬升电机控制器，供 OfflineTrajectoryFollower 接管抬升控制权。
+    void disableLift()
+    {
+        if constexpr (ProjectParts::EnableLift)
+            for (auto& l : lift_)
+                l.disable();
+    }
+
+    void enableLift()
+    {
+        if constexpr (ProjectParts::EnableLift)
+            for (auto& l : lift_)
+                l.enable();
+    }
+
+    /// 获取抬升电机控制器引用。
+    /// index: 0=前左, 1=前右, 2=后左, 3=后右
+    [[nodiscard]] controllers::MotorVelController& liftMotor(const size_t index)
+    {
+        if (index < 2)
+            return lift(LiftType::Front).motor(index);
+        return lift(LiftType::Rear).motor(index - 2);
+    }
+
 protected:
     void applyVelocity(const chassis::Velocity& velocity) override;
 

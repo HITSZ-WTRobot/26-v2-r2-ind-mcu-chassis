@@ -61,6 +61,16 @@ constexpr float chassisHeightToLiftPosition(const float chassis_height)
     return chassis_height - GroundingChassisHeight;
 }
 
+constexpr float chassisHeightToMotorAngle(const float chassis_height)
+{
+    return (chassisHeightToLiftPosition(chassis_height) + LiftOffset) / GearRadius / M_PI * 180.0f;
+}
+
+constexpr float chassisHeightVelToMotorDPS(const float dh)
+{
+    return dh / GearRadius / M_PI * 180.0f;
+}
+
 constexpr float MaxSpeed = 1.178; // unit: m/s
 // constexpr float MaxOnloadAccel = 2.0;   // unit: m/s^2， 对车先好一点
 constexpr float MaxOnloadAccel = 5.5; // unit: m/s^2

@@ -6,6 +6,8 @@
 #include "chassis.hpp"
 #include "Config.hpp"
 #include "LocEKF.hpp"
+#include "chassis/trajectory/OfflineTrajectoryFollower.hpp"
+#include "chassis/trajectory/trajectory.hpp"
 #include "device.hpp"
 #include "project_parts.hpp"
 #include "system.hpp"
@@ -47,7 +49,9 @@ void update_100Hz()
     if (motion != nullptr)
         motion->update_100Hz();
 
-    if (ctrl != nullptr)
+    if (offline_trajectory->isActive())
+        offline_trajectory->update();
+    else if (ctrl != nullptr)
         ctrl->profileUpdate(0.01f);
 }
 
@@ -60,7 +64,17 @@ void update_1kHz()
     else if (loc_encoder != nullptr)
         loc_encoder->update(0.001f);
 
-    if (ctrl != nullptr)
+    if (offline_trajectory->isActive())
+    {
+        prescaler_500Hz++;
+        if (prescaler_500Hz >= 2)
+        {
+            offline_trajectory->errorUpdate();
+            prescaler_500Hz = 0;
+        }
+        offline_trajectory->controllerUpdate();
+    }
+    else if (ctrl != nullptr)
     {
         prescaler_500Hz++;
         if (prescaler_500Hz >= 2)
@@ -119,6 +133,14 @@ void initLocCtrl(const chassis::Posture& init_posture)
         return;
 
     ctrl = new ChassisController(*motion, *loc, Config::Control::masterCfg);
+
+    // 创建离线轨迹跟随器（永不销毁，后续通过 start() 重用）
+    {
+        ::controllers::MotorVelController* lift_motors[4];
+        for (size_t i = 0; i < 4; ++i)
+            lift_motors[i] = &motion->liftMotor(i);
+        offline_trajectory = new controller::OfflineTrajectoryFollower(*motion, *loc, lift_motors);
+    }
 }
 
 void initStandaloneLocCtrl()
@@ -151,6 +173,54 @@ void enable()
         Error_Handler();
 }
 
+void startOfflineTrajectory(const int traj_id, const bool mirror)
+{
+    using namespace ::Config::TrajectoryOffline;
+
+    if (Chassis::offline_trajectory == nullptr)
+        return;
+
+    // 1. 释放 Master 控制权（首次切换时需要，后续为 no-op）
+    if (Chassis::ctrl != nullptr)
+    {
+        Chassis::ctrl->stop();
+        Chassis::ctrl->releaseControl();
+    }
+
+    // 2. 禁用抬升（释放电机控制权，首次切换时需要）
+    Chassis::motion->disableLift();
+
+    // 3. 根据 traj_id 选择轨迹数据
+    const planning::trajectory::TrajectoryPoint8* points = nullptr;
+    size_t                                        count  = 0;
+    switch (traj_id)
+    {
+    case 1:
+        points = traj1::Points.data();
+        count  = traj1::PointCount;
+        break;
+    case 2:
+        points = traj2::Points.data();
+        count  = traj2::PointCount;
+        break;
+    case 3:
+        points = traj3::Points.data();
+        count  = traj3::PointCount;
+        break;
+    default:
+        goto fail;
+    }
+
+    // 4. 启动轨迹（内部会先 cleanup 旧轨迹再启动新轨迹）
+    if (!Chassis::offline_trajectory->start(points, count, mirror))
+        goto fail;
+    return;
+
+fail:
+    Chassis::motion->enableLift();
+    if (Chassis::ctrl != nullptr)
+        Chassis::ctrl->enable();
+}
 } // namespace Chassis
 
 // 系统初始化钩子

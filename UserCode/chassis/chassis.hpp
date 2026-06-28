@@ -9,8 +9,14 @@
 #include "JustEncoder.hpp"
 #include "LocEKF.hpp"
 #include "Master.hpp"
+#include "trajectory/OfflineTrajectoryFollower.hpp"
 
 #include <cstdint>
+
+namespace Config::controller
+{
+class OfflineTrajectoryFollower;
+}
 
 namespace Chassis
 {
@@ -27,6 +33,8 @@ inline ChassisLocEncoder* loc_encoder{};
 inline ChassisController* ctrl{};
 inline ChassisMotion*     motion{};
 
+inline controller::OfflineTrajectoryFollower* offline_trajectory{};
+
 void init();
 
 void initLocCtrl(const chassis::Posture& init_posture);
@@ -39,5 +47,7 @@ void enable();
 void update_1kHz();
 
 void update_100Hz();
+
+void startOfflineTrajectory(int traj_id, bool mirror);
 
 } // namespace Chassis

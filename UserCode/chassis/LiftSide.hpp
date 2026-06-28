@@ -57,6 +57,12 @@ public:
 
     void setGrounding(const bool grounding) { grounding_ = grounding; }
 
+    /// 获取电机控制器引用（0/1），用于外部直接下发速度参考。
+    [[nodiscard]] controllers::MotorVelController& motor(const size_t index)
+    {
+        return ctrl_[index];
+    }
+
 private:
     static constexpr size_t MotorNum = 2;
 

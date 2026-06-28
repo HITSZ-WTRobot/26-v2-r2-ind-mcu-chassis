@@ -46,6 +46,7 @@ set(WTR_MANAGED_PACKAGE_DIRS
     Modules/BasicComponents/bsp/gpio_driver
     Modules/BasicComponents/libs/utils/crc
     Modules/BasicComponents/libs/traits
+    Modules/ChassisController/Controller/Slave
 )
 
 foreach(_wtr_package_dir IN LISTS WTR_MANAGED_PACKAGE_DIRS)
@@ -78,6 +79,7 @@ set(WTR_DIRECT_PACKAGE_TARGETS
     services::Watchdog
     traits
     utils
+    Chassis::ControllerSlave
 )
 
 set(WTR_RESOLVED_PACKAGE_TARGETS
@@ -112,6 +114,7 @@ set(WTR_RESOLVED_PACKAGE_TARGETS
     bsp::GPIO_Driver
     libs::CRC
     traits
+    Chassis::ControllerSlave
     FreeRTOS
     stm32cubemx
 )

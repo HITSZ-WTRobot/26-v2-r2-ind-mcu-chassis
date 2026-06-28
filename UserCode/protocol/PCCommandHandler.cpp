@@ -9,6 +9,7 @@
 #include "chassis/Config.hpp"
 #include "chassis/actions/Step.hpp"
 #include "chassis/chassis.hpp"
+#include "chassis/trajectory/trajectory.hpp"
 #include "cmsis_os2.h"
 #include "device.hpp"
 #include "grip/Config.hpp"
@@ -183,6 +184,57 @@ void handleCommand(const Frame& frame)
         }
         break;
     case PCCommand::SlavePushChassisTrajectory:
+        break;
+    case PCCommand::StartOfflineTrajectory:
+        if constexpr (ProjectParts::EnablePcControl && ProjectParts::EnableWheelChassis)
+        {
+            const uint16_t traj_id    = read_u16(&data[0]);
+            const uint16_t mirror_raw = read_u16(&data[2]);
+            const bool     mirror     = (mirror_raw != 0);
+            if (traj_id < 1 || traj_id > 3 || Chassis::loc == nullptr)
+                break;
+
+            const auto [cx, cy, cyaw] = Chassis::loc->postureInWorld();
+
+            // 获取轨迹起点
+            float sx, sy, syaw;
+            if (traj_id == 1)
+            {
+                const auto& p = ::Config::TrajectoryOffline::traj1::Points[0];
+                sx            = p.x;
+                sy            = p.y;
+                syaw          = p.yaw;
+            }
+            else if (traj_id == 2)
+            {
+                const auto& p = ::Config::TrajectoryOffline::traj2::Points[0];
+                sx            = p.x;
+                sy            = p.y;
+                syaw          = p.yaw;
+            }
+            else
+            {
+                const auto& p = ::Config::TrajectoryOffline::traj3::Points[0];
+                sx            = p.x;
+                sy            = p.y;
+                syaw          = p.yaw;
+            }
+
+            if (mirror)
+            {
+                sy   = -sy;
+                syaw = -syaw;
+            }
+
+            constexpr float kPosThreshold = 0.05f; // 5cm
+            constexpr float kYawThreshold = 5.0f;  // 5deg
+
+            if (fabsf(cx - sx) > kPosThreshold || fabsf(cy - sy) > kPosThreshold ||
+                fabsf(chassis::Posture::yawError(cyaw, syaw)) > kYawThreshold)
+                break;
+
+            Chassis::startOfflineTrajectory(static_cast<int>(traj_id), mirror);
+        }
         break;
     case PCCommand::SetMasterChassisTargetCurrentState:
     case PCCommand::SetMasterChassisTargetPreviousCurve:

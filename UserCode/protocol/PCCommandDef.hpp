@@ -129,4 +129,11 @@ enum class PCCommand : uint8_t
     /// | clawMode | reserve | reserve | reserve | reserve | reserve |
     /// @param clawMode: 0=张开夹爪，1=闭合夹爪。
     SetGripClaw = 0x46,
+
+    /// 启动离线轨迹跟随
+    /// |  uint16  | uint16  | uint16  | uint16  | uint16  | uint16  |
+    /// | traj_id  | mirror  | reserve | reserve | reserve | reserve |
+    /// @param mirror: 0=normal, 1=mirrored across X-axis (y -> -y, yaw -> -yaw, dy -> -dy, dyaw -> -dyaw)
+    /// @note 仅在当前位置与轨迹起点误差 < 5cm(x), 5cm(y), 5deg(yaw) 时接受。
+    StartOfflineTrajectory = 0x18,
 };
