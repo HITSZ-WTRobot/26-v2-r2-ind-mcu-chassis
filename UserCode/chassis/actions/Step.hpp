@@ -48,25 +48,11 @@ public:
         Down
     };
 
-    [[deprecated("Use posture-based overload instead")]] void up(
-            float       startDistance2Step,
-            float       endDistance2Step,
-            Direction   dir       = Direction::Forward,
-            FinalHeight endHeight = FinalHeight::Low,
-            Height      height    = Height::Step200);
-
     void up(const chassis::Posture& stepTargetPos,
             const chassis::Posture& endPos,
             Direction               dir       = Direction::Forward,
             FinalHeight             endHeight = FinalHeight::Low,
             Height                  height    = Height::Step200);
-
-    [[deprecated("Use posture-based overload instead")]] void down(
-            float       startDistance2Step,
-            float       endDistance2Step,
-            Direction   dir       = Direction::Forward,
-            FinalHeight endHeight = FinalHeight::Low,
-            Height      height    = Height::Step200);
 
     void down(const chassis::Posture& stepTargetPos,
               const chassis::Posture& endPos,

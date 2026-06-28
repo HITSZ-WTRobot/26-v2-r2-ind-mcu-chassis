@@ -189,40 +189,6 @@ bool Step::moveLift(Lift::LiftSide* side, const float position, const Chassis::C
     return true;
 }
 
-/**
- * 上台阶
- * @param startDistance2Step 开始时车体中心距离台阶的距离 unit: m
- * @param endDistance2Step 结束时车体中心距离台阶的距离 unit: m
- * @param dir 上台阶方向
- * @param endHeight 动作结束后的底盘高度
- * @param height 台阶高度
- *
- */
-void Step::up(const float       startDistance2Step,
-              const float       endDistance2Step,
-              const Direction   dir,
-              const FinalHeight endHeight,
-              const Height      height)
-{
-    if (!dependencyReady())
-    {
-        Diagnostics::StepAction::report(diagnosticContext(),
-                                        Diagnostics::StepAction::Reason::DependencyNotReady);
-        return;
-    }
-
-    const chassis::Posture start_pos = Chassis::loc->postureInWorld();
-    const float            x_sign    = dir == Direction::Forward ? 1.0f : -1.0f;
-    const float            step_yaw  = dir == Direction::Forward ? 0.0f : -180.0f;
-
-    const chassis::Posture step_target = chassis::loc::IChassisLoc::RelativePosture2WorldPosture(
-            start_pos, { x_sign * startDistance2Step, 0.0f, step_yaw });
-    const chassis::Posture end = chassis::loc::IChassisLoc::RelativePosture2WorldPosture(
-            start_pos, { x_sign * (startDistance2Step + endDistance2Step), 0.0f, 0.0f });
-
-    up(step_target, end, dir, endHeight, height);
-}
-
 void Step::up(const chassis::Posture& stepTargetPos,
               const chassis::Posture& endPos,
               const Direction         dir,
@@ -340,40 +306,6 @@ void Step::upR1_direct(const Direction dir)
     rear_state_    = LiftState::Up2_WaitRetract;
 
     osThreadFlagsSet(task_, FlagStart);
-}
-
-/**
- * 下台阶
- * @param startDistance2Step 开始时车体中心距离台阶的距离 unit: m
- * @param endDistance2Step 结束时车体中心距离台阶的距离 unit: m
- * @param dir 下台阶方向
- * @param endHeight 动作结束后的底盘高度
- * @param height 台阶高度
- *
- */
-void Step::down(const float       startDistance2Step,
-                const float       endDistance2Step,
-                const Direction   dir,
-                const FinalHeight endHeight,
-                const Height      height)
-{
-    if (!dependencyReady())
-    {
-        Diagnostics::StepAction::report(diagnosticContext(),
-                                        Diagnostics::StepAction::Reason::DependencyNotReady);
-        return;
-    }
-
-    const chassis::Posture start_pos = Chassis::loc->postureInWorld();
-    const float            x_sign    = dir == Direction::Forward ? 1.0f : -1.0f;
-    const float            step_yaw  = dir == Direction::Forward ? 0.0f : -180.0f;
-
-    const chassis::Posture step_target = chassis::loc::IChassisLoc::RelativePosture2WorldPosture(
-            start_pos, { x_sign * startDistance2Step, 0.0f, step_yaw });
-    const chassis::Posture end = chassis::loc::IChassisLoc::RelativePosture2WorldPosture(
-            start_pos, { x_sign * (startDistance2Step + endDistance2Step), 0.0f, 0.0f });
-
-    down(step_target, end, dir, endHeight, height);
 }
 
 void Step::down(const chassis::Posture& stepTargetPos,

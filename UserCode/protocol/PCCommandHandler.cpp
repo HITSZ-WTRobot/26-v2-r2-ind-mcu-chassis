@@ -143,22 +143,6 @@ void handleCommand(const Frame& frame)
                  .yaw = to_angle(read_i16(&data[offset + 4])) };
     };
 
-    constexpr auto read_step_final_height = [](const uint16_t             raw,
-                                               Action::Step::FinalHeight& height) -> bool
-    {
-        switch (raw)
-        {
-        case 0:
-            height = Action::Step::FinalHeight::Low;
-            return true;
-        case 1:
-            height = Action::Step::FinalHeight::High;
-            return true;
-        default:
-            return false;
-        }
-    };
-
     switch (frame.cmd)
     {
     case PCCommand::Ping:
@@ -347,73 +331,6 @@ void handleCommand(const Frame& frame)
         }
 
         Chassis::updateLidar(pos, lidar_self_time);
-        break;
-    }
-    case PCCommand::StepUp200:
-    case PCCommand::StepUp400:
-    {
-        /*
-        // 台阶动作不是单一协议能力，而是“控制命令 + 底盘 + 升降”的组合能力。
-        if constexpr (!ProjectParts::EnableStepAction)
-            break;
-
-        const float             startDistance = to_pos(read_i16(&data[0]));
-        const float             endDistance   = to_pos(read_i16(&data[2]));
-        const uint16_t          dir           = read_u16(&data[4]);
-        const uint16_t          rawEndHeight  = read_u16(&data[6]);
-        Action::Step::Direction direction;
-        if (dir == 0)
-            direction = Action::Step::Direction::Forward;
-        else if (dir == 1)
-            direction = Action::Step::Direction::Backward;
-        else
-            break;
-
-        const Action::Step::Height height = frame.cmd == PCCommand::StepUp400
-                                                    ? Action::Step::Height::Step400
-                                                    : Action::Step::Height::Step200;
-        Action::Step::FinalHeight  endHeight;
-        if (!read_step_final_height(rawEndHeight, endHeight))
-            break;
-
-        // 状态机步入逻辑
-        Action::Step::inst().up(startDistance, endDistance, direction, endHeight, height);
-        */
-        break;
-    }
-    case PCCommand::StepUpResume:
-    {
-        break;
-    }
-    case PCCommand::StepDown200:
-    case PCCommand::StepDown400:
-    {
-        /*
-        // 与 StepUp200/400 相同，只有完整动作链启用时才处理下台阶命令。
-        if constexpr (!ProjectParts::EnableStepAction)
-            break;
-
-        const float             startDistance = to_pos(read_i16(&data[0]));
-        const float             endDistance   = to_pos(read_i16(&data[2]));
-        const uint16_t          dir           = read_u16(&data[4]);
-        const uint16_t          rawEndHeight  = read_u16(&data[6]);
-        Action::Step::Direction direction;
-        if (dir == 0)
-            direction = Action::Step::Direction::Forward;
-        else if (dir == 1)
-            direction = Action::Step::Direction::Backward;
-        else
-            break;
-
-        const Action::Step::Height height = frame.cmd == PCCommand::StepDown400
-                                                    ? Action::Step::Height::Step400
-                                                    : Action::Step::Height::Step200;
-        Action::Step::FinalHeight  endHeight;
-        if (!read_step_final_height(rawEndHeight, endHeight))
-            break;
-
-        Action::Step::inst().down(startDistance, endDistance, direction, endHeight, height);
-        */
         break;
     }
     case PCCommand::StepUpR1:

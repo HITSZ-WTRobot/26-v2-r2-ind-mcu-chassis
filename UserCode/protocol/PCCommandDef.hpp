@@ -79,30 +79,6 @@ enum class PCCommand : uint8_t
     LidarPosture = 0x21,
 
     /* 动作组 */
-    /// 上 200mm 台阶
-    /// |        int16       |      int16       |   uint16  |  uint16  |
-    /// | startDistance*2000 | endDistance*2000 | direction | endHeight |
-    /// @param startDistance: 开始时车体中心距离台阶边缘的距离
-    /// @param endDistance: 结束时车体中心距离台阶边缘的距离
-    /// @param direction: 0 Forward，车头朝前上台阶
-    ///                   1 Backward，车头朝后上台阶
-    /// @param endHeight: 0 Low; 1 High
-    StepUp200 = 0x30,
-    /// 旧恢复上台阶命令，当前保留无动作。
-    StepUpResume = 0x31,
-    /// 下 200mm 台阶
-    /// |        int16       |      int16       |   uint16  |    uint16   |
-    /// | startDistance*2000 | endDistance*2000 | direction | endHeight |
-    /// @param startDistance: 开始时车体中心距离台阶边缘的距离
-    /// @param endDistance: 结束时车体中心距离台阶边缘的距离
-    /// @param direction: 0 Forward，车头朝前下台阶
-    ///                   1 Backward，车头朝后下台阶
-    /// @param endHeight: 0 Low; 1 High
-    StepDown200 = 0x32,
-    /// 上 400mm 台阶，数据格式与 StepUp200 相同
-    StepUp400 = 0x33,
-    /// 下 400mm 台阶，数据格式与 StepDown200 相同
-    StepDown400 = 0x34,
 
     /// 上R1台阶
     /// |        int16       |        int16       |          int16          |   uint16  |
