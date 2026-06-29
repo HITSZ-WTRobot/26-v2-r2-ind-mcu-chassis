@@ -254,7 +254,14 @@ chassis::Posture SpearGrab::postureRelativeToTargetInWorld(const chassis::Postur
 
 chassis::Posture SpearGrab::currentRelativeToTarget() const
 {
-    return Chassis::loc->CurrentPostureRelativeTo(target_pos_);
+    auto [x, y, yaw] = Chassis::loc->CurrentPostureRelativeTo(target_pos_);
+    while (yaw > 180.0f)
+        yaw -= 360.0f;
+    while (yaw < -180.0f)
+        yaw += 360.0f;
+    if (yaw == -180.0f)
+        yaw = 180.0f;
+    return { x, y, yaw };
 }
 
 void SpearGrab::update()
