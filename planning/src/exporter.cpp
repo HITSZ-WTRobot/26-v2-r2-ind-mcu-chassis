@@ -63,6 +63,34 @@ static std::array<double, 8> interpolate_sample(const TrajectoryResult& result, 
     return point;
 }
 
+static bool is_export_grid(const TrajectoryResult& result)
+{
+    if (!result.success || result.t.empty() || result.trajectory.empty())
+        return false;
+
+    const int   full_steps     = static_cast<int>(std::floor(result.total_time / kExportDt + 1e-9));
+    std::size_t expected_count = static_cast<std::size_t>(full_steps) + 1;
+    if (result.total_time - full_steps * kExportDt > kTimeEps)
+        ++expected_count;
+    if (result.t.size() != expected_count || result.trajectory.size() != expected_count)
+        return false;
+
+    for (int i = 0; i <= full_steps; ++i)
+    {
+        const double expected_t = std::min(i * kExportDt, result.total_time);
+        if (std::abs(result.t[static_cast<std::size_t>(i)] - expected_t) > kTimeEps)
+            return false;
+    }
+
+    if (result.total_time - full_steps * kExportDt > kTimeEps &&
+        std::abs(result.t.back() - result.total_time) > kTimeEps)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 static ExportTrajectory resample_for_header(const TrajectoryResult& result)
 {
     ExportTrajectory export_result;
@@ -70,6 +98,13 @@ static ExportTrajectory resample_for_header(const TrajectoryResult& result)
 
     if (!result.success || result.t.empty() || result.trajectory.empty())
         return export_result;
+
+    if (is_export_grid(result))
+    {
+        export_result.t          = result.t;
+        export_result.trajectory = result.trajectory;
+        return export_result;
+    }
 
     const int full_steps = static_cast<int>(std::floor(result.total_time / kExportDt + 1e-9));
     export_result.t.reserve(static_cast<size_t>(full_steps) + 2);
@@ -178,8 +213,8 @@ void export_trajectory_csv(const std::string&      name,
     for (size_t i = 0; i < export_result.trajectory.size(); ++i)
     {
         const auto& p = export_result.trajectory[i];
-        f << export_result.t[i] << "," << p[0] << "," << p[1] << "," << p[2] << "," << p[3]
-          << "," << p[4] << "," << p[5] << "," << p[6] << "," << p[7] << "\n";
+        f << export_result.t[i] << "," << p[0] << "," << p[1] << "," << p[2] << "," << p[3] << ","
+          << p[4] << "," << p[5] << "," << p[6] << "," << p[7] << "\n";
     }
     f.close();
     std::cout << "  Wrote " << path << " (" << export_result.trajectory.size()

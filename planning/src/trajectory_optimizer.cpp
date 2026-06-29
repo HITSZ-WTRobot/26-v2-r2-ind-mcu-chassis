@@ -383,9 +383,9 @@ std::vector<NodeGuess> initial_state_nodes(int start_idx, const BranchSpec& bran
 
     std::vector<NodeGuess> nodes;
     NodeGuess              current{ ENTRY_POINTS[start_idx].x,
-                       ENTRY_POINTS[start_idx].y,
-                       ENTRY_POINTS[start_idx].yaw_deg,
-                       ENTRY_POINTS[start_idx].h };
+                                    ENTRY_POINTS[start_idx].y,
+                                    ENTRY_POINTS[start_idx].yaw_deg,
+                                    ENTRY_POINTS[start_idx].h };
     for (int phase_i = 0; phase_i < static_cast<int>(branch.phases.size()); ++phase_i)
     {
         const auto  target = targets[phase_i];
@@ -517,41 +517,52 @@ TrajectoryResult sample_solution(const std::string&         branch_suffix,
                                  const std::vector<double>& t_nodes,
                                  const DM&                  sol_x,
                                  const DM&                  sol_v,
+                                 const DM&                  sol_a,
                                  double                     sample_dt)
 {
     TrajectoryResult result;
     result.branch     = branch_suffix;
     result.total_time = t_nodes.back();
-    int n_samples     = static_cast<int>(std::ceil(result.total_time / sample_dt)) + 1;
-    result.t.resize(n_samples);
-    result.trajectory.resize(n_samples);
 
-    for (int i = 0; i < n_samples; ++i)
+    const int full_steps = static_cast<int>(std::floor(result.total_time / sample_dt + 1e-9));
+    result.t.reserve(static_cast<size_t>(full_steps) + 2);
+    result.trajectory.reserve(static_cast<size_t>(full_steps) + 2);
+
+    auto append_sample = [&](double t)
     {
-        double t   = (n_samples == 1) ? 0.0 : result.total_time * i / (n_samples - 1);
-        int    idx = static_cast<int>(std::upper_bound(t_nodes.begin(), t_nodes.end(), t) -
-                                   t_nodes.begin()) -
-                  1;
-        idx          = std::clamp(idx, 0, static_cast<int>(t_nodes.size()) - 2);
-        double dt    = t_nodes[idx + 1] - t_nodes[idx];
-        double alpha = dt > 0.0 ? (t - t_nodes[idx]) / dt : 0.0;
+        int idx    = static_cast<int>(std::upper_bound(t_nodes.begin(), t_nodes.end(), t) -
+                                      t_nodes.begin()) -
+                     1;
+        idx        = std::clamp(idx, 0, static_cast<int>(t_nodes.size()) - 2);
+        double dt  = t_nodes[idx + 1] - t_nodes[idx];
+        double tau = std::clamp(t - t_nodes[idx], 0.0, dt);
 
         std::array<double, 8> point{};
         for (int row = 0; row < 4; ++row)
         {
-            double a   = static_cast<double>(sol_x(row, idx));
-            double b   = static_cast<double>(sol_x(row, idx + 1));
-            point[row] = clean((1.0 - alpha) * a + alpha * b);
+            double x0  = static_cast<double>(sol_x(row, idx));
+            double v0  = static_cast<double>(sol_v(row, idx));
+            double acc = static_cast<double>(sol_a(row, idx));
+            point[row] = clean(x0 + v0 * tau + 0.5 * acc * tau * tau);
         }
         for (int row = 0; row < 4; ++row)
         {
-            double a       = static_cast<double>(sol_v(row, idx));
-            double b       = static_cast<double>(sol_v(row, idx + 1));
-            point[4 + row] = clean((1.0 - alpha) * a + alpha * b);
+            double v0      = static_cast<double>(sol_v(row, idx));
+            double acc     = static_cast<double>(sol_a(row, idx));
+            point[4 + row] = clean(v0 + acc * tau);
         }
-        result.t[i]          = t;
-        result.trajectory[i] = point;
+        result.t.push_back(t);
+        result.trajectory.push_back(point);
+    };
+
+    for (int i = 0; i <= full_steps; ++i)
+    {
+        double t = std::min(i * sample_dt, result.total_time);
+        append_sample(t);
     }
+
+    if (result.t.empty() || result.total_time - result.t.back() > 1e-9)
+        append_sample(result.total_time);
 
     for (int row = 4; row < 8; ++row)
     {
@@ -647,8 +658,8 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
     {
         int phase_idx = phase_indices[k];
         MX  dt        = DT_PHASE(phase_idx) / branch.phases[phase_idx].nodes;
-        opti.subject_to(X(Slice(0, 3), k + 1) == X(Slice(0, 3), k) + V(Slice(0, 3), k) * dt);
-        opti.subject_to(X(3, k + 1) == X(3, k) + V(3, k) * dt + 0.5 * A(3, k) * dt * dt);
+        opti.subject_to(X(Slice(), k + 1) ==
+                        X(Slice(), k) + V(Slice(), k) * dt + 0.5 * A(Slice(), k) * dt * dt);
         opti.subject_to(V(Slice(), k + 1) == V(Slice(), k) + A(Slice(), k) * dt);
         opti.subject_to(opti.bounded(-A_MAX_H, A(3, k), A_MAX_H));
         opti.subject_to(h_down_accel_peak >= -A(3, k));
@@ -658,9 +669,10 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
         {
             const double alpha  = static_cast<double>(sub) / kWheelConstraintSubsteps;
             MX           sub_dt = dt / kWheelConstraintSubsteps;
-            MX           xs     = X(Slice(), k) + V(Slice(), k) * (dt * alpha);
-            MX           vs     = V(Slice(), k) + A(Slice(), k) * (dt * alpha);
-            MX           wheel  = wheel_speeds_ca(xs(2), vs(0), vs(1), vs(2));
+            MX           tau    = dt * alpha;
+            MX           xs = X(Slice(), k) + V(Slice(), k) * tau + 0.5 * A(Slice(), k) * tau * tau;
+            MX           vs = V(Slice(), k) + A(Slice(), k) * tau;
+            MX           wheel = wheel_speeds_ca(xs(2), vs(0), vs(1), vs(2));
             opti.subject_to(opti.bounded(-MAX_WHEEL_SPEED, wheel, MAX_WHEEL_SPEED));
             opti.subject_to(opti.bounded(-MAX_WHEEL_ACCEL * sub_dt,
                                          wheel - previous_wheel,
@@ -722,8 +734,8 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
         for (int i = 0; i < static_cast<int>(branch.phases.size()); ++i)
             durations.push_back(static_cast<double>(sol.value(DT_PHASE(i))));
         auto t_nodes = node_times(durations, branch);
-        auto result =
-                sample_solution(branch.suffix, t_nodes, sol.value(X), sol.value(V), sample_dt);
+        auto result  = sample_solution(
+                branch.suffix, t_nodes, sol.value(X), sol.value(V), sol.value(A), sample_dt);
         return { result, branch.suffix, "" };
     }
     catch (const std::exception& exc)

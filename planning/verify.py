@@ -43,6 +43,7 @@ def verify_all(results) -> bool:
     all_errors += _check_corridor_certificates()
     all_errors += _check_boundary(results)
     all_errors += _check_velocity_continuity(results)
+    all_errors += _check_state_velocity_integration(results)
     all_errors += _check_height_limits(results)
     all_errors += _check_wheel_constraints(results)
     all_errors += _check_limit_saturation(results)
@@ -109,6 +110,37 @@ def _check_velocity_continuity(results) -> list[str]:
         if max_step[3] > LIMITS.h.a_max * SAMPLE_DT + 0.08:
             errors.append(f"  [FAIL] {name}: dh discontinuity step {max_step[3]:.6f}")
     _print_status("速度连续性", errors)
+    return errors
+
+
+def _check_state_velocity_integration(results) -> list[str]:
+    errors: list[str] = []
+    labels = ("x", "y", "yaw", "h")
+    step_tolerances = np.array([8e-5, 8e-5, 3e-3, 8e-5], dtype=float)
+
+    for name, r in results.items():
+        if not r.success or len(r.s_array) < 2:
+            continue
+
+        dt = np.diff(r.t_array)
+        state_delta = np.diff(r.s_array[:, :4], axis=0)
+        velocity_trapezoid = 0.5 * (r.s_array[:-1, 4:] + r.s_array[1:, 4:]) * dt[:, None]
+        step_error = np.abs(state_delta - velocity_trapezoid)
+        max_step_error = np.max(step_error, axis=0)
+
+        print(
+            f"  [INFO] {name}: integral step error "
+            f"x/y/yaw/h = {max_step_error[0]:.6g}/{max_step_error[1]:.6g}/"
+            f"{max_step_error[2]:.6g}/{max_step_error[3]:.6g}"
+        )
+        for j, label in enumerate(labels):
+            if max_step_error[j] > step_tolerances[j]:
+                errors.append(
+                    f"  [FAIL] {name}: {label} integral step error "
+                    f"{max_step_error[j]:.6g} > {step_tolerances[j]:.6g}"
+                )
+
+    _print_status("位置/速度积分关系", errors)
     return errors
 
 
