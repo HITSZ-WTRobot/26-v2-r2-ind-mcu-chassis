@@ -49,7 +49,7 @@ public:
         motor_slave_.disable();
 
         // 3. 使能新轨迹的 slave
-        if (!chassis_slave_.enable())
+        if (!chassis_slave_.acquireControl())
             return false;
         if (!motor_slave_.enable())
         {
