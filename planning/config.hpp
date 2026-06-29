@@ -92,6 +92,11 @@ inline constexpr double A_MAX_YAW = 360.0; // deg/s²
 inline constexpr double V_MAX_H   = 1.178;
 inline constexpr double A_MAX_H   = 3.0;
 
+// h 轴高度范围与优化偏好
+inline constexpr double H_MIN                        = 0.3;
+inline constexpr double H_MAX                        = 0.412;
+inline constexpr double HEIGHT_LOW_PREFERENCE_WEIGHT = 1e-2;
+
 // ============================================================
 // 规划参数
 // ============================================================

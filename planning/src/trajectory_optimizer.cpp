@@ -248,8 +248,8 @@ std::vector<int> interval_phase_indices(const BranchSpec& branch)
 std::array<double, 2> corridor_h_range(const Corridor& corridor)
 {
     if (corridor.requires_h_03)
-        return { 0.3, 0.3 };
-    return { 0.3, 0.412 };
+        return { H_MIN, H_MIN };
+    return { H_MIN, H_MAX };
 }
 
 NodeGuess clamp_to_corridor(const NodeGuess& reference, const Corridor& corridor)
@@ -357,7 +357,7 @@ std::vector<NodeGuess> initial_state_nodes(int start_idx, const BranchSpec& bran
     {
         const auto& corridor = base_corridor(phase_names[k]);
         if (corridor.requires_h_03)
-            nodes[k].h = 0.3;
+            nodes[k].h = H_MIN;
     }
     return nodes;
 }
@@ -535,9 +535,12 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
         opti.subject_to(opti.bounded(corridor.y_min, X(1, k), corridor.y_max));
         opti.subject_to(opti.bounded(corridor.yaw_min_deg, X(2, k), corridor.yaw_max_deg));
         if (corridor.requires_h_03)
-            opti.subject_to(X(3, k) == 0.3);
+        {
+            opti.subject_to(X(3, k) == H_MIN);
+            opti.subject_to(V(3, k) == 0.0);
+        }
         else
-            opti.subject_to(opti.bounded(0.3, X(3, k), 0.412));
+            opti.subject_to(opti.bounded(H_MIN, X(3, k), H_MAX));
     }
 
     std::vector<MX> wheels;
@@ -555,7 +558,10 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
     {
         int phase_idx = phase_indices[k];
         MX  dt        = DT_PHASE(phase_idx) / branch.phases[phase_idx].nodes;
-        opti.subject_to(X(Slice(), k + 1) == X(Slice(), k) + V(Slice(), k) * dt);
+        opti.subject_to(X(Slice(0, 3), k + 1) == X(Slice(0, 3), k) +
+                                                        V(Slice(0, 3), k) * dt);
+        opti.subject_to(X(3, k + 1) == X(3, k) + V(3, k) * dt +
+                                                  0.5 * A(3, k) * dt * dt);
         opti.subject_to(V(Slice(), k + 1) == V(Slice(), k) + A(Slice(), k) * dt);
         opti.subject_to(opti.bounded(-A_MAX_H, A(3, k), A_MAX_H));
 
@@ -575,7 +581,9 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
         }
     }
 
-    MX cost = T + 1e-9 * sumsqr(A);
+    MX height_preference = sum2(X(3, Slice()) - H_MIN) / nodes;
+    MX xyz_smoothness    = sumsqr(A(Slice(0, 3), Slice()));
+    MX cost = T + HEIGHT_LOW_PREFERENCE_WEIGHT * height_preference + 1e-9 * xyz_smoothness;
     opti.minimize(cost);
 
     const auto guess_nodes     = initial_state_nodes(start_idx, branch);

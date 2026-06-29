@@ -14,6 +14,8 @@ import numpy as np
 from config import (
     ENTRY_POINTS,
     EXIT_POINT,
+    H_MAX,
+    H_MIN,
     LIMITS,
     MAX_WHEEL_ACCEL,
     MAX_WHEEL_SPEED,
@@ -42,6 +44,7 @@ def verify_all(results) -> bool:
     all_errors += _check_boundary(results)
     all_errors += _check_velocity_continuity(results)
     all_errors += _check_height_limits(results)
+    all_errors += _check_height_low_preference(results)
     all_errors += _check_wheel_constraints(results)
     all_errors += _check_limit_saturation(results)
     all_errors += _check_zone2(results)
@@ -115,6 +118,14 @@ def _check_height_limits(results) -> list[str]:
     for name, r in results.items():
         if not r.success:
             continue
+        min_h = float(np.min(r.s_array[:, 3]))
+        max_h = float(np.max(r.s_array[:, 3]))
+        mean_h = float(np.mean(r.s_array[:, 3]))
+        print(f"  [INFO] {name}: h min/mean/max = {min_h:.6f}/{mean_h:.6f}/{max_h:.6f}")
+        if min_h < H_MIN - 2e-3:
+            errors.append(f"  [FAIL] {name}: h min {min_h:.6f} < {H_MIN}")
+        if max_h > H_MAX + 2e-3:
+            errors.append(f"  [FAIL] {name}: h max {max_h:.6f} > {H_MAX}")
         max_dh = float(np.max(np.abs(r.s_array[:, 7])))
         if max_dh > LIMITS.h.v_max + 1e-3:
             errors.append(f"  [FAIL] {name}: dh max {max_dh:.6f} > {LIMITS.h.v_max}")
@@ -124,6 +135,43 @@ def _check_height_limits(results) -> list[str]:
             if max_ah > LIMITS.h.a_max + 0.12:
                 errors.append(f"  [FAIL] {name}: ah max {max_ah:.6f} > {LIMITS.h.a_max}")
     _print_status("h 轴速度/加速度限制", errors)
+    return errors
+
+
+def _check_height_low_preference(results) -> list[str]:
+    errors: list[str] = []
+    lift_threshold = H_MIN + 0.005
+    min_final_lift_time = 2.0 * math.sqrt((H_MAX - H_MIN) / LIMITS.h.a_max)
+    allowed_early_margin = 0.12
+    for name, r in results.items():
+        if not r.success:
+            continue
+        h = r.s_array[:, 3]
+        low_candidates = np.flatnonzero(h <= lift_threshold)
+        if len(low_candidates) == 0:
+            errors.append(f"  [FAIL] {name}: never reaches low-height hold")
+            continue
+
+        first_low = int(low_candidates[0])
+        lift_candidates = np.flatnonzero(h[first_low:] > lift_threshold)
+        if len(lift_candidates) == 0:
+            errors.append(f"  [FAIL] {name}: never leaves low-height hold for final height")
+            continue
+
+        first_lift = first_low + int(lift_candidates[0])
+        earliest_reasonable_lift = r.total_time - min_final_lift_time - allowed_early_margin
+        if r.t_array[first_lift] < earliest_reasonable_lift:
+            errors.append(
+                f"  [FAIL] {name}: h leaves low hold too early at "
+                f"t={r.t_array[first_lift]:.3f}, h={h[first_lift]:.6f}; "
+                f"expected near final lift after t={earliest_reasonable_lift:.3f}"
+            )
+        else:
+            print(
+                f"  [OK] {name}: low-height hold until final lift at "
+                f"t={r.t_array[first_lift]:.3f}s"
+            )
+    _print_status("h 轴低位保持偏好", errors)
     return errors
 
 
