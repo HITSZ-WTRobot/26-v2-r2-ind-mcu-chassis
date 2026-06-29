@@ -418,6 +418,7 @@ void SpearGrab::update()
         if (Chassis::ctrl->isTrajectoryFinished() && ::Grip::grip->isFinished() &&
             is_lift_finished())
         {
+            Chassis::ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
             state_ = State::Done;
         }
         break;
