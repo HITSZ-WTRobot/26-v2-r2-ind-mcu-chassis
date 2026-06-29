@@ -44,7 +44,6 @@ def verify_all(results) -> bool:
     all_errors += _check_boundary(results)
     all_errors += _check_velocity_continuity(results)
     all_errors += _check_height_limits(results)
-    all_errors += _check_height_low_preference(results)
     all_errors += _check_wheel_constraints(results)
     all_errors += _check_limit_saturation(results)
     all_errors += _check_zone2(results)
@@ -131,47 +130,13 @@ def _check_height_limits(results) -> list[str]:
             errors.append(f"  [FAIL] {name}: dh max {max_dh:.6f} > {LIMITS.h.v_max}")
         dt = _nominal_dt(r)
         if len(r.s_array) >= 2:
-            max_ah = float(np.max(np.abs(np.diff(r.s_array[:, 7]))) / dt)
+            ah = np.diff(r.s_array[:, 7]) / dt
+            max_ah = float(np.max(np.abs(ah)))
+            max_down_ah = float(np.max(np.maximum(-ah, 0.0)))
+            print(f"  [INFO] {name}: max downward ah = {max_down_ah:.6f}")
             if max_ah > LIMITS.h.a_max + 0.12:
                 errors.append(f"  [FAIL] {name}: ah max {max_ah:.6f} > {LIMITS.h.a_max}")
     _print_status("h 轴速度/加速度限制", errors)
-    return errors
-
-
-def _check_height_low_preference(results) -> list[str]:
-    errors: list[str] = []
-    lift_threshold = H_MIN + 0.005
-    min_final_lift_time = 2.0 * math.sqrt((H_MAX - H_MIN) / LIMITS.h.a_max)
-    allowed_early_margin = 0.12
-    for name, r in results.items():
-        if not r.success:
-            continue
-        h = r.s_array[:, 3]
-        low_candidates = np.flatnonzero(h <= lift_threshold)
-        if len(low_candidates) == 0:
-            errors.append(f"  [FAIL] {name}: never reaches low-height hold")
-            continue
-
-        first_low = int(low_candidates[0])
-        lift_candidates = np.flatnonzero(h[first_low:] > lift_threshold)
-        if len(lift_candidates) == 0:
-            errors.append(f"  [FAIL] {name}: never leaves low-height hold for final height")
-            continue
-
-        first_lift = first_low + int(lift_candidates[0])
-        earliest_reasonable_lift = r.total_time - min_final_lift_time - allowed_early_margin
-        if r.t_array[first_lift] < earliest_reasonable_lift:
-            errors.append(
-                f"  [FAIL] {name}: h leaves low hold too early at "
-                f"t={r.t_array[first_lift]:.3f}, h={h[first_lift]:.6f}; "
-                f"expected near final lift after t={earliest_reasonable_lift:.3f}"
-            )
-        else:
-            print(
-                f"  [OK] {name}: low-height hold until final lift at "
-                f"t={r.t_array[first_lift]:.3f}s"
-            )
-    _print_status("h 轴低位保持偏好", errors)
     return errors
 
 

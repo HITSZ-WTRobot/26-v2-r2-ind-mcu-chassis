@@ -512,16 +512,18 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
     const auto corridors     = corridors_for_start(start.y);
 
     Opti opti;
-    MX   X        = opti.variable(4, nodes);     // x, y, yaw_deg, h
-    MX   V        = opti.variable(4, nodes);     // dx, dy, dyaw_deg, dh
-    MX   A        = opti.variable(4, intervals); // acceleration per interval
-    MX   DT_PHASE = opti.variable(branch.phases.size());
-    MX   T        = sum1(DT_PHASE);
+    MX   X                 = opti.variable(4, nodes);     // x, y, yaw_deg, h
+    MX   V                 = opti.variable(4, nodes);     // dx, dy, dyaw_deg, dh
+    MX   A                 = opti.variable(4, intervals); // acceleration per interval
+    MX   DT_PHASE          = opti.variable(branch.phases.size());
+    MX   h_down_accel_peak = opti.variable();
+    MX   T                 = sum1(DT_PHASE);
 
     for (int phase_i = 0; phase_i < static_cast<int>(branch.phases.size()); ++phase_i)
     {
         opti.subject_to(opti.bounded(0.2, DT_PHASE(phase_i), 20.0));
     }
+    opti.subject_to(opti.bounded(0.0, h_down_accel_peak, A_MAX_H));
 
     opti.subject_to(X(Slice(), 0) == DM({ start.x, start.y, start.yaw_deg, start.h }));
     opti.subject_to(V(Slice(), 0) == DM({ 0.0, 0.0, 0.0, 0.0 }));
@@ -564,6 +566,7 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
                                                   0.5 * A(3, k) * dt * dt);
         opti.subject_to(V(Slice(), k + 1) == V(Slice(), k) + A(Slice(), k) * dt);
         opti.subject_to(opti.bounded(-A_MAX_H, A(3, k), A_MAX_H));
+        opti.subject_to(h_down_accel_peak >= -A(3, k));
 
         MX previous_wheel = wheels[k];
         for (int sub = 1; sub <= kWheelConstraintSubsteps; ++sub)
@@ -581,9 +584,8 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
         }
     }
 
-    MX height_preference = sum2(X(3, Slice()) - H_MIN) / nodes;
-    MX xyz_smoothness    = sumsqr(A(Slice(0, 3), Slice()));
-    MX cost = T + HEIGHT_LOW_PREFERENCE_WEIGHT * height_preference + 1e-9 * xyz_smoothness;
+    MX xyz_smoothness = sumsqr(A(Slice(0, 3), Slice()));
+    MX cost = T + H_DOWN_ACCEL_PEAK_WEIGHT * h_down_accel_peak + 1e-9 * xyz_smoothness;
     opti.minimize(cost);
 
     const auto guess_nodes     = initial_state_nodes(start_idx, branch);

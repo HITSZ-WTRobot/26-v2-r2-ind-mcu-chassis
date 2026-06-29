@@ -12,7 +12,16 @@ from matplotlib.patches import Polygon, Rectangle
 from PIL import Image
 
 from branch_specs import initial_guess_points_for_branch
-from config import HALF_L, HALF_W, MAX_WHEEL_ACCEL, MAX_WHEEL_SPEED, ZONE1, ZONE2, ZONE3
+from config import (
+    HALF_L,
+    HALF_W,
+    LIMITS,
+    MAX_WHEEL_ACCEL,
+    MAX_WHEEL_SPEED,
+    ZONE1,
+    ZONE2,
+    ZONE3,
+)
 from mecanum import wheel_speeds_np
 
 FIGURES_DIR = os.path.join(os.path.dirname(__file__), "figures")
@@ -45,6 +54,10 @@ def _series(result):
     acceleration = np.zeros_like(velocity)
     if len(s) >= 2:
         acceleration[1:, :] = np.diff(velocity, axis=0) / safe_dt[:, None]
+    height_velocity = s[:, 7]
+    height_acceleration = np.zeros_like(height_velocity)
+    if len(s) >= 2:
+        height_acceleration[1:] = np.diff(height_velocity) / safe_dt
 
     wheels = wheel_speeds_np(s[:, 2], s[:, 4], s[:, 5], s[:, 6])
     wheel_acc = np.zeros_like(wheels)
@@ -56,6 +69,8 @@ def _series(result):
         "s": s,
         "velocity": velocity,
         "acceleration": acceleration,
+        "height_velocity": height_velocity,
+        "height_acceleration": height_acceleration,
         "wheels": wheels,
         "wheel_acc": wheel_acc,
     }
@@ -74,6 +89,8 @@ def generate_gif(result, save_path: str, step: int = 5):
     t = data["t"]
     velocity = data["velocity"]
     acceleration = data["acceleration"]
+    height_velocity = data["height_velocity"]
+    height_acceleration = data["height_acceleration"]
     wheels = data["wheels"]
     wheel_acc = data["wheel_acc"]
     n = len(s)
@@ -94,13 +111,23 @@ def generate_gif(result, save_path: str, step: int = 5):
 
     _setup_field(ax_top, result, frame_idx)
     height_line = ax_h.plot(t, s[:, 3], color="tab:blue", linewidth=1.2, label="h")[0]
+    ax_h_v = ax_h.twinx()
+    ax_h_v.plot(t, height_velocity, color="tab:green", linewidth=1.0, label="vh")
+    ax_h_v.plot(t, height_acceleration, color="tab:red", linestyle="--", linewidth=0.9, label="ah")
+    ax_h_v.axhline(y=LIMITS.h.a_max, color="tab:red", linewidth=0.7, alpha=0.3)
+    ax_h_v.axhline(y=-LIMITS.h.a_max, color="tab:red", linewidth=0.7, alpha=0.3)
     ax_h.axhline(y=0.3, color="tab:orange", linestyle="--", linewidth=0.8, label="Zone2 h")
     ax_h.set_xlim(0.0, t[-1] * 1.02)
     ax_h.set_ylim(0.25, 0.45)
+    h_dyn_ylim = _axis_limit(np.column_stack([height_velocity, height_acceleration]), LIMITS.h.a_max)
+    ax_h_v.set_ylim(-h_dyn_ylim, h_dyn_ylim)
     ax_h.set_ylabel("h [m]")
-    ax_h.set_title("Height")
+    ax_h_v.set_ylabel("vh / ah")
+    ax_h.set_title("Height / Height Velocity / Height Acceleration")
     ax_h.grid(True, alpha=0.3)
-    ax_h.legend(fontsize=8, loc="upper right")
+    h_handles, h_labels = ax_h.get_legend_handles_labels()
+    hv_handles, hv_labels = ax_h_v.get_legend_handles_labels()
+    ax_h.legend(h_handles + hv_handles, h_labels + hv_labels, fontsize=8, loc="upper right")
 
     for col, label, color in [(0, "x", "tab:blue"), (1, "y", "tab:green")]:
         ax_xy.plot(t, velocity[:, col], color=color, linewidth=1.0, label=f"v_{label}")
@@ -146,10 +173,23 @@ def generate_gif(result, save_path: str, step: int = 5):
     )
     heading_line = ax_top.plot([], [], color="black", linewidth=1.2)[0]
     h_cursor = ax_h.axvline(x=0.0, color="red", alpha=0.35, linewidth=1.0)
+    h_v_cursor = ax_h_v.axvline(x=0.0, color="red", alpha=0.25, linewidth=1.0)
     xy_cursor = ax_xy.axvline(x=0.0, color="red", alpha=0.35, linewidth=1.0)
     yaw_cursor = ax_yaw.axvline(x=0.0, color="red", alpha=0.35, linewidth=1.0)
     wheel_cursor = ax_wheel.axvline(x=0.0, color="red", alpha=0.35, linewidth=1.0)
     h_point = ax_h.plot([], [], "ro", markersize=5)[0]
+    h_v_point = ax_h_v.plot([], [], marker="o", color="tab:green", markersize=4, linestyle="None")[0]
+    h_a_point = ax_h_v.plot([], [], marker="o", color="tab:red", markersize=4, linestyle="None")[0]
+    h_text = ax_h.text(
+        0.01,
+        0.05,
+        "",
+        transform=ax_h.transAxes,
+        fontsize=8,
+        va="bottom",
+        fontfamily="monospace",
+        bbox={"facecolor": "white", "alpha": 0.72, "edgecolor": "none"},
+    )
 
     info_text = ax_top.text(
         0.02,
@@ -201,6 +241,8 @@ def generate_gif(result, save_path: str, step: int = 5):
         x_i, y_i, yaw_i, h_i = map(float, s[idx, :4])
         vx_i, vy_i, wz_i = velocity[idx]
         ax_i, ay_i, aw_i = acceleration[idx]
+        vh_i = float(height_velocity[idx])
+        ah_i = float(height_acceleration[idx])
         wheel_i = wheels[idx]
         wheel_acc_i = wheel_acc[idx]
 
@@ -209,9 +251,12 @@ def generate_gif(result, save_path: str, step: int = 5):
         nose = np.array([x_i + HALF_L * np.cos(yaw_rad), y_i + HALF_L * np.sin(yaw_rad)])
         heading_line.set_data([x_i, nose[0]], [y_i, nose[1]])
 
-        for cursor in (h_cursor, xy_cursor, yaw_cursor, wheel_cursor):
+        for cursor in (h_cursor, h_v_cursor, xy_cursor, yaw_cursor, wheel_cursor):
             cursor.set_xdata([t_i, t_i])
         h_point.set_data([t_i], [h_i])
+        h_v_point.set_data([t_i], [vh_i])
+        h_a_point.set_data([t_i], [ah_i])
+        h_text.set_text(f"h={h_i:6.3f} m\nvh={vh_i:6.3f} m/s\nah={ah_i:6.3f} m/s2")
 
         info_text.set_text(
             f"t={t_i:5.2f}s\nx={x_i:6.3f} y={y_i:6.3f}\nyaw={yaw_i:6.2f}deg h={h_i:5.3f}m"
@@ -235,11 +280,15 @@ def generate_gif(result, save_path: str, step: int = 5):
             chassis_poly,
             heading_line,
             h_cursor,
+            h_v_cursor,
             xy_cursor,
             yaw_cursor,
             wheel_cursor,
             h_point,
+            h_v_point,
+            h_a_point,
             info_text,
+            h_text,
             xy_text,
             yaw_text,
             wheel_text,

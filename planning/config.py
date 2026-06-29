@@ -81,10 +81,10 @@ LIMITS = Limits(
     h=Limit(v_max=1.178, a_max=3.0, j_max=275.0),
 )
 
-# h 轴高度范围与优化偏好
+# h 轴高度范围与下行加速度峰值优化偏好
 H_MIN = 0.3
 H_MAX = 0.412
-HEIGHT_LOW_PREFERENCE_WEIGHT = 1e-2
+H_DOWN_ACCEL_PEAK_WEIGHT = 1e-3
 
 # ============================================================
 # 底盘尺寸（来自 Config.hpp ChassisInfo）
