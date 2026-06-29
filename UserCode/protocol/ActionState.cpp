@@ -144,6 +144,24 @@ uint16_t currentInfraredState()
     return Infrared::stateBits();
 }
 
+TrajectoryOfflineState currentTrajectoryOfflineState()
+{
+    if (Chassis::offline_trajectory == nullptr)
+        return TrajectoryOfflineState::Idle;
+
+    if (Chassis::offline_trajectory->isActive())
+    {
+        return Chassis::offline_trajectory->isFinished()
+                   ? TrajectoryOfflineState::Finished
+                   : TrajectoryOfflineState::Running;
+    }
+
+    if (Chassis::offline_trajectory->isStopped())
+        return TrajectoryOfflineState::Interrupted;
+
+    return TrajectoryOfflineState::Idle;
+}
+
 [[noreturn]] void loop(void* argument)
 {
     for (;;)
@@ -178,6 +196,7 @@ void updateTable()
                  currentLiftStatus(),
                  currentGripStatus(),
                  currentGripSuctionHasObject(),
-                 currentInfraredState());
+                 currentInfraredState(),
+                 currentTrajectoryOfflineState());
 }
 } // namespace Protocol::ActionState

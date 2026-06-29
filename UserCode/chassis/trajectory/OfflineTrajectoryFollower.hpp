@@ -152,6 +152,7 @@ public:
 
     [[nodiscard]] bool   isActive() const { return !stopped_ && points_ != nullptr; }
     [[nodiscard]] bool   isFinished() const { return index_ >= count_ - 1; }
+    [[nodiscard]] bool   isStopped() const { return stopped_ && points_ != nullptr && index_ < count_ - 1; }
     [[nodiscard]] size_t currentIndex() const { return index_; }
 
     ChassisSlave& chassisSlave() { return chassis_slave_; }

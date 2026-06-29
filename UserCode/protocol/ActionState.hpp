@@ -20,7 +20,8 @@ namespace Protocol::ActionState
  *               KfsRelease / Idle / Done
  * - bit10     Grip suction 是否检测到物体（仅在启用吸盘气压计时有效）
  * - bit11..12 红外接收稳定状态：A0 / A1 / A2 / A3 映射到 0..3
- * - bit13..15 预留
+ * - bit13..14 离线轨迹状态：Idle / Running / Finished / Interrupted
+ * - bit15    预留
  */
 inline volatile uint16_t table{};
 
@@ -67,6 +68,17 @@ enum class GripStatus : uint16_t
     Done        = 5u, /// 动作执行完成
 };
 
+/**
+ * 离线轨迹跟随状态
+ */
+enum class TrajectoryOfflineState : uint16_t
+{
+    Idle        = 0u, /// 无离线轨迹运行
+    Running     = 1u, /// 离线轨迹执行中
+    Finished    = 2u, /// 离线轨迹已完成
+    Interrupted = 3u, /// 离线轨迹被中断
+};
+
 namespace Layout
 {
 inline constexpr uint16_t StepShift                = 0u;
@@ -83,15 +95,18 @@ inline constexpr uint16_t LiftMask                 = 0x3u << LiftShift;
 inline constexpr uint16_t GripMask                 = 0x7u << GripShift;
 inline constexpr uint16_t GripSuctionHasObjectMask = 0x1u << GripSuctionHasObjectBit;
 inline constexpr uint16_t InfraredStateMask        = 0x3u << InfraredStateShift;
+inline constexpr uint16_t TrajectoryOfflineStateShift = 13u;
+inline constexpr uint16_t TrajectoryOfflineStateMask  = 0x3u << TrajectoryOfflineStateShift;
 } // namespace Layout
 
-constexpr uint16_t pack(const StepStatus  step,
-                        const ChassisMode chassis_mode,
-                        const bool        chassis_curve_finished,
-                        const LiftStatus  lift,
-                        const GripStatus  grip,
-                        const bool        grip_suction_has_object,
-                        const uint16_t    infrared_state)
+constexpr uint16_t pack(const StepStatus              step,
+                        const ChassisMode             chassis_mode,
+                        const bool                    chassis_curve_finished,
+                        const LiftStatus              lift,
+                        const GripStatus              grip,
+                        const bool                    grip_suction_has_object,
+                        const uint16_t                infrared_state,
+                        const TrajectoryOfflineState  trajectory_offline_state)
 {
     return static_cast<uint16_t>(
             (static_cast<uint16_t>(step) << Layout::StepShift) |
@@ -100,7 +115,8 @@ constexpr uint16_t pack(const StepStatus  step,
             (static_cast<uint16_t>(lift) << Layout::LiftShift) |
             (static_cast<uint16_t>(grip) << Layout::GripShift) |
             ((grip_suction_has_object ? 1u : 0u) << Layout::GripSuctionHasObjectBit) |
-            ((infrared_state & 0x3u) << Layout::InfraredStateShift));
+            ((infrared_state & 0x3u) << Layout::InfraredStateShift) |
+            (static_cast<uint16_t>(trajectory_offline_state) << Layout::TrajectoryOfflineStateShift));
 }
 
 void updateTable();

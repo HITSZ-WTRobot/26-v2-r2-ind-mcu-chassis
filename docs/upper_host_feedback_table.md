@@ -54,7 +54,8 @@
 | `bit7..9` | `0x0380` | `GripStatus` | Grip / 动作组状态 |
 | `bit10` | `0x0400` | `GripSuctionHasObject` | Grip 吸盘是否检测到物体 |
 | `bit11..12` | `0x1800` | `InfraredReceiverState` | 红外接收模块稳定状态 |
-| `bit13..15` | `0xE000` | Reserved | 预留 |
+| `bit13..14` | `0x6000` | `TrajectoryOfflineState` | 离线轨迹执行状态 |
+| `bit15` | `0x8000` | Reserved | 预留 |
 
 建议上位机按下面方式解码：
 
@@ -66,6 +67,7 @@ lift_status              = (table >> 5) & 0x3
 grip_status              = (table >> 7) & 0x7
 grip_suction_has_object  = (table >> 10) & 0x1
 infrared_receiver_state  = (table >> 11) & 0x3
+trajectory_offline_state = (table >> 13) & 0x3
 ```
 
 补充：
@@ -149,6 +151,24 @@ infrared_receiver_state  = (table >> 11) & 0x3
 | `1` | `0xA1` | 对接完成；下位机仅在稳定状态从 `0xA0` 切换到 `0xA1` 时执行一次 `Grip::openClaw()`，随后延时回收到红外对接释放姿态 |
 | `2` | `0xA2` | 无附加执行 |
 | `3` | `0xA3` | 预留状态 |
+
+### 3.8 `TrajectoryOfflineState`
+
+离线轨迹跟随状态，由下位机 `OfflineTrajectoryFollower` 的内部状态映射。
+
+| 值 | 枚举 | 含义 |
+| --- | --- | --- |
+| `0` | `Idle` | 无离线轨迹运行（未启动或已清理） |
+| `1` | `Running` | 离线轨迹正在执行中 |
+| `2` | `Finished` | 离线轨迹已完成（到达终点） |
+| `3` | `Interrupted` | 离线轨迹被中断（提前停止） |
+
+补充：
+
+- 离线轨迹通过 `0x18 StartOfflineTrajectory` 命令启动，状态会从 `Idle` → `Running`。
+- 正常完成时状态变为 `Finished`，被其他命令中断时变为 `Interrupted`。
+- 轨迹清理后回到 `Idle`。
+- 该字段与 `ChassisMode` 独立：离线轨迹运行时 `ChassisMode` 可能仍显示先前 Master 模式，上位机应综合两个字段判断系统状态。
 
 ## 4. `Connection::table`
 
