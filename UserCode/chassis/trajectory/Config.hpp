@@ -23,6 +23,6 @@ constexpr ChassisSlaveOffline::PDConfig PDCfg = {
 };
 
 /// 抬升电机轨迹 PD 配置（电机角度域，4 个电机共用）。
-constexpr PD::Config LiftMotorPDCfg = { .Kp = 5.0f, .Kd = 25.0f, .abs_output_max = 60.0f };
+constexpr PD::Config LiftMotorPDCfg = { .Kp = 5.0f, .Kd = 25.0f, .abs_output_max = 450.0f };
 
 } // namespace Config::TrajectoryOffline

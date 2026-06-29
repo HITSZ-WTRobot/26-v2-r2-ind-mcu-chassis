@@ -39,12 +39,18 @@ constexpr auto resampleTrajectory(const std::array<TrajectoryPoint8, NIn>& origi
         {
             const auto& p0 = original[src_idx];
             const auto& p1 = original[src_idx + 1];
-            // 位置直接插值，速度按 speed_ratio 缩放以匹配播放速率
-            result[i]      = {
-                p0.x + frac * (p1.x - p0.x),
-                p0.y + frac * (p1.y - p0.y),
-                p0.yaw + frac * (p1.yaw - p0.yaw),
-                p0.h + frac * (p1.h - p0.h),
+            // 位置沿速度积分（二阶），替代线性插值以保证积分关系
+            // pos(frac) = pos0 + vel0*frac*src_dt + 0.5*(vel1-vel0)/src_dt*(frac*src_dt)²
+            //            = pos0 + frac * src_dt * (vel0 + 0.5 * (vel1 - vel0) * frac)
+            const float x_integral   = p0.x + frac * src_dt * (p0.dx + 0.5f * (p1.dx - p0.dx) * frac);
+            const float y_integral   = p0.y + frac * src_dt * (p0.dy + 0.5f * (p1.dy - p0.dy) * frac);
+            const float yaw_integral = p0.yaw + frac * src_dt * (p0.dyaw + 0.5f * (p1.dyaw - p0.dyaw) * frac);
+            const float h_integral   = p0.h + frac * src_dt * (p0.dh + 0.5f * (p1.dh - p0.dh) * frac);
+            result[i]                = {
+                x_integral,
+                y_integral,
+                yaw_integral,
+                h_integral,
                 (p0.dx + frac * (p1.dx - p0.dx)) * speed_ratio,
                 (p0.dy + frac * (p1.dy - p0.dy)) * speed_ratio,
                 (p0.dyaw + frac * (p1.dyaw - p0.dyaw)) * speed_ratio,
