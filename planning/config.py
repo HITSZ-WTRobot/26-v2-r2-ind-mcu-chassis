@@ -120,7 +120,7 @@ HALF_W_EXPANDED = HALF_W + COLLISION_EXPANSION
 
 # 薄障碍物：Zone2 底部的水平条带
 THIN_OBS_X_MIN, THIN_OBS_X_MAX = 9.30, 10.80
-THIN_OBS_Y_MIN, THIN_OBS_Y_MAX = 4.47, 4.53
+THIN_OBS_Y_MIN, THIN_OBS_Y_MAX = 4.47, 4.65
 
 # ============================================================
 # 优化参数

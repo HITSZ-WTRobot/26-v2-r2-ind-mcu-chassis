@@ -73,7 +73,7 @@ class SafeCorridor:
 
 
 FREE_CERT_LEFT = Rect("left_zone1_clear", 8.00, 9.30, 1.23, 6.00)
-FREE_CERT_TOP = Rect("top_above_strip_clear", 8.00, 12.00, 4.53, 6.00)
+FREE_CERT_TOP = Rect("top_above_strip_clear", 8.00, 12.00, 4.65, 6.00)
 FREE_CERT_RIGHT = Rect("right_zone3_clear", 10.80, 12.00, 0.20, 6.00)
 FREE_CERT_LOW_RIGHT = Rect("low_zone3_clear", 9.50, 12.00, 0.20, 4.47)
 
@@ -84,7 +84,7 @@ CORRIDORS: dict[str, SafeCorridor] = {
         x_min=8.43,
         x_max=8.58,
         y_min=1.80,
-        y_max=5.16,
+        y_max=5.28,
         yaw_min_deg=0.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_LEFT,
@@ -93,8 +93,8 @@ CORRIDORS: dict[str, SafeCorridor] = {
         "top0",
         x_min=8.53,
         x_max=11.24,
-        y_min=4.86,
-        y_max=4.87,
+        y_min=4.98,
+        y_max=4.99,
         yaw_min_deg=0.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_TOP,
@@ -105,7 +105,7 @@ CORRIDORS: dict[str, SafeCorridor] = {
         x_min=11.22,
         x_max=11.24,
         y_min=3.94,
-        y_max=4.87,
+        y_max=4.99,
         yaw_min_deg=0.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_RIGHT,
@@ -342,7 +342,7 @@ def _polygon_edges(poly: np.ndarray):
 
 def _free_obstacle_boundary_segments() -> list[tuple[np.ndarray, np.ndarray]]:
     xs = [7.5, 8.0, 9.30, 9.44, 9.50, 10.80, 12.0, 12.5]
-    ys = [-0.3, 0.20, 1.23, 4.47, 4.50, 4.53, 6.0, 6.5]
+    ys = [-0.3, 0.20, 1.23, 4.47, 4.50, 4.65, 6.0, 6.5]
     segments: list[tuple[np.ndarray, np.ndarray]] = []
 
     for x in xs[1:-1]:

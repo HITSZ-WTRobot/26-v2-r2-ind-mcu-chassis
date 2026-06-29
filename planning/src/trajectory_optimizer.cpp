@@ -71,14 +71,14 @@ struct BranchSpec
 };
 
 constexpr Rect kFreeCertLeft{ "left_zone1_clear", 8.00, 9.30, 1.23, 6.00 };
-constexpr Rect kFreeCertTop{ "top_above_strip_clear", 8.00, 12.00, 4.53, 6.00 };
+constexpr Rect kFreeCertTop{ "top_above_strip_clear", 8.00, 12.00, 4.65, 6.00 };
 constexpr Rect kFreeCertRight{ "right_zone3_clear", 10.80, 12.00, 0.20, 6.00 };
 constexpr Rect kFreeCertLowRight{ "low_zone3_clear", 9.50, 12.00, 0.20, 4.47 };
 
 const std::vector<Corridor> kBaseCorridors{
-    { "approach", 8.43, 8.58, 1.80, 5.16, 0.0, 0.0, kFreeCertLeft, false },
-    { "top0", 8.53, 11.24, 4.86, 4.87, 0.0, 0.0, kFreeCertTop, true },
-    { "right_down0", 11.22, 11.24, 3.94, 4.87, 0.0, 0.0, kFreeCertRight, false },
+    { "approach", 8.43, 8.58, 1.80, 5.28, 0.0, 0.0, kFreeCertLeft, false },
+    { "top0", 8.53, 11.24, 4.98, 4.99, 0.0, 0.0, kFreeCertTop, true },
+    { "right_down0", 11.22, 11.24, 3.94, 4.99, 0.0, 0.0, kFreeCertRight, false },
     { "lower_down", 10.05, 11.35, 2.78, 3.94, -90.0, 0.0, kFreeCertLowRight, false },
     { "lower_finish", 10.05, 11.35, 2.45, 2.80, -90.0, 0.0, kFreeCertLowRight, false },
 };
@@ -92,8 +92,8 @@ const std::vector<BranchSpec> kBranches{
         { "lower_down", 32 },
         { "lower_finish", 32 } },
       {
-              { "top_start", 8.55, 4.865, 0.0, 0.3 },
-              { "top_end", 11.23, 4.865, 0.0, 0.3 },
+              { "top_start", 8.55, 4.985, 0.0, 0.3 },
+              { "top_end", 11.23, 4.985, 0.0, 0.3 },
       } },
 };
 

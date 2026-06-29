@@ -78,7 +78,7 @@ inline constexpr double HALF_W_EXPANDED = HALF_W + COLLISION_EXPANSION;
 
 // 薄障碍物：Zone2 底部的水平条带
 inline constexpr double THIN_OBS_X_MIN = 9.30, THIN_OBS_X_MAX = 10.80;
-inline constexpr double THIN_OBS_Y_MIN = 4.47, THIN_OBS_Y_MAX = 4.53;
+inline constexpr double THIN_OBS_Y_MIN = 4.47, THIN_OBS_Y_MAX = 4.65;
 
 // ============================================================
 // 运动限制（MaxTrajectoryLimit）

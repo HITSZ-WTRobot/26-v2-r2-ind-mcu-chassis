@@ -36,8 +36,8 @@ BRANCHES: tuple[BranchSpec, ...] = (
             PhaseSpec("lower_finish", 32),
         ),
         anchors={
-            "top_start": (8.55, 4.865, 0.0, 0.3),
-            "top_end": (11.23, 4.865, 0.0, 0.3),
+            "top_start": (8.55, 4.985, 0.0, 0.3),
+            "top_end": (11.23, 4.985, 0.0, 0.3),
         },
     ),
 )
