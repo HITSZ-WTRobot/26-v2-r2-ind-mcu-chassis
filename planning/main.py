@@ -167,7 +167,7 @@ def _check_exported_files(results: dict[str, ExportedTrajectoryResult]) -> None:
             raise AssertionError(f"legacy global trajectory symbol still present in {path}")
         if "500.000000" not in text or "0.002000" not in text:
             raise AssertionError(f"500Hz metadata missing in {path}")
-        print(f"  OK {path}: {result.n_points} source pts, 500Hz header verified")
+        print(f"  OK {path}: {result.n_points} CSV pts, 500Hz header verified")
 
 
 if __name__ == "__main__":

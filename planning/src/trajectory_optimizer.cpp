@@ -71,29 +71,31 @@ struct BranchSpec
 };
 
 constexpr Rect kFreeCertLeft{ "left_zone1_clear", 8.00, 9.30, 1.23, 6.00 };
-constexpr Rect kFreeCertTop{ "top_above_strip_clear", 8.00, 12.00, 4.65, 6.00 };
+constexpr Rect kFreeCertTop{ "top_above_strip_clear", 8.00, 12.00, 4.63, 6.00 };
 constexpr Rect kFreeCertRight{ "right_zone3_clear", 10.80, 12.00, 0.20, 6.00 };
 constexpr Rect kFreeCertLowRight{ "low_zone3_clear", 9.50, 12.00, 0.20, 4.47 };
 
 const std::vector<Corridor> kBaseCorridors{
-    { "approach", 8.43, 8.58, 1.80, 5.28, 0.0, 0.0, kFreeCertLeft, false },
-    { "top0", 8.53, 11.24, 4.98, 4.99, 0.0, 0.0, kFreeCertTop, true },
-    { "right_down0", 11.22, 11.24, 3.94, 4.99, 0.0, 0.0, kFreeCertRight, false },
-    { "lower_down", 10.05, 11.35, 2.78, 3.94, -90.0, 0.0, kFreeCertLowRight, false },
-    { "lower_finish", 10.05, 11.35, 2.45, 2.80, -90.0, 0.0, kFreeCertLowRight, false },
+    { "approach", 8.55, 8.81, 1.80, 5.29, 0.0, 0.0, kFreeCertLeft, false },
+    { "top0", 8.55, 11.43, 4.95, 5.52, 0.0, 0.0, kFreeCertTop, true },
+    { "right_down0", 11.34, 11.43, 3.82, 5.46, -90.0, 0.0, kFreeCertRight, false },
+    { "low_straight0", 11.34, 11.43, 3.50, 3.93, -90.0, 0.0, kFreeCertLowRight, false },
+    { "lower_down", 10.11, 11.38, 2.36, 3.82, -90.0, 0.0, kFreeCertLowRight, false },
+    { "lower_finish", 10.11, 11.38, 2.00, 2.40, -90.0, 0.0, kFreeCertLowRight, false },
 };
 
 const std::vector<BranchSpec> kBranches{
     { "z2yaw0",
       0.0,
-      { { "approach", 28 },
-        { "top0", 36 },
-        { "right_down0", 16 },
-        { "lower_down", 32 },
-        { "lower_finish", 32 } },
+      { { "approach", 32 },
+        { "top0", 42 },
+        { "right_down0", 22 },
+        { "low_straight0", 14 },
+        { "lower_down", 38 },
+        { "lower_finish", 28 } },
       {
-              { "top_start", 8.55, 4.985, 0.0, 0.3 },
-              { "top_end", 11.23, 4.985, 0.0, 0.3 },
+              { "top_start", 8.55, 5.10, 0.0, 0.3 },
+              { "top_end", 11.36, 5.10, 0.0, 0.3 },
       } },
 };
 
@@ -252,6 +254,54 @@ std::array<double, 2> corridor_h_range(const Corridor& corridor)
     return { H_MIN, H_MAX };
 }
 
+struct CorridorIntersection
+{
+    double x_min;
+    double x_max;
+    double y_min;
+    double y_max;
+    double yaw_min_deg;
+    double yaw_max_deg;
+    double h_min;
+    double h_max;
+};
+
+CorridorIntersection corridor_intersection(const Corridor& a, const Corridor& b)
+{
+    const auto           a_h = corridor_h_range(a);
+    const auto           b_h = corridor_h_range(b);
+    CorridorIntersection intersection{
+        std::max(a.x_min, b.x_min),
+        std::min(a.x_max, b.x_max),
+        std::max(a.y_min, b.y_min),
+        std::min(a.y_max, b.y_max),
+        std::max(a.yaw_min_deg, b.yaw_min_deg),
+        std::min(a.yaw_max_deg, b.yaw_max_deg),
+        std::max(a_h[0], b_h[0]),
+        std::min(a_h[1], b_h[1]),
+    };
+    if (intersection.x_min > intersection.x_max || intersection.y_min > intersection.y_max ||
+        intersection.yaw_min_deg > intersection.yaw_max_deg ||
+        intersection.h_min > intersection.h_max)
+    {
+        std::ostringstream oss;
+        oss << "corridor transition has no overlap: " << a.name << " -> " << b.name;
+        throw std::runtime_error(oss.str());
+    }
+    return intersection;
+}
+
+NodeGuess clamp_to_intersection(const NodeGuess&            reference,
+                                const CorridorIntersection& intersection)
+{
+    return {
+        std::clamp(reference.x, intersection.x_min, intersection.x_max),
+        std::clamp(reference.y, intersection.y_min, intersection.y_max),
+        std::clamp(reference.yaw_deg, intersection.yaw_min_deg, intersection.yaw_max_deg),
+        std::clamp(reference.h, intersection.h_min, intersection.h_max),
+    };
+}
+
 NodeGuess clamp_to_corridor(const NodeGuess& reference, const Corridor& corridor)
 {
     auto h_range = corridor_h_range(corridor);
@@ -358,6 +408,20 @@ std::vector<NodeGuess> initial_state_nodes(int start_idx, const BranchSpec& bran
         const auto& corridor = base_corridor(phase_names[k]);
         if (corridor.requires_h_03)
             nodes[k].h = H_MIN;
+    }
+
+    int boundary_node = 0;
+    for (int phase_i = 0; phase_i + 1 < static_cast<int>(branch.phases.size()); ++phase_i)
+    {
+        boundary_node += branch.phases[phase_i].nodes;
+        const auto& from = corridor_by_name(corridors, branch.phases[phase_i].corridor_name);
+        const auto& to   = corridor_by_name(corridors, branch.phases[phase_i + 1].corridor_name);
+        const auto  intersection = corridor_intersection(from, to);
+        for (int node : { boundary_node - 1, boundary_node })
+        {
+            if (0 <= node && node < static_cast<int>(nodes.size()))
+                nodes[node] = clamp_to_intersection(nodes[node], intersection);
+        }
     }
     return nodes;
 }
@@ -545,6 +609,29 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
             opti.subject_to(opti.bounded(H_MIN, X(3, k), H_MAX));
     }
 
+    int boundary_node = 0;
+    for (int phase_i = 0; phase_i + 1 < static_cast<int>(branch.phases.size()); ++phase_i)
+    {
+        boundary_node += branch.phases[phase_i].nodes;
+        const auto& from = corridor_by_name(corridors, branch.phases[phase_i].corridor_name);
+        const auto& to   = corridor_by_name(corridors, branch.phases[phase_i + 1].corridor_name);
+        const auto  intersection = corridor_intersection(from, to);
+        for (int node : { boundary_node - 1, boundary_node })
+        {
+            opti.subject_to(opti.bounded(intersection.x_min, X(0, node), intersection.x_max));
+            opti.subject_to(opti.bounded(intersection.y_min, X(1, node), intersection.y_max));
+            opti.subject_to(
+                    opti.bounded(intersection.yaw_min_deg, X(2, node), intersection.yaw_max_deg));
+            if (std::abs(intersection.h_max - intersection.h_min) <= 1e-9)
+            {
+                opti.subject_to(X(3, node) == intersection.h_min);
+                opti.subject_to(V(3, node) == 0.0);
+            }
+            else
+                opti.subject_to(opti.bounded(intersection.h_min, X(3, node), intersection.h_max));
+        }
+    }
+
     std::vector<MX> wheels;
     wheels.reserve(nodes);
     for (int k = 0; k < nodes; ++k)
@@ -560,10 +647,8 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
     {
         int phase_idx = phase_indices[k];
         MX  dt        = DT_PHASE(phase_idx) / branch.phases[phase_idx].nodes;
-        opti.subject_to(X(Slice(0, 3), k + 1) == X(Slice(0, 3), k) +
-                                                        V(Slice(0, 3), k) * dt);
-        opti.subject_to(X(3, k + 1) == X(3, k) + V(3, k) * dt +
-                                                  0.5 * A(3, k) * dt * dt);
+        opti.subject_to(X(Slice(0, 3), k + 1) == X(Slice(0, 3), k) + V(Slice(0, 3), k) * dt);
+        opti.subject_to(X(3, k + 1) == X(3, k) + V(3, k) * dt + 0.5 * A(3, k) * dt * dt);
         opti.subject_to(V(Slice(), k + 1) == V(Slice(), k) + A(Slice(), k) * dt);
         opti.subject_to(opti.bounded(-A_MAX_H, A(3, k), A_MAX_H));
         opti.subject_to(h_down_accel_peak >= -A(3, k));
@@ -585,7 +670,7 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
     }
 
     MX xyz_smoothness = sumsqr(A(Slice(0, 3), Slice()));
-    MX cost = T + H_DOWN_ACCEL_PEAK_WEIGHT * h_down_accel_peak + 1e-9 * xyz_smoothness;
+    MX cost           = T + H_DOWN_ACCEL_PEAK_WEIGHT * h_down_accel_peak + 1e-9 * xyz_smoothness;
     opti.minimize(cost);
 
     const auto guess_nodes     = initial_state_nodes(start_idx, branch);

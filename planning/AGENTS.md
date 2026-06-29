@@ -42,13 +42,21 @@ The Python/CasADi implementation is the current generator:
 - `src/exporter.cpp` writes both firmware headers and CSV inspection copies under
   `dist/`; Python should only inspect those exported artifacts.
 
-Zone2 yaw is fixed to `0deg`; solve and export only the `z2yaw0` branch.  Do not
-add hard intermediate-point constraints other than the start/end boundary states;
-branch anchor points are initial guesses only.  The verifier requires at least
-75% of each trajectory's duration to stay near wheel speed or wheel acceleration
-limits.  Do not add an explicit “hug the limit” reward to the optimizer; keep
-that as a verifier/evaluation gate based on sustained time near wheel
-speed/acceleration limits.
+Zone2 yaw is fixed to `0deg`; solve and export only the `z2yaw0` branch.  The
+current boundary states are starts `(8.55, 1.80/3.00/4.20, 0deg, 0.412)` and the
+shared end `(10.75, 2.00, -90deg, 0.44)`.  Collision expansion is 5cm, and the
+thin obstacle is `x=[9.30,10.80], y=[4.47,4.63]`; keep `config.hpp`,
+`config.py`, `geometry.py`, `branch_specs.py`, and `src/trajectory_optimizer.cpp`
+synchronized when these values or certified corridors change.  Certified phase
+transitions must overlap by area; do not connect two corridors only by a line or
+point, because the optimizer clamps boundary nodes into the overlap and a
+zero-area overlap can create artificial stop-and-go motion.  Do not add hard
+intermediate-point constraints other than the start/end boundary states; branch
+anchor points are initial guesses only.  The verifier requires at least 75% of
+each trajectory's duration to stay near wheel speed or wheel acceleration limits.
+Do not add an explicit “hug the limit” reward to the optimizer; keep that as a
+verifier/evaluation gate based on sustained time near wheel speed/acceleration
+limits.
 
 ## Output Artifacts
 
@@ -65,3 +73,5 @@ trajectory namespaces with `kSampleHz`, `kDt`, `kPointCount`, `kDuration`, and
 `kPoints`.
 
 Keep CSVs in `dist/` synchronized with the headers when regenerating trajectories.
+CSV inspection copies are also exported at 500 Hz from the same resampling path
+as the firmware headers, and Python verification loads those CSVs.

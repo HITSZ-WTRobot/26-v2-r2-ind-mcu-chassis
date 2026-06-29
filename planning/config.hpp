@@ -31,12 +31,12 @@ struct Waypoint
 };
 
 inline constexpr std::array<Waypoint, 3> ENTRY_POINTS{ {
-        { 8.43, 1.80, 0.0, 0.412 },
-        { 8.43, 3.00, 0.0, 0.412 },
-        { 8.43, 4.20, 0.0, 0.412 },
+        { 8.55, 1.80, 0.0, 0.412 },
+        { 8.55, 3.00, 0.0, 0.412 },
+        { 8.55, 4.20, 0.0, 0.412 },
 } };
 
-inline constexpr Waypoint EXIT_POINT{ 11.25, 2.5, -90.0, 0.412 };
+inline constexpr Waypoint EXIT_POINT{ 10.75, 2.0, -90.0, 0.44 };
 
 static inline std::string trajectory_name(int start_idx)
 {
@@ -66,7 +66,7 @@ inline constexpr double LY_M           = DISTANCE_Y_MM / 1000.0;
 inline constexpr double LXY_M          = (LX_M + LY_M) / 2.0;
 
 // 碰撞硬约束膨胀量
-inline constexpr double COLLISION_EXPANSION = 0.03; // 3cm
+inline constexpr double COLLISION_EXPANSION = 0.05; // 5cm
 
 // 膨胀后的 footprint 半尺寸（用于 Zone 硬约束）
 inline constexpr double HALF_L_EXPANDED = HALF_L + COLLISION_EXPANSION;
@@ -78,7 +78,7 @@ inline constexpr double HALF_W_EXPANDED = HALF_W + COLLISION_EXPANSION;
 
 // 薄障碍物：Zone2 底部的水平条带
 inline constexpr double THIN_OBS_X_MIN = 9.30, THIN_OBS_X_MAX = 10.80;
-inline constexpr double THIN_OBS_Y_MIN = 4.47, THIN_OBS_Y_MAX = 4.65;
+inline constexpr double THIN_OBS_Y_MIN = 4.47, THIN_OBS_Y_MAX = 4.63;
 
 // ============================================================
 // 运动限制（MaxTrajectoryLimit）
@@ -94,13 +94,13 @@ inline constexpr double A_MAX_H   = 3.0;
 
 // h 轴高度范围与下行加速度峰值优化偏好
 inline constexpr double H_MIN                    = 0.3;
-inline constexpr double H_MAX                    = 0.412;
+inline constexpr double H_MAX                    = 0.44;
 inline constexpr double H_DOWN_ACCEL_PEAK_WEIGHT = 1e-3;
 
 // ============================================================
 // 规划参数
 // ============================================================
-inline constexpr double SAMPLE_DT = 0.01; // 输出采样周期 (100Hz)
+inline constexpr double SAMPLE_DT = 0.002; // 输出采样周期 (500Hz)
 
 // ============================================================
 // 矩形 footprint 采样点（车身系）

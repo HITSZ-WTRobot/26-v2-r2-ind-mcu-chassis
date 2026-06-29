@@ -25,6 +25,9 @@ from config import (
 from mecanum import wheel_speeds_np
 
 FIGURES_DIR = os.path.join(os.path.dirname(__file__), "figures")
+MAX_GIF_FRAMES = 240
+GIF_DURATION_QUANTUM_MS = 10
+MIN_GIF_FRAME_DURATION_MS = 20
 
 
 def _make_rect_polygon(cx, cy, yaw_deg):
@@ -95,6 +98,10 @@ def generate_gif(result, save_path: str, step: int = 5):
     wheel_acc = data["wheel_acc"]
     n = len(s)
 
+    total_ms = max(1, int(round(float(t[-1] - t[0]) * 1000.0)))
+    max_frames_for_duration = max(2, total_ms // MIN_GIF_FRAME_DURATION_MS)
+    max_frames = max(2, min(MAX_GIF_FRAMES, max_frames_for_duration))
+    step = max(step, int(np.ceil(n / max_frames)))
     frame_idx = list(range(0, n, step))
     if frame_idx[-1] != n - 1:
         frame_idx.append(n - 1)
@@ -361,22 +368,34 @@ def _gif_frame_durations_ms(frame_times: np.ndarray) -> list[int]:
     """Return per-frame GIF durations in milliseconds.
 
     The durations are derived from the actual trajectory timestamps so the replay
-    length tracks the true execution time instead of a fixed display rate.
+    length tracks the true execution time instead of a fixed display rate.  GIF
+    stores delays in 10 ms units, so durations are quantized before saving
+    instead of relying on Pillow's truncation behavior.
     """
     if len(frame_times) <= 1:
-        return [1000]
+        return [MIN_GIF_FRAME_DURATION_MS]
 
     motion_times_ms = np.diff(frame_times) * 1000.0
-    total_ms = max(1, int(round(float(frame_times[-1] - frame_times[0]) * 1000.0)))
-    final_hold_ms = 1 if total_ms > 1 else 0
-    motion_budget_ms = max(total_ms - final_hold_ms, len(motion_times_ms))
+    total_cs = max(1, int(round(float(frame_times[-1] - frame_times[0]) * 1000.0 / GIF_DURATION_QUANTUM_MS)))
+    min_frame_cs = max(1, MIN_GIF_FRAME_DURATION_MS // GIF_DURATION_QUANTUM_MS)
+    interval_count = len(motion_times_ms)
+    final_hold_cs = min_frame_cs
+    minimum_total_cs = min_frame_cs * interval_count + final_hold_cs
+    if total_cs < minimum_total_cs:
+        total_cs = minimum_total_cs
 
-    durations = np.floor(motion_times_ms).astype(int)
-    durations = np.maximum(durations, 1)
+    motion_budget_cs = total_cs - final_hold_cs
+    if float(np.sum(motion_times_ms)) > 0.0:
+        raw_durations = motion_times_ms / float(np.sum(motion_times_ms)) * motion_budget_cs
+    else:
+        raw_durations = np.full(interval_count, motion_budget_cs / interval_count)
 
-    remainder = motion_budget_ms - int(np.sum(durations))
+    durations = np.floor(raw_durations).astype(int)
+    durations = np.maximum(durations, min_frame_cs)
+
+    remainder = motion_budget_cs - int(np.sum(durations))
     if remainder != 0:
-        fractional = motion_times_ms - np.floor(motion_times_ms)
+        fractional = raw_durations - np.floor(raw_durations)
         if remainder > 0:
             order = np.argsort(-fractional)
             while remainder > 0:
@@ -390,7 +409,7 @@ def _gif_frame_durations_ms(frame_times: np.ndarray) -> list[int]:
             while remainder < 0:
                 progressed = False
                 for idx in order:
-                    if durations[idx] > 1:
+                    if durations[idx] > min_frame_cs:
                         durations[idx] -= 1
                         remainder += 1
                         progressed = True
@@ -399,9 +418,8 @@ def _gif_frame_durations_ms(frame_times: np.ndarray) -> list[int]:
                 if not progressed:
                     break
 
-    durations_list = durations.tolist()
-    if final_hold_ms:
-        durations_list.append(final_hold_ms)
+    durations_list = (durations * GIF_DURATION_QUANTUM_MS).astype(int).tolist()
+    durations_list.append(final_hold_cs * GIF_DURATION_QUANTUM_MS)
     return durations_list
 
 

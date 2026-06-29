@@ -73,7 +73,7 @@ class SafeCorridor:
 
 
 FREE_CERT_LEFT = Rect("left_zone1_clear", 8.00, 9.30, 1.23, 6.00)
-FREE_CERT_TOP = Rect("top_above_strip_clear", 8.00, 12.00, 4.65, 6.00)
+FREE_CERT_TOP = Rect("top_above_strip_clear", 8.00, 12.00, 4.63, 6.00)
 FREE_CERT_RIGHT = Rect("right_zone3_clear", 10.80, 12.00, 0.20, 6.00)
 FREE_CERT_LOW_RIGHT = Rect("low_zone3_clear", 9.50, 12.00, 0.20, 4.47)
 
@@ -81,20 +81,20 @@ FREE_CERT_LOW_RIGHT = Rect("low_zone3_clear", 9.50, 12.00, 0.20, 4.47)
 CORRIDORS: dict[str, SafeCorridor] = {
     "approach": SafeCorridor(
         "approach",
-        x_min=8.43,
-        x_max=8.58,
+        x_min=8.55,
+        x_max=8.81,
         y_min=1.80,
-        y_max=5.28,
+        y_max=5.29,
         yaw_min_deg=0.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_LEFT,
     ),
     "top0": SafeCorridor(
         "top0",
-        x_min=8.53,
-        x_max=11.24,
-        y_min=4.98,
-        y_max=4.99,
+        x_min=8.55,
+        x_max=11.43,
+        y_min=4.95,
+        y_max=5.52,
         yaw_min_deg=0.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_TOP,
@@ -102,30 +102,40 @@ CORRIDORS: dict[str, SafeCorridor] = {
     ),
     "right_down0": SafeCorridor(
         "right_down0",
-        x_min=11.22,
-        x_max=11.24,
-        y_min=3.94,
-        y_max=4.99,
-        yaw_min_deg=0.0,
+        x_min=11.34,
+        x_max=11.43,
+        y_min=3.82,
+        y_max=5.46,
+        yaw_min_deg=-90.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_RIGHT,
     ),
+    "low_straight0": SafeCorridor(
+        "low_straight0",
+        x_min=11.34,
+        x_max=11.43,
+        y_min=3.50,
+        y_max=3.93,
+        yaw_min_deg=-90.0,
+        yaw_max_deg=0.0,
+        certificate=FREE_CERT_LOW_RIGHT,
+    ),
     "lower_down": SafeCorridor(
         "lower_down",
-        x_min=10.05,
-        x_max=11.35,
-        y_min=2.78,
-        y_max=3.94,
+        x_min=10.11,
+        x_max=11.38,
+        y_min=2.36,
+        y_max=3.82,
         yaw_min_deg=-90.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_LOW_RIGHT,
     ),
     "lower_finish": SafeCorridor(
         "lower_finish",
-        x_min=10.05,
-        x_max=11.35,
-        y_min=2.45,
-        y_max=2.80,
+        x_min=10.11,
+        x_max=11.38,
+        y_min=2.00,
+        y_max=2.40,
         yaw_min_deg=-90.0,
         yaw_max_deg=0.0,
         certificate=FREE_CERT_LOW_RIGHT,
@@ -137,6 +147,7 @@ PHASE_ORDER = [
     "approach",
     "top0",
     "right_down0",
+    "low_straight0",
     "lower_down",
     "lower_finish",
 ]
@@ -342,7 +353,7 @@ def _polygon_edges(poly: np.ndarray):
 
 def _free_obstacle_boundary_segments() -> list[tuple[np.ndarray, np.ndarray]]:
     xs = [7.5, 8.0, 9.30, 9.44, 9.50, 10.80, 12.0, 12.5]
-    ys = [-0.3, 0.20, 1.23, 4.47, 4.50, 4.65, 6.0, 6.5]
+    ys = [-0.3, 0.20, 1.23, 4.47, 4.50, 4.63, 6.0, 6.5]
     segments: list[tuple[np.ndarray, np.ndarray]] = []
 
     for x in xs[1:-1]:

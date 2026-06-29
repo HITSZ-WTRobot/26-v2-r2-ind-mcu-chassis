@@ -33,13 +33,13 @@ ALL_ZONES = [ZONE1, ZONE2, ZONE3]
 
 # 三个起点
 ENTRY_POINTS = [
-    [8.43, 1.80, 0.0, 0.412],  # 起点1
-    [8.43, 3.00, 0.0, 0.412],  # 起点2
-    [8.43, 4.20, 0.0, 0.412],  # 起点3
+    [8.55, 1.80, 0.0, 0.412],  # 起点1
+    [8.55, 3.00, 0.0, 0.412],  # 起点2
+    [8.55, 4.20, 0.0, 0.412],  # 起点3
 ]
 
 # 唯一终点
-EXIT_POINT = [11.25, 2.5, -90.0, 0.412]
+EXIT_POINT = [10.75, 2.0, -90.0, 0.44]
 
 
 def trajectory_name(start_idx: int) -> str:
@@ -83,7 +83,7 @@ LIMITS = Limits(
 
 # h 轴高度范围与下行加速度峰值优化偏好
 H_MIN = 0.3
-H_MAX = 0.412
+H_MAX = 0.44
 H_DOWN_ACCEL_PEAK_WEIGHT = 1e-3
 
 # ============================================================
@@ -111,7 +111,7 @@ LY_M = DISTANCE_Y_MM / 1000.0
 LXY_M = (LX_M + LY_M) / 2.0
 
 # 碰撞硬约束膨胀量
-COLLISION_EXPANSION = 0.03  # 3cm
+COLLISION_EXPANSION = 0.05  # 5cm
 
 # 膨胀后的 footprint 半尺寸（用于 Zone 硬约束）
 HALF_L_EXPANDED = HALF_L + COLLISION_EXPANSION
@@ -125,10 +125,10 @@ HALF_W_EXPANDED = HALF_W + COLLISION_EXPANSION
 
 # 薄障碍物：Zone2 底部的水平条带
 THIN_OBS_X_MIN, THIN_OBS_X_MAX = 9.30, 10.80
-THIN_OBS_Y_MIN, THIN_OBS_Y_MAX = 4.47, 4.65
+THIN_OBS_Y_MIN, THIN_OBS_Y_MAX = 4.47, 4.63
 
 # ============================================================
 # 优化参数
 # ============================================================
 
-SAMPLE_DT = 0.01  # 输出采样周期 (100 Hz)
+SAMPLE_DT = 0.002  # 输出采样周期 (500 Hz)

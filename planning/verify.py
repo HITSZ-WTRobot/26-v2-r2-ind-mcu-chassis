@@ -1,6 +1,6 @@
 """Strict verification for generated trajectories.
 
-This verifier checks the exported 100 Hz samples and the swept inflated
+This verifier checks the exported 500 Hz samples and the swept inflated
 footprint between adjacent samples.  It is intentionally stricter than the
 optimizer: any uncertain geometry is treated as a failure.
 """
@@ -230,7 +230,7 @@ def _check_swept_collision(results) -> list[str]:
 def _sample_states_for_swept_check(s_arr: np.ndarray):
     """Yield states at samples and between samples.
 
-    Each 100 Hz interval is subdivided so the verifier observes the swept
+    Each 500 Hz interval is subdivided so the verifier observes the swept
     inflated footprint, not only exported samples.
     """
     if len(s_arr) == 0:

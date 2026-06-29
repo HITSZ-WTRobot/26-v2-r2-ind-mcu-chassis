@@ -170,18 +170,20 @@ void export_trajectory_csv(const std::string&      name,
                            const std::string&      output_dir)
 {
     ensure_dir(output_dir);
-    std::string   path = output_dir + "/" + name + ".csv";
-    std::ofstream f(path);
+    std::string            path          = output_dir + "/" + name + ".csv";
+    const ExportTrajectory export_result = resample_for_header(result);
+    std::ofstream          f(path);
     f << std::fixed << std::setprecision(6);
     f << "t,x,y,yaw,h,dx,dy,dyaw,dh\n";
-    for (size_t i = 0; i < result.n_points; ++i)
+    for (size_t i = 0; i < export_result.trajectory.size(); ++i)
     {
-        const auto& p = result.trajectory[i];
-        f << result.t[i] << "," << p[0] << "," << p[1] << "," << p[2] << "," << p[3] << "," << p[4]
-          << "," << p[5] << "," << p[6] << "," << p[7] << "\n";
+        const auto& p = export_result.trajectory[i];
+        f << export_result.t[i] << "," << p[0] << "," << p[1] << "," << p[2] << "," << p[3]
+          << "," << p[4] << "," << p[5] << "," << p[6] << "," << p[7] << "\n";
     }
     f.close();
-    std::cout << "  Wrote " << path << " (" << result.n_points << " points)\n";
+    std::cout << "  Wrote " << path << " (" << export_result.trajectory.size()
+              << " points @ 500Hz)\n";
 }
 
 } // namespace planning

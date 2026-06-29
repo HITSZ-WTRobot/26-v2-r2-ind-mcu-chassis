@@ -33,6 +33,12 @@ is not added to the optimizer objective.
 The generator fixes Zone2 yaw at `0deg` and solves the `z2yaw0` branch for each
 start.
 
+The current requirements use starts `(8.55, 1.80/3.00/4.20, 0deg, 0.412)` and a
+shared end `(10.75, 2.00, -90deg, 0.44)`. Collision checks use a 5cm inflated
+footprint, and the thin obstacle is `x=[9.30,10.80], y=[4.47,4.63]`.
+The certified corridor sequence includes a short `low_straight0` transition so
+successive safe corridors overlap by area instead of touching only at a line.
+
 Current `path_mecanum4` wheel limits used by both the C++ optimizer and Python
 verifier are `MAX_WHEEL_SPEED = 160 rad/s` and
 `MAX_WHEEL_ACCEL = 60 rad/s^2`.
@@ -125,7 +131,7 @@ The generated HPP trajectories are resampled to 500 Hz (`kSampleHz = 500`,
 - `planning::trajectory::traj_3::kPoints`
 
 Each generated HPP also exports `kPointCount` and `kDuration` beside the point
-array. CSV files with the same underlying trajectory data are written as
+array. 500 Hz CSV files from the same resampling path are written as
 `dist/traj_1.csv`, `dist/traj_2.csv`, and `dist/traj_3.csv` for inspection,
 verification, and plotting. Do not hand-edit files under `dist/`; change the
 config or optimizer inputs and regenerate them.
