@@ -104,21 +104,24 @@ Upper-host protocol behavior is likewise feature-gated:
   direction and derives its end pose / final lift height from local R1 config.
   `0x36 StepUpR1Direct` is the direct variant using the current pose as the
   step contact point; it only carries `direction` plus reserved fields.
-- Offline trajectory: `0x18 StartOfflineTrajectory` carries `traj_id(1..3)`,
+- Offline trajectory: `0x18 StartOfflineTrajectory` carries `traj_id(1..4)`,
   `mirror(0=normal/1=mirror across X-axis)`, plus reserved fields. It requires
   the current pose to be within 5cm(x), 5cm(y), 5deg(yaw) of the trajectory
   start point. The trajectory points are compile-time static arrays generated at
-  500Hz by `planning/` and resampled to 100Hz at build time; the follower
-  switches the chassis into Slave control mode until stopped.
-  Current trajectory data (defined in `planning/dist/`):
+  500Hz by `planning/` for curves 1..3 and `planning4/` for curve 4, then
+  resampled to 100Hz at build time; the follower switches the chassis into Slave
+  control mode until stopped.
+  Current trajectory data (defined in `planning/dist/`; duration uses
+  `Config::TrajectoryOffline::kSpeedRatio = 0.7`):
 
   | `traj_id` | Start (x, y, yaw deg, hm) | End (x, y, yaw deg, hm) | Duration |
   |-----------|---------------------------|-------------------------|----------|
-  | 1 | (8.43, 1.80, 0, 0.412) | (11.25, 2.50, -90, 0.412) | ~5.40s |
-  | 2 | (8.43, 3.00, 0, 0.412) | (11.25, 2.50, -90, 0.412) | ~5.07s |
-  | 3 | (8.43, 4.20, 0, 0.412) | (11.25, 2.50, -90, 0.412) | ~4.62s |
+  | 1 | (8.55, 1.80, 0, 0.412) | (10.75, 2.00, -90, 0.440) | ~6.78s |
+  | 2 | (8.55, 3.00, 0, 0.412) | (10.75, 2.00, -90, 0.440) | ~6.24s |
+  | 3 | (8.55, 4.20, 0, 0.412) | (10.75, 2.00, -90, 0.440) | ~5.44s |
+  | 4 | (6.40, 5.40, 0, 0.215) | (11.05, 3.227, 0, 0.215) | ~5.37s |
 
-  When trajectory points are regenerated, all three protocol/docs files must be
+  When trajectory points are regenerated, the protocol/docs files must be
   updated together.
 - Grip action commands occupy `0x40..0x43`: `0x40 TakeSpear` carries target/end posture as 6 packed `int16` values, `0x41 TakeSpearById` carries `SpearId + endPos`, and `0x42/0x43` trigger `StoreKFS/ReleaseKFS`.
 - The six fixed spear target postures live in `Grip::Config::SpearGrab::TargetPoses`; fill them with calibrated world-frame values before using `TakeSpearById`.
