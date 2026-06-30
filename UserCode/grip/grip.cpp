@@ -178,12 +178,12 @@ float Grip::armPosition() const
 
 void Grip::openClaw()
 {
-    GPIO_ResetPin(&claw_);
+    claw_.reset();
 }
 
 void Grip::closeClaw()
 {
-    GPIO_SetPin(&claw_);
+    claw_.set();
 }
 
 void Grip::stop()

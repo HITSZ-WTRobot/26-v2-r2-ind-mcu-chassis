@@ -1,0 +1,7 @@
+/build/
+cmake*
+/.venv/
+/.pytest_cache/
+/__pycache__/
+*.py[cod]
+/figures/test_*.gif

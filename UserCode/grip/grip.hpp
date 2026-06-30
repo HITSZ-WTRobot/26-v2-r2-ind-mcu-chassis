@@ -7,6 +7,7 @@
 #include "Config.hpp"
 #include "cmsis_os2.h"
 #include "gpio_driver.h"
+#include "gpio_driver.hpp"
 #include "motor_vel_controller.hpp"
 #include "traits.hpp"
 
@@ -114,7 +115,7 @@ private:
     trajectory::HomingMotorTrajectory<1> turn_trajectory_;
 
     /// 夹爪气缸 / 电磁控制 GPIO。
-    GPIO_t claw_{};
+    bsp::gpio::GpioPin claw_{};
 
     /// 最近一次姿态规划失败轴掩码；成功规划会清零。
     uint8_t last_plan_failure_mask_{ 0 };
