@@ -221,12 +221,23 @@ void handleCommand(const Frame& frame)
                 sy            = p.y;
                 syaw          = p.yaw;
             }
-            else
+            else if (traj_id == 3)
             {
                 const auto& p = ::Config::TrajectoryOffline::traj3::Points[0];
                 sx            = p.x;
                 sy            = p.y;
                 syaw          = p.yaw;
+            }
+            else if (traj_id == 4)
+            {
+                const auto& p = ::Config::TrajectoryOffline::traj4::Points[0];
+                sx            = p.x;
+                sy            = p.y;
+                syaw          = p.yaw;
+            }
+            else
+            {
+                return;
             }
 
             if (mirror)
