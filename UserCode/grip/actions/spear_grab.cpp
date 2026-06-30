@@ -421,14 +421,22 @@ void SpearGrab::update()
         break;
     }
     case State::MovingToEnd:
+    {
+        const auto current_pos = Chassis::loc->postureInWorld();
+
         // 只有底盘、grip、lift 三者都收敛，才认为整套夹取动作真正完成。
         if (Chassis::ctrl->isTrajectoryFinished() && ::Grip::grip->isFinished() &&
-            is_lift_finished())
+            is_lift_finished() &&
+            std::fabs(current_pos.x - end_pos_.x) < ::Grip::Config::SpearGrab::EndXYThreshold &&
+            std::fabs(current_pos.y - end_pos_.y) < ::Grip::Config::SpearGrab::EndXYThreshold &&
+            std::fabs(chassis::Posture::yawError(current_pos.yaw, end_pos_.yaw)) <
+                    ::Grip::Config::SpearGrab::EndYawThreshold)
         {
             Chassis::ctrl->setVelocityInBody(chassis::Velocity::zero(), false);
             state_ = State::Done;
         }
         break;
+    }
     }
 }
 
