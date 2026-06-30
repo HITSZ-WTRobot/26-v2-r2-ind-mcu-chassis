@@ -17,7 +17,7 @@ int main()
 
     std::map<std::string, TrajectoryResult> results;
     std::vector<std::string> names;
-    const int trajectory_count = static_cast<int>(ENTRY_POINTS.size());
+    const int trajectory_count = static_cast<int>(TARGET_POINTS.size());
     for (int s = 0; s < trajectory_count; ++s)
         names.push_back(trajectory_name(s));
 

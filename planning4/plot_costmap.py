@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from costmap import build_costmap
 from config import (
-    ENTRY_POINTS, EXIT_POINT, RECT_OBSTACLES,
+    ENTRY_POINTS, RECT_OBSTACLES, TARGET_POINTS,
     ZONE1, ZONE2, ZONE3, ZONE4,
 )
 
@@ -94,7 +94,8 @@ def _draw_waypoints(ax):
     """标注起止点"""
     for ep in ENTRY_POINTS:
         ax.plot(ep[0], ep[1], "go", markersize=8, markeredgecolor="black")
-    ax.plot(EXIT_POINT[0], EXIT_POINT[1], "m*", markersize=14, markeredgecolor="black")
+    for target in TARGET_POINTS:
+        ax.plot(target[0], target[1], "m*", markersize=14, markeredgecolor="black")
 
 
 def _draw_thin_obstacle(ax):

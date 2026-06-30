@@ -3,7 +3,8 @@
 import numpy as np
 from scipy.ndimage import distance_transform_edt
 from config import (
-    ALL_ZONES, RECT_OBSTACLES,
+    ALL_ZONES,
+    rect_obstacles_for_trajectory,
     ZONE1, ZONE2, ZONE3, ZONE4,
     CHASSIS_LENGTH, CHASSIS_WIDTH, COLLISION_EXPANSION,
 )
@@ -14,7 +15,7 @@ def _chassis_inflation_radius() -> float:
     return half_diag + COLLISION_EXPANSION
 
 
-def build_costmap(resolution: float = 0.05) -> dict:
+def build_costmap(resolution: float = 0.05, trajectory_idx: int | None = None) -> dict:
     """构建 occupancy grid 和距离场（向量化）"""
     margin = 0.5
     x_min = min(z.x_min for z in ALL_ZONES) - margin
@@ -40,7 +41,7 @@ def build_costmap(resolution: float = 0.05) -> dict:
     in_any = in_z1 | in_z2 | in_z3 | in_z4
 
     in_rect_obs = np.zeros_like(in_any)
-    for x0, x1, y0, y1 in RECT_OBSTACLES:
+    for x0, x1, y0, y1 in rect_obstacles_for_trajectory(trajectory_idx):
         in_rect_obs |= (WX >= x0) & (WX <= x1) & (WY >= y0) & (WY <= y1)
 
     search_grid = np.where(in_any & ~in_rect_obs, 0, 100).astype(np.uint8)

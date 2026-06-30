@@ -15,6 +15,6 @@ struct TrajectoryResult {
     bool success = false;
 };
 
-TrajectoryResult optimize_trajectory(int start_idx, double sample_dt = 0.002);
+TrajectoryResult optimize_trajectory(int trajectory_idx, double sample_dt = 0.002);
 
 } // namespace planning

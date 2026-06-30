@@ -1,4 +1,4 @@
-"""Curve 4 offline trajectory planner: C++ CasADi generation + Python verification."""
+"""Curve 4/5 offline trajectory planner: C++ CasADi generation + Python verification."""
 
 import csv
 from pathlib import Path
@@ -30,7 +30,7 @@ def main():
     t0 = time.time()
 
     print("=" * 60)
-    print("  4-DOF 曲线 4 离线轨迹规划 (C++ CasADi OCP + Python Verify)")
+    print("  4-DOF 曲线 4/5 离线轨迹规划 (C++ CasADi OCP + Python Verify)")
     print("=" * 60)
 
     # ---- [1/5] Costmap 诊断 ----

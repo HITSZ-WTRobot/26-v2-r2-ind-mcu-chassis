@@ -35,12 +35,27 @@ inline constexpr std::array<Waypoint, 1> ENTRY_POINTS{ {
         { 6.40, 5.40, 0.0, 0.215 },
 } };
 
-inline constexpr Waypoint EXIT_POINT{ 11.05, 3.227, 0.0, 0.215 };
+inline constexpr std::array<Waypoint, 2> TARGET_POINTS{ {
+        { 11.05, 3.227, 0.0, 0.215 },
+        { 10.75, 2.0, -90.0, 0.44 },
+} };
 
-static inline std::string trajectory_name(int start_idx)
+inline constexpr Waypoint EXIT_POINT = TARGET_POINTS[0];
+
+static inline std::string trajectory_name(int trajectory_idx)
 {
-    (void) start_idx;
-    return "traj_4";
+    return "traj_" + std::to_string(trajectory_idx + 4);
+}
+
+static constexpr Waypoint start_point_for_trajectory(int trajectory_idx)
+{
+    (void) trajectory_idx;
+    return ENTRY_POINTS[0];
+}
+
+static constexpr Waypoint end_point_for_trajectory(int trajectory_idx)
+{
+    return TARGET_POINTS[static_cast<std::size_t>(trajectory_idx)];
 }
 
 // ============================================================

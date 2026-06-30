@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from config import ENTRY_POINTS, trajectory_name
+from config import start_point_for_trajectory, trajectory_name
 from geometry import CORRIDORS, Rect, footprint_aabb_over_corridor
 
 
@@ -16,17 +16,17 @@ class PhaseSpec:
 
 @dataclass(frozen=True)
 class BranchSpec:
+    suffix: str
+    trajectory_indices: tuple[int, ...]
     zone2_yaw_deg: float
     phases: tuple[PhaseSpec, ...]
     anchors: dict[str, tuple[float, float, float, float]]
 
-    @property
-    def suffix(self) -> str:
-        return f"z2yaw{int(self.zone2_yaw_deg)}"
-
 
 BRANCHES: tuple[BranchSpec, ...] = (
     BranchSpec(
+        suffix="z2yaw0_finish",
+        trajectory_indices=(0,),
         zone2_yaw_deg=0.0,
         phases=(
             PhaseSpec("zone4_approach", 30),
@@ -40,7 +40,28 @@ BRANCHES: tuple[BranchSpec, ...] = (
             "right_clear": (11.30, 5.40, 0.0, 0.3),
         },
     ),
+    BranchSpec(
+        suffix="z2yaw0_lower_finish",
+        trajectory_indices=(1,),
+        zone2_yaw_deg=0.0,
+        phases=(
+            PhaseSpec("zone4_approach", 30),
+            PhaseSpec("zone2_top0", 42),
+            PhaseSpec("right_down0", 22),
+            PhaseSpec("upper_turn_left", 18),
+            PhaseSpec("lower_left_down", 38),
+            PhaseSpec("lower_finish", 28),
+        ),
+        anchors={
+            "zone2_entry": (8.50, 5.40, 0.0, 0.3),
+            "right_clear": (11.36, 5.40, 0.0, 0.3),
+        },
+    ),
 )
+
+
+def branches_for_trajectory(trajectory_idx: int) -> tuple[BranchSpec, ...]:
+    return tuple(branch for branch in BRANCHES if trajectory_idx in branch.trajectory_indices)
 
 
 def branch_by_suffix(suffix: str) -> BranchSpec:
@@ -139,8 +160,9 @@ def _transition_certificate(a: Rect, b: Rect) -> Rect:
 def _corridors_for_start(start_idx: int) -> dict[str, object]:
     corridors = dict(CORRIDORS)
     base = CORRIDORS["zone4_approach"]
-    start_x = float(ENTRY_POINTS[start_idx][0])
-    start_y = float(ENTRY_POINTS[start_idx][1])
+    start = start_point_for_trajectory(start_idx)
+    start_x = float(start[0])
+    start_y = float(start[1])
     corridors["zone4_approach"] = type(base)(
         name=base.name,
         x_min=start_x,

@@ -19,6 +19,7 @@ from config import (
     HALF_L_EXPANDED,
     HALF_W_EXPANDED,
     RECT_OBSTACLES,
+    rect_obstacles_for_trajectory,
     THIN_OBS_X_MAX,
     THIN_OBS_X_MIN,
     THIN_OBS_Y_MAX,
@@ -77,8 +78,11 @@ class SafeCorridor:
 FREE_CERT_LEFT_TOP = Rect("left_top_clear", 5.60, 9.30, 4.63, 6.00)
 FREE_CERT_ZONE2_TOP = Rect("zone2_top_clear", 8.00, 12.00, 4.63, 6.00)
 FREE_CERT_RIGHT_UPPER = Rect("right_upper_clear", 10.80, 12.00, 3.40, 6.00)
+FREE_CERT_RIGHT_NO_OBS2 = Rect("right_no_obstacle2_clear", 10.80, 12.00, 2.70, 6.00)
 FREE_CERT_UPPER_MID = Rect("zone3_upper_mid_clear", 9.50, 12.00, 3.40, 4.47)
+FREE_CERT_MID_NO_OBS2 = Rect("zone3_no_obstacle2_mid_clear", 9.50, 12.00, 2.70, 4.47)
 FREE_CERT_MID_CLEAR = Rect("zone3_mid_clear", 9.50, 11.65, 2.70, 4.47)
+FREE_CERT_LOW_LEFT = Rect("zone3_low_left_clear", 9.50, 11.65, 0.20, 4.47)
 
 
 CORRIDORS: dict[str, SafeCorridor] = {
@@ -95,7 +99,7 @@ CORRIDORS: dict[str, SafeCorridor] = {
     "zone2_top0": SafeCorridor(
         "zone2_top0",
         x_min=8.50,
-        x_max=11.30,
+        x_max=11.43,
         y_min=5.35,
         y_max=5.45,
         yaw_min_deg=0.0,
@@ -134,6 +138,46 @@ CORRIDORS: dict[str, SafeCorridor] = {
         yaw_max_deg=0.0,
         certificate=FREE_CERT_UPPER_MID,
     ),
+    "right_down0": SafeCorridor(
+        "right_down0",
+        x_min=11.34,
+        x_max=11.43,
+        y_min=3.235,
+        y_max=5.45,
+        yaw_min_deg=-90.0,
+        yaw_max_deg=0.0,
+        certificate=FREE_CERT_RIGHT_NO_OBS2,
+    ),
+    "upper_turn_left": SafeCorridor(
+        "upper_turn_left",
+        x_min=10.75,
+        x_max=11.43,
+        y_min=3.235,
+        y_max=3.238,
+        yaw_min_deg=-90.0,
+        yaw_max_deg=0.0,
+        certificate=FREE_CERT_MID_NO_OBS2,
+    ),
+    "lower_left_down": SafeCorridor(
+        "lower_left_down",
+        x_min=10.55,
+        x_max=11.10,
+        y_min=2.36,
+        y_max=3.238,
+        yaw_min_deg=-90.0,
+        yaw_max_deg=0.0,
+        certificate=FREE_CERT_LOW_LEFT,
+    ),
+    "lower_finish": SafeCorridor(
+        "lower_finish",
+        x_min=10.55,
+        x_max=11.10,
+        y_min=2.00,
+        y_max=2.40,
+        yaw_min_deg=-90.0,
+        yaw_max_deg=0.0,
+        certificate=FREE_CERT_LOW_LEFT,
+    ),
 }
 
 
@@ -143,6 +187,10 @@ PHASE_ORDER = [
     "right_descend",
     "mid_left",
     "finish",
+    "right_down0",
+    "upper_turn_left",
+    "lower_left_down",
+    "lower_finish",
 ]
 
 
@@ -172,7 +220,14 @@ def footprint_sample_points(x: float, y: float, yaw_deg: float) -> np.ndarray:
     return np.vstack([poly, mids, np.array([[x, y]], dtype=float)])
 
 
-def point_in_free_space_strict(x: float, y: float, eps: float = EPS_CLEARANCE) -> bool:
+def point_in_free_space_strict(
+    x: float,
+    y: float,
+    eps: float = EPS_CLEARANCE,
+    rect_obstacles=None,
+) -> bool:
+    if rect_obstacles is None:
+        rect_obstacles = RECT_OBSTACLES
     offsets = (0.0,) if eps <= 0.0 else (-eps, 0.0, eps)
     for dx in offsets:
         for dy in offsets:
@@ -180,7 +235,7 @@ def point_in_free_space_strict(x: float, y: float, eps: float = EPS_CLEARANCE) -
             py = y + dy
             if not _point_in_any_zone_closed(px, py):
                 return False
-            if _point_in_any_rect_obstacle_closed(px, py):
+            if _point_in_any_rect_obstacle_closed(px, py, rect_obstacles):
                 return False
     return True
 
@@ -211,13 +266,22 @@ def footprint_intersects_zone2(x: float, y: float, yaw_deg: float) -> bool:
     )
 
 
-def footprint_collision_free(x: float, y: float, yaw_deg: float) -> bool:
+def footprint_collision_free(
+    x: float,
+    y: float,
+    yaw_deg: float,
+    trajectory_idx: int | None = None,
+) -> bool:
     """General strict collision check against outside-zone obstacles and the strip."""
+    rect_obstacles = rect_obstacles_for_trajectory(trajectory_idx)
     poly = footprint_polygon(x, y, yaw_deg)
-    if not all(point_in_free_space_strict(float(px), float(py)) for px, py in poly):
+    if not all(
+        point_in_free_space_strict(float(px), float(py), rect_obstacles=rect_obstacles)
+        for px, py in poly
+    ):
         return False
 
-    boundary_segments = _free_obstacle_boundary_segments()
+    boundary_segments = _free_obstacle_boundary_segments(rect_obstacles)
     footprint_edges = list(_polygon_edges(poly))
     for edge in footprint_edges:
         for boundary in boundary_segments:
@@ -326,10 +390,10 @@ def _point_in_any_zone_closed(x: float, y: float) -> bool:
     )
 
 
-def _point_in_any_rect_obstacle_closed(x: float, y: float) -> bool:
+def _point_in_any_rect_obstacle_closed(x: float, y: float, rect_obstacles) -> bool:
     return any(
         _inside_rect_closed(x, y, x_min, x_max, y_min, y_max, 0.0)
-        for x_min, x_max, y_min, y_max in RECT_OBSTACLES
+        for x_min, x_max, y_min, y_max in rect_obstacles
     )
 
 
@@ -355,7 +419,7 @@ def _polygon_edges(poly: np.ndarray):
         yield poly[i], poly[(i + 1) % len(poly)]
 
 
-def _free_obstacle_boundary_segments() -> list[tuple[np.ndarray, np.ndarray]]:
+def _free_obstacle_boundary_segments(rect_obstacles) -> list[tuple[np.ndarray, np.ndarray]]:
     xs = [5.10, 5.60, 8.00, 9.30, 9.44, 9.50, 10.80, 11.65, 12.00, 12.50]
     ys = [-0.3, 0.20, 1.23, 1.65, 2.00, 2.35, 2.70, 3.05, 3.40, 4.47, 4.50, 4.63, 4.80, 6.00, 6.50]
     segments: list[tuple[np.ndarray, np.ndarray]] = []
@@ -363,16 +427,36 @@ def _free_obstacle_boundary_segments() -> list[tuple[np.ndarray, np.ndarray]]:
     for x in xs[1:-1]:
         for y0, y1 in zip(ys[:-1], ys[1:]):
             ym = 0.5 * (y0 + y1)
-            left_free = point_in_free_space_strict(x - 1e-5, ym, eps=0.0)
-            right_free = point_in_free_space_strict(x + 1e-5, ym, eps=0.0)
+            left_free = point_in_free_space_strict(
+                x - 1e-5,
+                ym,
+                eps=0.0,
+                rect_obstacles=rect_obstacles,
+            )
+            right_free = point_in_free_space_strict(
+                x + 1e-5,
+                ym,
+                eps=0.0,
+                rect_obstacles=rect_obstacles,
+            )
             if left_free != right_free:
                 segments.append((np.array([x, y0]), np.array([x, y1])))
 
     for y in ys[1:-1]:
         for x0, x1 in zip(xs[:-1], xs[1:]):
             xm = 0.5 * (x0 + x1)
-            below_free = point_in_free_space_strict(xm, y - 1e-5, eps=0.0)
-            above_free = point_in_free_space_strict(xm, y + 1e-5, eps=0.0)
+            below_free = point_in_free_space_strict(
+                xm,
+                y - 1e-5,
+                eps=0.0,
+                rect_obstacles=rect_obstacles,
+            )
+            above_free = point_in_free_space_strict(
+                xm,
+                y + 1e-5,
+                eps=0.0,
+                rect_obstacles=rect_obstacles,
+            )
             if below_free != above_free:
                 segments.append((np.array([x0, y]), np.array([x1, y])))
     return segments

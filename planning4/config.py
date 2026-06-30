@@ -1,4 +1,4 @@
-"""Offline trajectory planning config for curve 4."""
+"""Offline trajectory planning config for curves 4 and 5."""
 
 from dataclasses import dataclass
 
@@ -36,18 +36,33 @@ ENTRY_POINTS = [
     [6.40, 5.40, 0.0, 0.215],
 ]
 
-EXIT_POINT = [11.05, 3.227, 0.0, 0.215]
+TARGET_POINTS = [
+    [11.05, 3.227, 0.0, 0.215],
+    [10.75, 2.0, -90.0, 0.44],
+]
+
+# Compatibility name for the first curve-4 target.
+EXIT_POINT = TARGET_POINTS[0]
 
 
-def trajectory_name(start_idx: int) -> str:
-    """Trajectory naming: the CLAUDE.md target is curve 4."""
-    if start_idx != 0:
-        raise IndexError(f"curve 4 config has one trajectory, got index {start_idx}")
-    return "traj_4"
+def trajectory_name(trajectory_idx: int) -> str:
+    """Trajectory naming follows the firmware sequence: traj_4, traj_5."""
+    if not 0 <= trajectory_idx < len(TARGET_POINTS):
+        raise IndexError(f"unknown trajectory index {trajectory_idx}")
+    return f"traj_{trajectory_idx + 4}"
+
+
+def start_point_for_trajectory(_trajectory_idx: int) -> list[float]:
+    """All CLAUDE.md targets share the same start pose."""
+    return ENTRY_POINTS[0]
+
+
+def end_point_for_trajectory(trajectory_idx: int) -> list[float]:
+    return TARGET_POINTS[trajectory_idx]
 
 
 def all_trajectory_indices():
-    return list(range(len(ENTRY_POINTS)))
+    return list(range(len(TARGET_POINTS)))
 
 
 # ============================================================
@@ -128,12 +143,39 @@ THIN_OBS_X_MIN, THIN_OBS_X_MAX = 9.30, 10.80
 THIN_OBS_Y_MIN, THIN_OBS_Y_MAX = 4.47, 4.63
 
 # Zone3 右侧的三个矩形障碍物
-RECT_OBSTACLES = [
-    (THIN_OBS_X_MIN, THIN_OBS_X_MAX, THIN_OBS_Y_MIN, THIN_OBS_Y_MAX),
-    (11.65, 12.00, 3.05, 3.40),
-    (11.65, 12.00, 2.35, 2.70),
-    (11.65, 12.00, 1.65, 2.00),
+OBSTACLE_STRIP = (THIN_OBS_X_MIN, THIN_OBS_X_MAX, THIN_OBS_Y_MIN, THIN_OBS_Y_MAX)
+OBSTACLE_2 = (11.65, 12.00, 3.05, 3.40)
+OBSTACLE_3 = (11.65, 12.00, 2.35, 2.70)
+OBSTACLE_4 = (11.65, 12.00, 1.65, 2.00)
+
+COMMON_RECT_OBSTACLES = [
+    OBSTACLE_STRIP,
+    OBSTACLE_3,
+    OBSTACLE_4,
 ]
+
+TRAJECTORY_ONLY_RECT_OBSTACLES = {
+    0: [OBSTACLE_2],
+    1: [],
+}
+
+# Full obstacle list retained for aggregate diagnostics and legacy imports.
+RECT_OBSTACLES = [
+    OBSTACLE_STRIP,
+    OBSTACLE_2,
+    OBSTACLE_3,
+    OBSTACLE_4,
+]
+
+
+def rect_obstacles_for_trajectory(trajectory_idx: int | None = None):
+    """Return rectangular obstacles for a target curve.
+
+    CLAUDE.md defines obstacle 2 as absent for target/end point 2, i.e. traj_5.
+    """
+    if trajectory_idx is None:
+        return RECT_OBSTACLES
+    return COMMON_RECT_OBSTACLES + TRAJECTORY_ONLY_RECT_OBSTACLES.get(trajectory_idx, [])
 
 # ============================================================
 # 优化参数

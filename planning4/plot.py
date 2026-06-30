@@ -6,7 +6,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from branch_specs import initial_guess_points_for_branch
-from config import ENTRY_POINTS, EXIT_POINT, RECT_OBSTACLES, ZONE1, ZONE2, ZONE3, ZONE4
+from config import ENTRY_POINTS, RECT_OBSTACLES, TARGET_POINTS, ZONE1, ZONE2, ZONE3, ZONE4
 
 
 def plot_all_v3(results: dict, save_path: str = "trajectory_plot_v3.png"):
@@ -44,7 +44,14 @@ def _plot_field(ax, results):
         _plot_initial_guess_points(ax, r)
     for ep in ENTRY_POINTS:
         ax.plot(ep[0], ep[1], "ko", markersize=6)
-    ax.plot(EXIT_POINT[0], EXIT_POINT[1], "k*", markersize=10)
+    for i, target in enumerate(TARGET_POINTS):
+        ax.plot(
+            target[0],
+            target[1],
+            "k*",
+            markersize=10,
+            label="target" if i == 0 else None,
+        )
     ax.set_xlim(5.0, 12.5)
     ax.set_ylim(-0.5, 7.0)
     ax.set_aspect("equal")

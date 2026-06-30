@@ -12,8 +12,6 @@ import math
 import numpy as np
 
 from config import (
-    ENTRY_POINTS,
-    EXIT_POINT,
     H_MAX,
     H_MIN,
     LIMITS,
@@ -22,9 +20,11 @@ from config import (
     SAMPLE_DT,
     ZONE2_REQUIRED_H,
     all_trajectory_indices,
+    end_point_for_trajectory,
+    start_point_for_trajectory,
     trajectory_name,
 )
-from branch_specs import BRANCHES, certify_start_corridors
+from branch_specs import branches_for_trajectory, certify_start_corridors
 from geometry import (
     footprint_collision_free,
     footprint_intersects_zone2,
@@ -67,7 +67,7 @@ def _check_corridor_certificates() -> list[str]:
     errors: list[str] = []
     try:
         for idx in all_trajectory_indices():
-            for branch in BRANCHES:
+            for branch in branches_for_trajectory(idx):
                 messages = certify_start_corridors(idx, branch)
                 for message in messages:
                     print(f"  [OK] {message}")
@@ -87,10 +87,12 @@ def _check_boundary(results) -> list[str]:
             errors.append(f"  [FAIL] {name}: missing trajectory")
             continue
         s_arr = r.s_array
+        start = start_point_for_trajectory(s_idx)
+        end = end_point_for_trajectory(s_idx)
         for j, label in enumerate(["x", "y", "yaw", "h"]):
-            if abs(s_arr[0, j] - ENTRY_POINTS[s_idx][j]) > 2e-3:
+            if abs(s_arr[0, j] - start[j]) > 2e-3:
                 errors.append(f"  [FAIL] {name} start {label}: {s_arr[0, j]:.6f}")
-            if abs(s_arr[-1, j] - EXIT_POINT[j]) > 2e-3:
+            if abs(s_arr[-1, j] - end[j]) > 2e-3:
                 errors.append(f"  [FAIL] {name} end {label}: {s_arr[-1, j]:.6f}")
         for j, label in enumerate(["dx", "dy", "dyaw", "dh"]):
             if abs(s_arr[0, 4 + j]) > 2e-3:
@@ -244,13 +246,15 @@ def _check_zone2(results) -> list[str]:
 
 def _check_swept_collision(results) -> list[str]:
     errors: list[str] = []
-    for name, r in results.items():
+    for trajectory_idx in all_trajectory_indices():
+        name = trajectory_name(trajectory_idx)
+        r = results.get(name)
         if not r.success:
             continue
         checked = 0
         for state in _sample_states_for_swept_check(r.s_array):
             x, y, yaw = map(float, state[:3])
-            if not footprint_collision_free(x, y, yaw):
+            if not footprint_collision_free(x, y, yaw, trajectory_idx=trajectory_idx):
                 errors.append(f"  [FAIL] {name}: inflated footprint collision at x={x:.4f}, y={y:.4f}, yaw={yaw:.2f}")
                 break
             checked += 1

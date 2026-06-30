@@ -24,6 +24,7 @@ namespace
 constexpr double kDegToRad                = M_PI / 180.0;
 constexpr double kRadToDeg                = 180.0 / M_PI;
 constexpr int    kWheelConstraintSubsteps = 8;
+constexpr double kWheelAccelConstraintLimit = MAX_WHEEL_ACCEL - 0.5;
 
 struct Rect
 {
@@ -73,19 +74,26 @@ struct BranchSpec
 constexpr Rect kFreeCertLeftTop{ "left_top_clear", 5.60, 9.30, 4.63, 6.00 };
 constexpr Rect kFreeCertZone2Top{ "zone2_top_clear", 8.00, 12.00, 4.63, 6.00 };
 constexpr Rect kFreeCertRightUpper{ "right_upper_clear", 10.80, 12.00, 3.40, 6.00 };
+constexpr Rect kFreeCertRightNoObs2{ "right_no_obstacle2_clear", 10.80, 12.00, 2.70, 6.00 };
 constexpr Rect kFreeCertUpperMid{ "zone3_upper_mid_clear", 9.50, 12.00, 3.40, 4.47 };
+constexpr Rect kFreeCertMidNoObs2{ "zone3_no_obstacle2_mid_clear", 9.50, 12.00, 2.70, 4.47 };
 constexpr Rect kFreeCertMidClear{ "zone3_mid_clear", 9.50, 11.65, 2.70, 4.47 };
+constexpr Rect kFreeCertLowLeft{ "zone3_low_left_clear", 9.50, 11.65, 0.20, 4.47 };
 
 const std::vector<Corridor> kBaseCorridors{
     { "zone4_approach", 6.40, 8.50, 5.35, 5.45, 0.0, 0.0, kFreeCertLeftTop, false },
-    { "zone2_top0", 8.50, 11.30, 5.35, 5.45, 0.0, 0.0, kFreeCertZone2Top, true },
+    { "zone2_top0", 8.50, 11.43, 5.35, 5.45, 0.0, 0.0, kFreeCertZone2Top, true },
     { "right_descend", 11.24, 11.55, 3.90, 5.45, 0.0, 0.0, kFreeCertRightUpper, true },
     { "mid_left", 10.95, 11.30, 3.90, 3.95, 0.0, 0.0, kFreeCertUpperMid, false },
     { "finish", 10.95, 11.20, 3.227, 3.95, 0.0, 0.0, kFreeCertMidClear, false },
+    { "right_down0", 11.34, 11.43, 3.235, 5.45, -90.0, 0.0, kFreeCertRightNoObs2, false },
+    { "upper_turn_left", 10.75, 11.43, 3.235, 3.238, -90.0, 0.0, kFreeCertMidNoObs2, false },
+    { "lower_left_down", 10.55, 11.10, 2.36, 3.238, -90.0, 0.0, kFreeCertLowLeft, false },
+    { "lower_finish", 10.55, 11.10, 2.00, 2.40, -90.0, 0.0, kFreeCertLowLeft, false },
 };
 
 const std::vector<BranchSpec> kBranches{
-    { "z2yaw0",
+    { "z2yaw0_finish",
       0.0,
       { { "zone4_approach", 30 },
         { "zone2_top0", 42 },
@@ -95,6 +103,18 @@ const std::vector<BranchSpec> kBranches{
       {
               { "zone2_entry", 8.50, 5.40, 0.0, 0.3 },
               { "right_clear", 11.30, 5.40, 0.0, 0.3 },
+      } },
+    { "z2yaw0_lower_finish",
+      0.0,
+      { { "zone4_approach", 30 },
+        { "zone2_top0", 42 },
+        { "right_down0", 22 },
+        { "upper_turn_left", 18 },
+        { "lower_left_down", 38 },
+        { "lower_finish", 28 } },
+      {
+              { "zone2_entry", 8.50, 5.40, 0.0, 0.3 },
+              { "right_clear", 11.36, 5.40, 0.0, 0.3 },
       } },
 };
 
@@ -123,16 +143,16 @@ const Corridor& base_corridor(const std::string& name)
     return *it;
 }
 
-std::vector<Corridor> corridors_for_start(double start_y)
+std::vector<Corridor> corridors_for_start(const Waypoint& start)
 {
     std::vector<Corridor> corridors = kBaseCorridors;
     for (auto& corridor : corridors)
     {
         if (std::string(corridor.name) == "zone4_approach")
         {
-            corridor.x_min = ENTRY_POINTS[0].x;
-            corridor.y_min = std::min(corridor.y_min, start_y);
-            corridor.y_max = std::max(corridor.y_max, start_y);
+            corridor.x_min = start.x;
+            corridor.y_min = std::min(corridor.y_min, start.y);
+            corridor.y_max = std::max(corridor.y_max, start.y);
         }
     }
     return corridors;
@@ -199,9 +219,10 @@ std::array<double, 4> footprint_aabb_over_corridor(const Corridor& corridor)
     return { x_low, x_high, y_low, y_high };
 }
 
-void certify_corridors_for_start(int start_idx, const BranchSpec& branch)
+void certify_corridors_for_start(int trajectory_idx, const BranchSpec& branch)
 {
-    auto corridors = corridors_for_start(ENTRY_POINTS[start_idx].y);
+    const auto start     = start_point_for_trajectory(trajectory_idx);
+    auto       corridors = corridors_for_start(start);
     for (const auto& phase : branch.phases)
     {
         const auto& corridor   = corridor_by_name(corridors, phase.corridor_name);
@@ -216,7 +237,7 @@ void certify_corridors_for_start(int start_idx, const BranchSpec& branch)
         if (min_margin <= 1e-4)
         {
             std::ostringstream oss;
-            oss << trajectory_name(start_idx) << " " << branch.suffix << " corridor "
+            oss << trajectory_name(trajectory_idx) << " " << branch.suffix << " corridor "
                 << corridor.name << " certificate failed, min clearance " << min_margin;
             throw std::runtime_error(oss.str());
         }
@@ -348,7 +369,8 @@ NodeGuess boundary_guess_between(const std::vector<Corridor>& corridors,
 }
 
 std::vector<NodeGuess> phase_targets_for_branch(const BranchSpec&            branch,
-                                                const std::vector<Corridor>& corridors)
+                                                const std::vector<Corridor>& corridors,
+                                                const Waypoint&              end)
 {
     if (branch.anchors.size() + 1 > branch.phases.size())
     {
@@ -366,15 +388,17 @@ std::vector<NodeGuess> phase_targets_for_branch(const BranchSpec&            bra
         int phase_i = static_cast<int>(targets.size());
         targets.push_back(boundary_guess_between(corridors, branch, phase_i, targets.back()));
     }
-    const NodeGuess final{ EXIT_POINT.x, EXIT_POINT.y, EXIT_POINT.yaw_deg, EXIT_POINT.h };
+    const NodeGuess final{ end.x, end.y, end.yaw_deg, end.h };
     targets.push_back(final);
     return targets;
 }
 
-std::vector<NodeGuess> initial_state_nodes(int start_idx, const BranchSpec& branch)
+std::vector<NodeGuess> initial_state_nodes(int trajectory_idx, const BranchSpec& branch)
 {
-    const auto             corridors = corridors_for_start(ENTRY_POINTS[start_idx].y);
-    std::vector<NodeGuess> targets   = phase_targets_for_branch(branch, corridors);
+    const auto             start     = start_point_for_trajectory(trajectory_idx);
+    const auto             end       = end_point_for_trajectory(trajectory_idx);
+    const auto             corridors = corridors_for_start(start);
+    std::vector<NodeGuess> targets   = phase_targets_for_branch(branch, corridors, end);
 
     if (targets.size() != branch.phases.size())
     {
@@ -385,10 +409,7 @@ std::vector<NodeGuess> initial_state_nodes(int start_idx, const BranchSpec& bran
     }
 
     std::vector<NodeGuess> nodes;
-    NodeGuess              current{ ENTRY_POINTS[start_idx].x,
-                                    ENTRY_POINTS[start_idx].y,
-                                    ENTRY_POINTS[start_idx].yaw_deg,
-                                    ENTRY_POINTS[start_idx].h };
+    NodeGuess              current{ start.x, start.y, start.yaw_deg, start.h };
     for (int phase_i = 0; phase_i < static_cast<int>(branch.phases.size()); ++phase_i)
     {
         const auto  target = targets[phase_i];
@@ -577,17 +598,26 @@ TrajectoryResult sample_solution(const std::string&         branch_suffix,
     return result;
 }
 
-BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double sample_dt)
+bool branch_supports_trajectory(const BranchSpec& branch, int trajectory_idx)
 {
-    certify_corridors_for_start(start_idx, branch);
+    if (std::string(branch.suffix) == "z2yaw0_finish")
+        return trajectory_idx == 0;
+    if (std::string(branch.suffix) == "z2yaw0_lower_finish")
+        return trajectory_idx == 1;
+    return false;
+}
 
-    const auto start         = ENTRY_POINTS[start_idx];
-    const auto end           = EXIT_POINT;
+BranchSolveResult solve_branch(int trajectory_idx, const BranchSpec& branch, double sample_dt)
+{
+    certify_corridors_for_start(trajectory_idx, branch);
+
+    const auto start         = start_point_for_trajectory(trajectory_idx);
+    const auto end           = end_point_for_trajectory(trajectory_idx);
     const int  intervals     = n_intervals(branch);
     const int  nodes         = intervals + 1;
     const auto phase_names   = node_phase_names(branch);
     const auto phase_indices = interval_phase_indices(branch);
-    const auto corridors     = corridors_for_start(start.y);
+    const auto corridors     = corridors_for_start(start);
 
     Opti opti;
     MX   X                 = opti.variable(4, nodes);     // x, y, yaw_deg, h
@@ -679,9 +709,9 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
             MX           vs = V(Slice(), k) + A(Slice(), k) * tau;
             MX           wheel = wheel_speeds_ca(xs(2), vs(0), vs(1), vs(2));
             opti.subject_to(opti.bounded(-MAX_WHEEL_SPEED, wheel, MAX_WHEEL_SPEED));
-            opti.subject_to(opti.bounded(-MAX_WHEEL_ACCEL * sub_dt,
+            opti.subject_to(opti.bounded(-kWheelAccelConstraintLimit * sub_dt,
                                          wheel - previous_wheel,
-                                         MAX_WHEEL_ACCEL * sub_dt));
+                                         kWheelAccelConstraintLimit * sub_dt));
             previous_wheel = wheel;
         }
     }
@@ -690,7 +720,7 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
     MX cost           = T + H_DOWN_ACCEL_PEAK_WEIGHT * h_down_accel_peak + 1e-9 * xyz_smoothness;
     opti.minimize(cost);
 
-    const auto guess_nodes     = initial_state_nodes(start_idx, branch);
+    const auto guess_nodes     = initial_state_nodes(trajectory_idx, branch);
     const auto phase_durations = estimate_phase_durations(guess_nodes, branch);
     const auto t_guess         = node_times(phase_durations, branch);
 
@@ -754,14 +784,17 @@ BranchSolveResult solve_branch(int start_idx, const BranchSpec& branch, double s
 
 } // namespace
 
-TrajectoryResult optimize_trajectory(int start_idx, double sample_dt)
+TrajectoryResult optimize_trajectory(int trajectory_idx, double sample_dt)
 {
     TrajectoryResult         best;
     std::vector<std::string> reports;
 
     for (const auto& branch : kBranches)
     {
-        auto candidate = solve_branch(start_idx, branch, sample_dt);
+        if (!branch_supports_trajectory(branch, trajectory_idx))
+            continue;
+
+        auto candidate = solve_branch(trajectory_idx, branch, sample_dt);
         if (candidate.trajectory.success)
         {
             std::ostringstream oss;

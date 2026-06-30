@@ -1,7 +1,7 @@
-## Curve 4 Offline Trajectory Generation
+## Curve 4/5 Offline Trajectory Generation
 
 This directory is a standalone copy of the offline planner used by
-`../planning`, adjusted for the curve 4 target in `CLAUDE.md`.
+`../planning`, adjusted for the curve 4 and curve 5 targets in `CLAUDE.md`.
 
 Run the full generation and verification pipeline with:
 
@@ -10,27 +10,31 @@ uv run python main.py
 ```
 
 The command uses the normal uv global cache. It configures and builds the C++
-CasADi optimizer, exports the 500 Hz trajectory, verifies the exported samples,
+CasADi optimizer, exports the 500 Hz trajectories, verifies the exported samples,
 and generates plots/GIF diagnostics.
 
 The generated firmware artifacts are:
 
 - `dist/trajectory_point.hpp`
 - `dist/trajectory_traj_4.hpp`
+- `dist/trajectory_traj_5.hpp`
 - `dist/trajectory_all.hpp`
 
-CSV inspection output is written as `dist/traj_4.csv`. Diagnostic images are:
+CSV inspection output is written as `dist/traj_4.csv` and `dist/traj_5.csv`.
+Diagnostic images are:
 
 - `costmap_debug.png`
 - `trajectory_plot_v3.png`
 - `figures/trajectory_traj_4.gif`
+- `figures/trajectory_traj_5.gif`
 
-## Curve 4 Target
+## Targets
 
 Boundary poses use `[x, y, yaw_deg, h]`.
 
 - Start: `[6.40, 5.40, 0deg, 0.215]`
-- End: `[11.05, 3.227, 0deg, 0.215]`
+- Curve 4 end: `[11.05, 3.227, 0deg, 0.215]`
+- Curve 5 end: `[10.75, 2.00, -90deg, 0.44]`
 
 The planner models the four legal zones from `CLAUDE.md`:
 
