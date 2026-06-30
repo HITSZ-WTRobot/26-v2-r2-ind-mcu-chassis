@@ -12,7 +12,7 @@ namespace Config::TrajectoryOffline
 {
 
 /// 离线轨迹播放速度倍率（1.0 = 实时）。
-constexpr float kSpeedRatio = 0.3f;
+constexpr float kSpeedRatio = 0.7f;
 
 using ChassisSlaveOffline = chassis::controller::Slave<0, true>;
 
