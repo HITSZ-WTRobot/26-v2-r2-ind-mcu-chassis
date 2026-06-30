@@ -122,7 +122,7 @@ constexpr float PrepareLiftZThreshold = 0.005f; // prepare 阶段允许的 lift 
 namespace Motor
 {
 
-constexpr float ArmAngleZeroDeg = 90.0f - 35.14745495f;
+constexpr float ArmAngleZeroDeg = -90.0f;
 
 /// 大臂速度环参数
 constexpr controllers::MotorVelController::Config ArmVelControllerCfg{
@@ -166,7 +166,7 @@ constexpr velocity_profile::SCurveProfile::Config ArmCfg{
     .max_jerk = 1440.0f,
 };
 
-constexpr PD::Config ArmPDCfg{ .Kp = 5, .Kd = 25, .abs_output_max = 60 };
+constexpr PD::Config ArmPDCfg{ .Kp = 10, .Kd = 50, .abs_output_max = 60 };
 
 constexpr velocity_profile::SCurveProfile::Config TurnCfg{
     .max_spd  = 360.0f,
