@@ -15,12 +15,12 @@ SuctionCup::SuctionCup(const Config& config, XGZP6847DDevice* pressure_sensor) :
 
 void SuctionCup::activate()
 {
-    GPIO_SetPin(&config_.pump_gpio);
+    config_.pump_gpio.set();
 }
 
 void SuctionCup::deactivate()
 {
-    GPIO_ResetPin(&config_.pump_gpio);
+    config_.pump_gpio.reset();
 }
 
 bool SuctionCup::hasObject()

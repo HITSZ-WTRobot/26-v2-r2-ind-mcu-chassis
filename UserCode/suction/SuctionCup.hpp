@@ -6,7 +6,7 @@
 
 #include "Config.hpp"
 #include "XGZP6847DDevice.hpp"
-#include "gpio_driver.h"
+#include "gpio_driver.hpp"
 #include "traits.hpp"
 
 #include <atomic>
@@ -30,7 +30,8 @@ class SuctionCup : traits::NoCopy, traits::NoDelete
 public:
     struct Config
     {
-        GPIO_t   pump_gpio;
+        bsp::gpio::GpioPin pump_gpio;
+
         uint32_t pressure_stale_ms{ 120U };
         float    object_detect_on_pressure_pa;
         float    object_detect_off_pressure_pa;
