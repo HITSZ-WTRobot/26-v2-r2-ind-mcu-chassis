@@ -278,6 +278,7 @@ extern "C" void Init(void* argument)
     {
         Chassis::motion->liftAllTo(Chassis::Config::Lift::Position::Normal,
                                    Chassis::Config::Lift::OnloadLimit * 0.3);
+        Chassis::motion->waitLiftAllFinished();
     }
 
     // 这里统一等待“系统初始化完成”：
