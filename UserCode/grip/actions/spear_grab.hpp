@@ -71,6 +71,7 @@ private:
         RaisingLiftAfterGrab, ///< 合爪后继续抬升 lift，等待矛头脱离。
         LeavingTargetToSafeX, ///< lift 就位后沿目标 x 方向先脱离危险区。
         MovingToEnd,          ///< 从安全 x 位置移动到最终结束位姿。
+        WaitingSettle,        ///< 等待就位稳定
         Done                  ///< 全流程结束，或因失败中止。
     };
 
@@ -135,6 +136,7 @@ private:
     float post_grab_lift_pos_{};
     /// 进入合爪保持阶段时的时间戳。
     uint32_t wait_state_since_ms_{};
+    uint32_t wait_settle_since_ms_{};
 };
 
 } // namespace Grip::Action
