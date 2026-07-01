@@ -121,12 +121,12 @@ trajectory_offline_state = (table >> 13) & 0x3
 | `1` | `TakingSpear` | 取矛头动作执行中 |
 | `2` | `KfsStore` | 卷轴临时存放动作执行中 |
 | `3` | `KfsRelease` | 卷轴释放动作执行中 |
-| `4` | `Idle` | 当前无 Grip 动作 |
-| `5` | `Done` | 最近一次 Grip 动作已完成 |
+| `5` | `Done` | 动作执行完成 / 空闲 |
+| `6` | `Running` | 直接姿态控制运行中（SetGripPose / SetGripPresetPose 等） |
 
 补充：
 
-- `GripStatus::Done` 会在动作结束后保持，直到发起下一次 Grip 动作或回到其他状态。
+- `GripStatus::Done` 为缺省空闲状态，无动作时保持此值。
 - `KfsStore / KfsRelease` 的区分来自 KFS 动作内部记录的 `workflowPhase`。
 
 ### 3.6 `GripSuctionHasObject`

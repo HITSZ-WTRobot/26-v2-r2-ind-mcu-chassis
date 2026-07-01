@@ -17,7 +17,7 @@ namespace Protocol::ActionState
  * - bit4      底盘曲线是否完成（时间结束且跟踪误差在 Master 跟踪阈值内）
  * - bit5..6   Lift 状态：Calibrating / Running / Ready / NotEnabled
  * - bit7..9   Grip 状态：Calibrating / TakingSpear / KfsStore /
- *               KfsRelease / Idle / Done
+ *               KfsRelease / Done / Running
  * - bit10     Grip suction 是否检测到物体（仅在启用吸盘气压计时有效）
  * - bit11..12 红外接收稳定状态：A0 / A1 / A2 / A3 映射到 0..3
  * - bit13..14 离线轨迹状态：Idle / Running / Finished / Interrupted
@@ -64,8 +64,8 @@ enum class GripStatus : uint16_t
     TakingSpear = 1u, /// 取矛头中
     KfsStore    = 2u, /// 暂存卷轴中（从腹部吸取卷轴暂存）
     KfsRelease  = 3u, /// 释放卷轴中（从尾部释放卷轴到腹部）
-    Idle        = 4u, /// 无动作
-    Done        = 5u, /// 动作执行完成
+    Done        = 5u, /// 动作执行完成 / 空闲
+    Running     = 6u, /// 直接姿态控制运行中（SetGripPose / SetGripPresetPose 等）
 };
 
 /**

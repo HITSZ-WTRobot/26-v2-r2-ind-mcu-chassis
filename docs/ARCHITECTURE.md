@@ -190,7 +190,7 @@ ActionState         → 16位动作状态打包 (50Hz低优先级任务刷新)
 | 2-3 | ChassisMode | Stop(0)/Velocity(1)/Position(2)/Slave(3) |
 | 4 | ChassisCurveFinished | 轨迹完成标志 |
 | 5-6 | LiftStatus | Calibrating(0)/Running(1)/Ready(2)/NotEnabled(3) |
-| 7-9 | GripStatus | Calibrating(0)/TakingSpear(1)/KfsStore(2)/KfsRelease(3)/Idle(4)/Done(5) |
+| 7-9 | GripStatus | Calibrating(0)/TakingSpear(1)/KfsStore(2)/KfsRelease(3)/Done(5)/Running(6) |
 | 10 | GripSuctionHasObject | 吸盘物体检测 |
 | 11-12 | InfraredReceiverState | A0(0)/A1(1)/A2(2)/A3(3) |
 | 13-15 | Reserved | 预留 |

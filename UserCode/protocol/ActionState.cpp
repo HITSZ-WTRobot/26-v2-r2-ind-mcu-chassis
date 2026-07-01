@@ -92,7 +92,7 @@ LiftStatus currentLiftStatus()
 GripStatus currentGripStatus()
 {
     if constexpr (!ProjectParts::EnableGrip)
-        return GripStatus::Idle;
+        return GripStatus::Done;
 
     if (::Grip::grip == nullptr || !::Grip::grip->isCalibrated())
         return GripStatus::Calibrating;
@@ -106,7 +106,7 @@ GripStatus currentGripStatus()
         if (kfs.workflowPhase() == Grip::Action::KfsStore::WorkflowPhase::Release)
         {
             return kfs.isRunning() ? GripStatus::KfsRelease
-                                   : (kfs.isFinished() ? GripStatus::Done : GripStatus::Idle);
+                                   : GripStatus::Done;
         }
 
         if (kfs.workflowPhase() == Grip::Action::KfsStore::WorkflowPhase::Store)
@@ -125,7 +125,10 @@ GripStatus currentGripStatus()
     if (spear.isFinished())
         return GripStatus::Done;
 
-    return GripStatus::Idle;
+    if (!::Grip::grip->isFinished())
+        return GripStatus::Running;
+
+    return GripStatus::Done;
 }
 
 bool currentGripSuctionHasObject()
