@@ -211,6 +211,10 @@ void startOfflineTrajectory(const int traj_id, const bool mirror)
         points = traj4::Points.data();
         count  = traj4::PointCount;
         break;
+    case 5:
+        points = traj5::Points.data();
+        count  = traj5::PointCount;
+        break;
     default:
         goto fail;
     }

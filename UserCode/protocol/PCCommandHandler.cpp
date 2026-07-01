@@ -235,6 +235,13 @@ void handleCommand(const Frame& frame)
                 sy            = p.y;
                 syaw          = p.yaw;
             }
+            else if (traj_id == 5)
+            {
+                const auto& p = ::Config::TrajectoryOffline::traj5::Points[0];
+                sx            = p.x;
+                sy            = p.y;
+                syaw          = p.yaw;
+            }
             else
             {
                 return;

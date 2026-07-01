@@ -14,6 +14,7 @@
 #include "trajectory_traj_2.hpp"
 #include "trajectory_traj_3.hpp"
 #include "trajectory_traj_4.hpp"
+#include "trajectory_traj_5.hpp"
 namespace Config::TrajectoryOffline
 {
 
@@ -75,6 +76,20 @@ constexpr auto Points =
 
 constexpr float Duration = static_cast<float>(PointCount - 1) * dt;
 } // namespace traj4
+namespace traj5
+{
+
+constexpr size_t PointCount =
+        planning::trajectory::computeResampledCount(planning::trajectory::traj_5::kPointCount,
+                                                    kSpeedRatio);
+
+constexpr auto Points =
+        planning::trajectory::resampleTrajectory<planning::trajectory::traj_5::kPointCount,
+                                                 PointCount>(planning::trajectory::traj_5::kPoints,
+                                                             kSpeedRatio);
+
+constexpr float Duration = static_cast<float>(PointCount - 1) * dt;
+} // namespace traj5
 
 // 查看重采样后轨迹内存占用：
 //   arm-none-eabi-nm -S build/*.elf | grep -E "traj[123].*Points"
