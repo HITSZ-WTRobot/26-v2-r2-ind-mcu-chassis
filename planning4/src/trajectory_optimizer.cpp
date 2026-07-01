@@ -25,6 +25,8 @@ constexpr double kDegToRad                = M_PI / 180.0;
 constexpr double kRadToDeg                = 180.0 / M_PI;
 constexpr int    kWheelConstraintSubsteps = 8;
 constexpr double kWheelAccelConstraintLimit = MAX_WHEEL_ACCEL - 0.5;
+constexpr double kLateYawPenaltyWeight = 2e-4;
+constexpr double kLateYawPenaltySigmaY = 0.75;
 
 struct Rect
 {
@@ -87,9 +89,9 @@ const std::vector<Corridor> kBaseCorridors{
     { "mid_left", 10.95, 11.30, 3.90, 3.95, 0.0, 0.0, kFreeCertUpperMid, false },
     { "finish", 10.95, 11.20, 3.227, 3.95, 0.0, 0.0, kFreeCertMidClear, false },
     { "right_down0", 11.34, 11.43, 3.235, 5.45, -90.0, 0.0, kFreeCertRightNoObs2, false },
-    { "upper_turn_left", 10.75, 11.43, 3.235, 3.238, -90.0, 0.0, kFreeCertMidNoObs2, false },
-    { "lower_left_down", 10.55, 11.10, 2.36, 3.238, -90.0, 0.0, kFreeCertLowLeft, false },
-    { "lower_finish", 10.55, 11.10, 2.00, 2.40, -90.0, 0.0, kFreeCertLowLeft, false },
+    { "mid_no_obs2", 10.75, 11.43, 3.235, 3.90, -90.0, 0.0, kFreeCertMidNoObs2, false },
+    { "lower_left_down", 10.55, 11.10, 2.36, 3.90, -90.0, 0.0, kFreeCertLowLeft, false },
+    { "lower_finish", 10.45, 11.10, 2.00, 2.70, -90.0, 0.0, kFreeCertLowLeft, false },
 };
 
 const std::vector<BranchSpec> kBranches{
@@ -109,7 +111,7 @@ const std::vector<BranchSpec> kBranches{
       { { "zone4_approach", 30 },
         { "zone2_top0", 42 },
         { "right_down0", 22 },
-        { "upper_turn_left", 18 },
+        { "mid_no_obs2", 18 },
         { "lower_left_down", 38 },
         { "lower_finish", 28 } },
       {
@@ -716,8 +718,22 @@ BranchSolveResult solve_branch(int trajectory_idx, const BranchSpec& branch, dou
         }
     }
 
+    MX late_yaw_cost = 0.0;
+    if (trajectory_idx == 1)
+    {
+        for (int k = 0; k < intervals; ++k)
+        {
+            int phase_idx = phase_indices[k];
+            MX  dt        = DT_PHASE(phase_idx) / branch.phases[phase_idx].nodes;
+            MX  dy        = (X(1, k) - end.y) / kLateYawPenaltySigmaY;
+            MX  near_end  = exp(-(dy * dy));
+            late_yaw_cost += dt * near_end * V(2, k) * V(2, k);
+        }
+    }
+
     MX xyz_smoothness = sumsqr(A(Slice(0, 3), Slice()));
-    MX cost           = T + H_DOWN_ACCEL_PEAK_WEIGHT * h_down_accel_peak + 1e-9 * xyz_smoothness;
+    MX cost           = T + H_DOWN_ACCEL_PEAK_WEIGHT * h_down_accel_peak +
+              kLateYawPenaltyWeight * late_yaw_cost + 1e-9 * xyz_smoothness;
     opti.minimize(cost);
 
     const auto guess_nodes     = initial_state_nodes(trajectory_idx, branch);

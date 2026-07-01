@@ -48,7 +48,7 @@ BRANCHES: tuple[BranchSpec, ...] = (
             PhaseSpec("zone4_approach", 30),
             PhaseSpec("zone2_top0", 42),
             PhaseSpec("right_down0", 22),
-            PhaseSpec("upper_turn_left", 18),
+            PhaseSpec("mid_no_obs2", 18),
             PhaseSpec("lower_left_down", 38),
             PhaseSpec("lower_finish", 28),
         ),
