@@ -104,6 +104,18 @@ float Step::stepUpPosition() const
     }
 }
 
+float Step::stepDownTransition2Position() const
+{
+    switch (height_)
+    {
+    case Height::Step400:
+        return Position::StepTransition2Down400;
+    case Height::Step200:
+    default:
+        return Position::StepTransition2Down200;
+    }
+}
+
 float Step::selectedFinalPosition() const
 {
     switch (final_height_)
@@ -150,6 +162,11 @@ bool Step::setChassisTarget(const chassis::Posture& target)
     {
         plan_succeeded = Chassis::ctrl->setTargetPostureInWorld(
                 target, Chassis::Config::Control::Down400TrajectoryLimit);
+    }
+    else if (chassis_state_ == ChassisState::Up3_WaitRearRetract)
+    {
+        plan_succeeded = Chassis::ctrl->setTargetPostureInWorld(
+                target, Chassis::Config::Control::UpEndTrajectoryLimit);
     }
     else
     {
@@ -670,7 +687,7 @@ void Step::update()
         }
         if (currentRelativeX() > -AbsWheelInnerEdgeX + 3 * SafeDistance)
         {
-            if (!moveLift(front_, stepUpPosition(), NoloadLimit))
+            if (!moveLift(front_, stepDownTransition2Position(), NoloadLimit))
                 return;
             front_state_ = LiftState::Down2_Deploying;
         }
@@ -766,7 +783,7 @@ void Step::update()
         }
         if (currentRelativeX() > AbsWheelOuterEdgeX + 3 * SafeDistance)
         {
-            if (!moveLift(rear_, stepUpPosition(), NoloadLimit))
+            if (!moveLift(rear_, stepDownTransition2Position(), NoloadLimit))
                 return;
             rear_state_ = LiftState::Down2_Deploying;
         }

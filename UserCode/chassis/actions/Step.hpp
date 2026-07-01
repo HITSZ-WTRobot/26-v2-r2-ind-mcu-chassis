@@ -261,6 +261,7 @@ private:
     [[nodiscard]] chassis::Posture endXYWithStepYaw() const;
 
     [[nodiscard]] float stepUpPosition() const;
+    float               stepDownTransition2Position() const;
 
     [[nodiscard]] float selectedFinalPosition() const;
 
