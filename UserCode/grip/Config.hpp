@@ -154,7 +154,7 @@ constexpr trajectory::HomingMotorTrajectory<1>::CalibrationConfig TurnCalibCfg =
     .speed               = TurnCalibVel,
     .max_current         = TurnLockTorque, //
     .min_ticks           = lockedTicks,    //
-    .offset              = -135.0f,
+    .offset              = -130.0f,
     .target_after_homing = Poses::Standby.turn_pos,
     .dead_angle          = deadAngle
 };
@@ -169,7 +169,7 @@ constexpr velocity_profile::SCurveProfile::Config ArmCfg{
     .max_jerk = 1080.0f * 50.0f,
 };
 
-constexpr PD::Config ArmPDCfg{ .Kp = 10, .Kd = 50, .abs_output_max = 60 };
+constexpr PD::Config ArmPDCfg{ .Kp = 70, .Kd = 1300, .abs_output_max = 60 };
 
 constexpr velocity_profile::SCurveProfile::Config TurnCfg{
     .max_spd  = 360.0f,
