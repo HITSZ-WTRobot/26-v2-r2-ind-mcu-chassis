@@ -30,7 +30,7 @@ class SuctionCup : traits::NoCopy, traits::NoDelete
 public:
     struct Config
     {
-        bsp::gpio::GpioPin pump_gpio;
+        bsp::gpio::GpioPinOutput pump_gpio;
 
         uint32_t pressure_stale_ms{ 120U };
         float    object_detect_on_pressure_pa;
