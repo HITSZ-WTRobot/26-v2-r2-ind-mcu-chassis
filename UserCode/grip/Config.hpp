@@ -47,14 +47,6 @@ constexpr JointPose KfsStore{ -80.0f, 0.0f };
 inline constexpr const JointPose& KfsRelease = KfsPickup;
 } // namespace Poses
 
-namespace InfraredDocking
-{
-/// 红外对接完成并开爪后，等待物体脱离再回收至该姿态。
-constexpr JointPose ReleaseRetractPose{ 60.0f, 0.0f };
-/// 红外对接完成开爪后，到回收姿态前的等待时间。
-constexpr uint32_t ReleaseRetractDelayMs = 5000U;
-} // namespace InfraredDocking
-
 namespace KfsStore
 {
 inline constexpr uint32_t SuctionPressureUpdatePhaseMs = 5U;

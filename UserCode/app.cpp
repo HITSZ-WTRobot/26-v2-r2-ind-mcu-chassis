@@ -13,7 +13,6 @@
 #include "grip/actions/spear_grab.hpp"
 #include "grip/grip.hpp"
 #include "i2c.hpp"
-#include "infrared/InfraredReceiver.hpp"
 #include "project_parts.hpp"
 #include "protocol.hpp"
 #include "system.hpp"
@@ -155,8 +154,6 @@ void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
 
     if (Grip::grip != nullptr)
         Grip::grip->update_100Hz();
-
-    Infrared::update_100Hz();
 }
 
 namespace Arena
@@ -181,8 +178,6 @@ extern "C" void Init(void* argument)
 
     if constexpr (ProjectParts::EnableGrip)
         Grip::init();
-
-    Infrared::init();
 
     if constexpr (ProjectParts::EnableStepAction)
         (void)Action::Step::inst();
