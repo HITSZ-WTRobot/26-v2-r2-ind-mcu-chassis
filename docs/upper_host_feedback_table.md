@@ -52,10 +52,8 @@
 | `bit4` | `0x0010` | `ChassisCurveFinished` | 底盘位置轨迹是否完成：曲线时间结束且跟踪误差在 Master 跟踪阈值内 |
 | `bit5..6` | `0x0060` | `LiftStatus` | 升降机构状态 |
 | `bit7..9` | `0x0380` | `GripStatus` | Grip / 动作组状态 |
-| `bit10` | `0x0400` | `GripSuctionHasObject` | Grip 吸盘是否检测到物体 |
-| `bit11..12` | `0x1800` | `InfraredReceiverState` | 红外接收模块稳定状态 |
-| `bit13..14` | `0x6000` | `TrajectoryOfflineState` | 离线轨迹执行状态 |
-| `bit15` | `0x8000` | Reserved | 预留 |
+| `bit10..11` | `0x0C00` | `TrajectoryOfflineState` | 离线轨迹执行状态 |
+| `bit12..15` | `0xF000` | `InfraredSwitchState` | 4 个红外 switch 触发状态，按 `Device::Switch::infrared_switch[0..3]` 顺序打包 |
 
 建议上位机按下面方式解码：
 
@@ -65,9 +63,12 @@ chassis_mode             = (table >> 2) & 0x3
 chassis_curve_finished   = (table >> 4) & 0x1
 lift_status              = (table >> 5) & 0x3
 grip_status              = (table >> 7) & 0x7
-grip_suction_has_object  = (table >> 10) & 0x1
-infrared_receiver_state  = (table >> 11) & 0x3
-trajectory_offline_state = (table >> 13) & 0x3
+trajectory_offline_state = (table >> 10) & 0x3
+infrared_switch_state    = (table >> 12) & 0xF
+infrared_switch_0        = (infrared_switch_state >> 0) & 0x1
+infrared_switch_1        = (infrared_switch_state >> 1) & 0x1
+infrared_switch_2        = (infrared_switch_state >> 2) & 0x1
+infrared_switch_3        = (infrared_switch_state >> 3) & 0x1
 ```
 
 补充：
@@ -129,30 +130,7 @@ trajectory_offline_state = (table >> 13) & 0x3
 - `GripStatus::Done` 为缺省空闲状态，无动作时保持此值。
 - `KfsStore / KfsRelease` 的区分来自 KFS 动作内部记录的 `workflowPhase`。
 
-### 3.6 `GripSuctionHasObject`
-
-| 值 | 含义 |
-| --- | --- |
-| `0` | 当前未检测到物体，或当前工程未启用 Grip suction 气压计 |
-| `1` | 当前 Grip suction 检测到物体 |
-
-补充：
-
-- 该位只在 `PROJECT_PART_ENABLE_GRIP_SUCTION_PRESSURE_SENSOR=1` 时有实际语义。
-- 当前它复用下位机吸盘组件内部的气压施密特判定结果，因此会跟随当前新鲜压力样本变化。
-
-### 3.7 `InfraredReceiverState`
-
-红外接收模块通过本机串口接收单字节协议。下位机只有连续收到至少 3 个完全相同的合法字节后，才会切换该状态。
-
-| 值 | 对应字节 | 含义 |
-| --- | --- | --- |
-| `0` | `0xA0` | 仅作连接保活 |
-| `1` | `0xA1` | 对接完成；下位机仅在稳定状态从 `0xA0` 切换到 `0xA1` 时执行一次 `Grip::openClaw()`，随后延时回收到红外对接释放姿态 |
-| `2` | `0xA2` | 无附加执行 |
-| `3` | `0xA3` | 预留状态 |
-
-### 3.8 `TrajectoryOfflineState`
+### 3.6 `TrajectoryOfflineState`
 
 离线轨迹跟随状态，由下位机 `OfflineTrajectoryFollower` 的内部状态映射。
 
@@ -169,6 +147,18 @@ trajectory_offline_state = (table >> 13) & 0x3
 - 正常完成时状态变为 `Finished`，被其他命令中断时变为 `Interrupted`。
 - 轨迹清理后回到 `Idle`。
 - 该字段与 `ChassisMode` 独立：离线轨迹运行时 `ChassisMode` 可能仍显示先前 Master 模式，上位机应综合两个字段判断系统状态。
+
+### 3.7 `InfraredSwitchState`
+
+4 个红外 GPIO switch 的触发状态。该字段直接读取
+`Device::Switch::infrared_switch[0..3]`，不经过 Step 动作方向重排。
+
+| 位 | 对应输入 | 含义 |
+| --- | --- | --- |
+| `bit0` | `Device::Switch::infrared_switch[0]` | `1` 表示该 switch 当前触发 |
+| `bit1` | `Device::Switch::infrared_switch[1]` | `1` 表示该 switch 当前触发 |
+| `bit2` | `Device::Switch::infrared_switch[2]` | `1` 表示该 switch 当前触发 |
+| `bit3` | `Device::Switch::infrared_switch[3]` | `1` 表示该 switch 当前触发 |
 
 ## 4. `Connection::table`
 

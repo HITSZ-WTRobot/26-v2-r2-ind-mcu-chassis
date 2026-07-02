@@ -53,11 +53,21 @@ void Step::prepare(const chassis::Posture& stepTargetPos,
     {
         front_ = &Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front);
         rear_  = &Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear);
+
+        auto& s  = Device::Switch::infrared_switch;
+        switches = { &s[0], &s[1], &s[2], &s[3] };
+
+        compensation_velocity_ = { 0.2, 0, 0 };
     }
     else
     {
         rear_  = &Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Front);
         front_ = &Chassis::motion->lift(Chassis::IndLiftMecanum4::LiftType::Rear);
+
+        auto& s  = Device::Switch::infrared_switch;
+        switches = { &s[3], &s[2], &s[1], &s[0] };
+
+        compensation_velocity_ = { -0.2, 0, 0 };
     }
 }
 
@@ -74,6 +84,78 @@ bool Step::yPrepared() const
 bool Step::yDownPrepared() const
 {
     return std::fabs(currentRelativeToStep().y) < StepPrepareDownYThreshold;
+}
+
+bool Step::frontRetractTriggered() const
+{
+    if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+    {
+        return chassis_state_ == ChassisState::Up2_WaitFrontRetract && switches[0]->isTriggered();
+    }
+    else
+    {
+        return currentRelativeX() > -AbsAuxOuterWheelX + AuxWheelRadius + 3 * SafeDistance;
+    }
+}
+
+bool Step::frontDeployTriggered() const
+{
+    if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+    {
+        return switches[1]->isTriggered();
+    }
+    else
+    {
+        return currentRelativeX() > -AbsWheelInnerEdgeX + 3 * SafeDistance;
+    }
+}
+
+bool Step::frontUngrounded() const
+{
+    if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+    {
+        return !switches[0]->isTriggered();
+    }
+    else
+    {
+        return currentRelativeX() > -AbsWheelOuterEdgeX;
+    }
+}
+
+bool Step::rearRetractTriggered() const
+{
+    if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+    {
+        return switches[2]->isTriggered();
+    }
+    else
+    {
+        return currentRelativeX() > AbsAuxInnerWheelX + AuxWheelRadius + 3 * SafeDistance;
+    }
+}
+
+bool Step::rearDeployTriggered() const
+{
+    if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+    {
+        return switches[3]->isTriggered();
+    }
+    else
+    {
+        return currentRelativeX() > AbsWheelOuterEdgeX + 3 * SafeDistance;
+    }
+}
+
+bool Step::rearUngrounded() const
+{
+    if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+    {
+        return !switches[2]->isTriggered();
+    }
+    else
+    {
+        return currentRelativeX() > AbsWheelInnerEdgeX;
+    }
 }
 
 chassis::Posture Step::endXWithStepYaw() const
@@ -453,6 +535,14 @@ void Step::update()
 
     // 等前侧腿收起：前辅助轮越过边缘后，等待前侧腿完成收起。
     case ChassisState::Up2_WaitFrontRetract:
+        if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+        {
+            // 如果理论底盘曲线已完成，但是还没有收腿，提供一个向前的微小速度再让车向前运行一段
+            if (Chassis::ctrl->isTrajectoryFinished() && front_state_ == LiftState::Up2_WaitRetract)
+            {
+                Chassis::ctrl->setVelocityInBody(compensation_velocity_, false);
+            }
+        }
         if (front_state_ == LiftState::Up4_WaitDeploy)
         {
             if (!setChassisTarget(stepRelativePosture(AbsWheelInnerEdgeX - 3 * SafeDistance)))
@@ -464,6 +554,14 @@ void Step::update()
 
     // 等后侧腿收起：继续推进到后侧跨越条件，等待后侧腿收起完成。
     case ChassisState::Up3_WaitRearRetract:
+        if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+        {
+            // 如果理论底盘曲线已完成，但是还没有收腿，提供一个向前的微小速度再让车向前运行一段
+            if (Chassis::ctrl->isTrajectoryFinished() && rear_state_ == LiftState::Up2_WaitRetract)
+            {
+                Chassis::ctrl->setVelocityInBody(compensation_velocity_, false);
+            }
+        }
         if (rear_state_ == LiftState::Up4_WaitDeploy)
         {
             if (!setChassisTarget(endXWithStepYaw()))
@@ -536,6 +634,15 @@ void Step::update()
 
     // 等前侧腿下放：前侧腿支撑到位后，底盘继续推进到后侧外辅助轮边缘。
     case ChassisState::Down2_WaitFrontDeploy:
+        if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+        {
+            if (Chassis::ctrl->isTrajectoryFinished() &&
+                front_state_ == LiftState::Down1_WaitDeploy)
+            {
+                // 如果曲线推进已完成，但腿还没触发，给一个微小速度前移
+                Chassis::ctrl->setVelocityInBody(compensation_velocity_, false);
+            }
+        }
         if (front_state_ == LiftState::Down3_WaitRestoreNormal)
         {
             if (!setChassisTarget(stepRelativePosture(AbsAuxOuterWheelX - 3 * SafeDistance)))
@@ -547,6 +654,14 @@ void Step::update()
 
     // 等后侧腿下放：后侧腿支撑到位后，保持台阶 yaw 走到终点 x/y。
     case ChassisState::Down3_WaitRearDeploy:
+        if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+        {
+            if (Chassis::ctrl->isTrajectoryFinished() && rear_state_ == LiftState::Down1_WaitDeploy)
+            {
+                // 如果曲线推进已完成，但腿还没触发，给一个微小速度前移
+                Chassis::ctrl->setVelocityInBody(compensation_velocity_, false);
+            }
+        }
         if (rear_state_ == LiftState::Down3_WaitRestoreNormal)
         {
             if (!setChassisTarget(endXYWithStepYaw()))
@@ -631,8 +746,8 @@ void Step::update()
         break;
     case LiftState::Up2_WaitRetract:
         // TODO: 这里不应该这样扩大安全距离
-        if (currentRelativeX() > -AbsAuxOuterWheelX + AuxWheelRadius +
-                                         3 * SafeDistance) // 这里是判断前侧辅助轮有没有上台阶
+        // 这里是判断前侧辅助轮有没有上台阶, 如果启用了行程开关，则使用行程开关判断
+        if (frontRetractTriggered())
         {
             if (final_height_ == FinalHeight::R1 && Chassis::loc_ekf != nullptr)
             {
@@ -642,6 +757,8 @@ void Step::update()
             if (!moveLift(front_, LiftMin, NoloadLimit))
                 return;
             front_->setGrounding(false); // 离地
+            if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+                Chassis::ctrl->hold(); // 底盘立即停住
             front_state_ = LiftState::Up3_Retracting;
         }
         break;
@@ -651,7 +768,8 @@ void Step::update()
         break;
     case LiftState::Up4_WaitDeploy:
         // 前轮已经完全登上
-        if (currentRelativeX() > -AbsWheelInnerEdgeX + 3 * SafeDistance)
+        // 通过部署在前腿后方的开关触发
+        if (frontDeployTriggered())
         {
             if (!moveLift(front_, Position::StepTransitionUp, DeployLiftLimit))
                 return;
@@ -680,15 +798,18 @@ void Step::update()
             chassis_state_ == ChassisState::Down1_ApproachFrontAux)
             break;
 
-        if (currentRelativeX() > -AbsWheelOuterEdgeX)
+        if (frontUngrounded())
         {
-            // 离地判定
+            // 离地判定, 前侧未触发
             front_->setGrounding(false);
         }
-        if (currentRelativeX() > -AbsWheelInnerEdgeX + 3 * SafeDistance)
+        // 前腿出去
+        if (frontDeployTriggered())
         {
             if (!moveLift(front_, stepDownTransition2Position(), NoloadLimit))
                 return;
+            if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+                Chassis::ctrl->hold();
             front_state_ = LiftState::Down2_Deploying;
         }
         break;
@@ -724,12 +845,15 @@ void Step::update()
             rear_state_ = LiftState::Up2_WaitRetract;
         break;
     case LiftState::Up2_WaitRetract:
-        if ((currentRelativeX() > AbsAuxInnerWheelX + AuxWheelRadius + 3 * SafeDistance) &&
+        // 后腿收起的条件是后腿侧行程开关被触发
+        if (rearRetractTriggered() &&
             (front_state_ == LiftState::Done || front_state_ == LiftState::Up6_WaitRestoreNormal))
         {
             if (!moveLift(rear_, LiftMin, NoloadLimit))
                 return;
             rear_->setGrounding(false);
+            if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+                Chassis::ctrl->hold(); // 底盘立即停住
             rear_state_ = LiftState::Up3_Retracting;
         }
         break;
@@ -739,7 +863,7 @@ void Step::update()
         break;
     case LiftState::Up4_WaitDeploy:
         // 后轮已经完全登上
-        if (currentRelativeX() > AbsWheelOuterEdgeX + 3 * SafeDistance)
+        if (rearDeployTriggered())
         {
             if (!moveLift(rear_, Position::StepTransitionUp, DeployLiftLimit))
                 return;
@@ -776,15 +900,17 @@ void Step::update()
             chassis_state_ == ChassisState::Down1_ApproachFrontAux)
             break;
 
-        if (currentRelativeX() > AbsWheelInnerEdgeX)
+        if (rearUngrounded())
         {
             // 离地判定
             rear_->setGrounding(false);
         }
-        if (currentRelativeX() > AbsWheelOuterEdgeX + 3 * SafeDistance)
+        if (rearDeployTriggered())
         {
             if (!moveLift(rear_, stepDownTransition2Position(), NoloadLimit))
                 return;
+            if constexpr (ProjectParts::EnableStepInfraredSwitchLogic)
+                Chassis::ctrl->hold();
             rear_state_ = LiftState::Down2_Deploying;
         }
         break;

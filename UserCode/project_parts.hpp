@@ -5,7 +5,7 @@
  * 本文件是“组件启用逻辑”的唯一入口。
  *
  * 使用规则：
- * - 只修改下面 11 个 0 / 1 宏；
+ * - 只修改下面 12 个 0 / 1 宏；
  * - 这些开关的设计目的，是方便局部联调 / 排障 / 单机构验证；
  * - 正式比赛或正式交付构建时，必须按完整硬件形态启用全部功能，不把它当作长期产品分型配置；
  * - 业务代码不要直接重新组合原始宏，统一使用本文件中派生出来的
@@ -24,7 +24,7 @@
  * 9. 上位机控制指令（上位机其他控制命令）
  * 10. 上位机串口辨识初始化（下位机持续发送 0xAA，直到收到任意合法上位机帧）
  * 11. connection table I2C 周期发送
- * 12. 红外接收模块（本机通过 57600 串口接收单字节状态协议）
+ * 12. Step 红外行程开关切换逻辑（关闭时回退到原位置阈值判定）
  *
  * 常见组合：
  * - 仅底盘调试：
@@ -99,9 +99,9 @@
 #    define PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX 1
 #endif
 
-/// 启用红外接收模块。当前使用 USART6 单字节 DMA circular 接收。
-#ifndef PROJECT_PART_ENABLE_INFRARED_RECEIVER
-#    define PROJECT_PART_ENABLE_INFRARED_RECEIVER 1
+/// 启用 Step 动作里的红外行程开关切换逻辑；关闭时使用原本基于位置阈值的判定。
+#ifndef PROJECT_PART_ENABLE_STEP_INFRARED_SWITCH_LOGIC
+#    define PROJECT_PART_ENABLE_STEP_INFRARED_SWITCH_LOGIC 1
 #endif
 
 /// 启用腹部吸盘组件，包括气泵 GPIO（当前不连气压计）。
@@ -134,8 +134,9 @@ inline constexpr bool EnableUpperHostIdentifyInit = PROJECT_PART_ENABLE_UPPER_HO
                                                     0;
 /// 一级开关：connection table I2C 周期发送。
 inline constexpr bool EnableConnectionTableI2CTx = PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX != 0;
-/// 一级开关：红外接收模块。
-inline constexpr bool EnableInfraredReceiver = PROJECT_PART_ENABLE_INFRARED_RECEIVER != 0;
+/// 一级开关：Step 动作里的红外行程开关切换逻辑。
+inline constexpr bool EnableStepInfraredSwitchLogic =
+        PROJECT_PART_ENABLE_STEP_INFRARED_SWITCH_LOGIC != 0;
 /// 一级开关：腹部吸盘组件。
 inline constexpr bool EnableAbdomenSuction = PROJECT_PART_ENABLE_ABDOMEN_SUCTION != 0;
 

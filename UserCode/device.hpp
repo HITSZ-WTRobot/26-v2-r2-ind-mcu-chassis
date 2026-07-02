@@ -9,6 +9,7 @@
 #include "dm.hpp"
 #include "suction/SuctionCup.hpp"
 #include "usart.h"
+#include "chassis/switch.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -80,6 +81,17 @@ inline motors::DJIMotor* lift[4]{};
 inline motors::DMMotor* grip_arm{};
 inline motors::DMMotor* grip_turn{};
 } // namespace Motor
+
+namespace Switch
+{
+/// 4 个红外 GPIO switch，数组顺序就是 ActionState bit12..15 的反馈顺序。
+inline InfraredSwitch infrared_switch[4]{
+    GpioPinWithName(EXTI3),
+    GpioPinWithName(EXTI2),
+    GpioPinWithName(EXTI1),
+    GpioPinWithName(EXTI0),
+};
+}
 
 void init();
 void dm_motor_pings();

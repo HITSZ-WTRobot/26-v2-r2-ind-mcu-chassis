@@ -8,10 +8,10 @@
 #include "chassis/actions/Step.hpp"
 #include "chassis/chassis.hpp"
 #include "cmsis_os2.h"
+#include "device.hpp"
 #include "grip/actions/roller_store.hpp"
 #include "grip/actions/spear_grab.hpp"
 #include "grip/grip.hpp"
-#include "infrared/InfraredReceiver.hpp"
 #include "main.h"
 #include "project_parts.hpp"
 
@@ -105,8 +105,7 @@ GripStatus currentGripStatus()
 
         if (kfs.workflowPhase() == Grip::Action::KfsStore::WorkflowPhase::Release)
         {
-            return kfs.isRunning() ? GripStatus::KfsRelease
-                                   : GripStatus::Done;
+            return kfs.isRunning() ? GripStatus::KfsRelease : GripStatus::Done;
         }
 
         if (kfs.workflowPhase() == Grip::Action::KfsStore::WorkflowPhase::Store)
@@ -131,20 +130,18 @@ GripStatus currentGripStatus()
     return GripStatus::Done;
 }
 
-bool currentGripSuctionHasObject()
+uint16_t currentInfraredSwitchState()
 {
-    if constexpr (!ProjectParts::EnableGripSuctionPressureSensor)
-        return false;
+    uint16_t state = 0u;
+    auto&    s     = Device::Switch::infrared_switch;
 
-    return Grip::Action::KfsStore::inst().hasDetectedObject();
-}
+    for (uint16_t i = 0u; i < 4u; i++)
+    {
+        if (s[i].isTriggered())
+            state |= static_cast<uint16_t>(1u << i);
+    }
 
-uint16_t currentInfraredState()
-{
-    if constexpr (!ProjectParts::EnableInfraredReceiver)
-        return 0u;
-
-    return Infrared::stateBits();
+    return state;
 }
 
 TrajectoryOfflineState currentTrajectoryOfflineState()
@@ -154,9 +151,8 @@ TrajectoryOfflineState currentTrajectoryOfflineState()
 
     if (Chassis::offline_trajectory->isActive())
     {
-        return Chassis::offline_trajectory->isFinished()
-                   ? TrajectoryOfflineState::Finished
-                   : TrajectoryOfflineState::Running;
+        return Chassis::offline_trajectory->isFinished() ? TrajectoryOfflineState::Finished
+                                                         : TrajectoryOfflineState::Running;
     }
 
     if (Chassis::offline_trajectory->isStopped())
@@ -198,8 +194,7 @@ void updateTable()
                  isChassisCurveFinished(),
                  currentLiftStatus(),
                  currentGripStatus(),
-                 currentGripSuctionHasObject(),
-                 currentInfraredState(),
-                 currentTrajectoryOfflineState());
+                 currentTrajectoryOfflineState(),
+                 currentInfraredSwitchState());
 }
 } // namespace Protocol::ActionState

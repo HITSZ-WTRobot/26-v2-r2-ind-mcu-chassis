@@ -18,10 +18,8 @@ namespace Protocol::ActionState
  * - bit5..6   Lift 状态：Calibrating / Running / Ready / NotEnabled
  * - bit7..9   Grip 状态：Calibrating / TakingSpear / KfsStore /
  *               KfsRelease / Done / Running
- * - bit10     Grip suction 是否检测到物体（仅在启用吸盘气压计时有效）
- * - bit11..12 红外接收稳定状态：A0 / A1 / A2 / A3 映射到 0..3
- * - bit13..14 离线轨迹状态：Idle / Running / Finished / Interrupted
- * - bit15    预留
+ * - bit10..11 离线轨迹状态：Idle / Running / Finished / Interrupted
+ * - bit12..15 4 个红外 switch 触发状态，按 Device::Switch::infrared_switch[0..3] 顺序打包
  */
 inline volatile uint16_t table{};
 
@@ -81,32 +79,29 @@ enum class TrajectoryOfflineState : uint16_t
 
 namespace Layout
 {
-inline constexpr uint16_t StepShift                = 0u;
-inline constexpr uint16_t ChassisModeShift         = 2u;
-inline constexpr uint16_t ChassisCurveFinishedBit  = 4u;
-inline constexpr uint16_t LiftShift                = 5u;
-inline constexpr uint16_t GripShift                = 7u;
-inline constexpr uint16_t GripSuctionHasObjectBit  = 10u;
-inline constexpr uint16_t InfraredStateShift       = 11u;
-inline constexpr uint16_t StepMask                 = 0x3u << StepShift;
-inline constexpr uint16_t ChassisModeMask          = 0x3u << ChassisModeShift;
-inline constexpr uint16_t ChassisCurveFinishedMask = 0x1u << ChassisCurveFinishedBit;
-inline constexpr uint16_t LiftMask                 = 0x3u << LiftShift;
-inline constexpr uint16_t GripMask                 = 0x7u << GripShift;
-inline constexpr uint16_t GripSuctionHasObjectMask = 0x1u << GripSuctionHasObjectBit;
-inline constexpr uint16_t InfraredStateMask        = 0x3u << InfraredStateShift;
-inline constexpr uint16_t TrajectoryOfflineStateShift = 13u;
+inline constexpr uint16_t StepShift                   = 0u;
+inline constexpr uint16_t ChassisModeShift            = 2u;
+inline constexpr uint16_t ChassisCurveFinishedBit     = 4u;
+inline constexpr uint16_t LiftShift                   = 5u;
+inline constexpr uint16_t GripShift                   = 7u;
+inline constexpr uint16_t TrajectoryOfflineStateShift = 10u;
+inline constexpr uint16_t InfraredSwitchStateShift    = 12u;
+inline constexpr uint16_t StepMask                    = 0x3u << StepShift;
+inline constexpr uint16_t ChassisModeMask             = 0x3u << ChassisModeShift;
+inline constexpr uint16_t ChassisCurveFinishedMask    = 0x1u << ChassisCurveFinishedBit;
+inline constexpr uint16_t LiftMask                    = 0x3u << LiftShift;
+inline constexpr uint16_t GripMask                    = 0x7u << GripShift;
 inline constexpr uint16_t TrajectoryOfflineStateMask  = 0x3u << TrajectoryOfflineStateShift;
+inline constexpr uint16_t InfraredSwitchStateMask     = 0xFu << InfraredSwitchStateShift;
 } // namespace Layout
 
-constexpr uint16_t pack(const StepStatus              step,
-                        const ChassisMode             chassis_mode,
-                        const bool                    chassis_curve_finished,
-                        const LiftStatus              lift,
-                        const GripStatus              grip,
-                        const bool                    grip_suction_has_object,
-                        const uint16_t                infrared_state,
-                        const TrajectoryOfflineState  trajectory_offline_state)
+constexpr uint16_t pack(const StepStatus             step,
+                        const ChassisMode            chassis_mode,
+                        const bool                   chassis_curve_finished,
+                        const LiftStatus             lift,
+                        const GripStatus             grip,
+                        const TrajectoryOfflineState trajectory_offline_state,
+                        const uint16_t               infrared_switch_state)
 {
     return static_cast<uint16_t>(
             (static_cast<uint16_t>(step) << Layout::StepShift) |
@@ -114,9 +109,9 @@ constexpr uint16_t pack(const StepStatus              step,
             ((chassis_curve_finished ? 1u : 0u) << Layout::ChassisCurveFinishedBit) |
             (static_cast<uint16_t>(lift) << Layout::LiftShift) |
             (static_cast<uint16_t>(grip) << Layout::GripShift) |
-            ((grip_suction_has_object ? 1u : 0u) << Layout::GripSuctionHasObjectBit) |
-            ((infrared_state & 0x3u) << Layout::InfraredStateShift) |
-            (static_cast<uint16_t>(trajectory_offline_state) << Layout::TrajectoryOfflineStateShift));
+            (static_cast<uint16_t>(trajectory_offline_state)
+             << Layout::TrajectoryOfflineStateShift) |
+            ((infrared_switch_state & 0xFu) << Layout::InfraredSwitchStateShift));
 }
 
 void updateTable();

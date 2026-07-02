@@ -16,7 +16,6 @@
 │  │ protocol/  协议解析与命令分发      │ │
 │  │ chassis/   底盘/升降/定位/控制     │ │
 │  │ grip/      夹取机构与动作组        │ │
-│  │ infrared/  红外接收               │ │
 │  │ suction/   吸盘组件               │ │
 │  │ diagnostics/ 动作诊断             │ │
 │  │ sync/      时钟对齐               │ │
@@ -49,8 +48,6 @@ Protocol::init()        创建 PCProtocol, 启动接收DMA
   │
 Grip::init()            [条件] 创建 Grip 对象
   │
-Infrared::init()        [条件] 初始化红外接收
-  │
 Action::Xxx::inst()     [条件] 预创建动作组单例
   │
 Connection::init()      初始化连接位图与 watchdog
@@ -82,13 +79,13 @@ motion->liftAllTo(Normal) 抬升至正常高度
 |------|--------|------|
 | 1kHz_1 | TIM 回调 (前半周期) | `Chassis::update_1kHz()`, `Grip::update_500Hz_1/2()` (交替), DM motor pings |
 | 1kHz_2 | TIM 回调 (后半周期, 偏移半周期) | `Device::update_1kHz()` (CAN发包), `Connection::updateTable()`, `Watchdog::EatAll()` |
-| 100Hz | TIM 回调 | `Chassis::update_100Hz()`, `Grip::update_100Hz()`, `Infrared::update_100Hz()` |
+| 100Hz | TIM 回调 | `Chassis::update_100Hz()`, `Grip::update_100Hz()` |
 | 50Hz | FreeRTOS 任务 | `Protocol::ActionState::updateTable()` |
 | 实时 | FreeRTOS 任务 | `PCCommandHandlerTask` - 命令消费与分发 |
 
 ## 4. 编译期形态裁剪
 
-`UserCode/project_parts.hpp` 定义 12 个主开关，并派生系统能力常量：
+`UserCode/project_parts.hpp` 定义 11 个主开关，并派生系统能力常量：
 
 ```
 PROJECT_PART_ENABLE_WHEEL_CHASSIS          → EnableChassisMotion
@@ -101,7 +98,6 @@ PROJECT_PART_ENABLE_PC_LOCALIZATION       → EnableStepAction
 PROJECT_PART_ENABLE_PC_CONTROL            → EnableStepWorkflow
 PROJECT_PART_ENABLE_UPPER_HOST_IDENTIFY_INIT
 PROJECT_PART_ENABLE_CONNECTION_TABLE_I2C_TX → EnableSpearGrabAction
-PROJECT_PART_ENABLE_INFRARED_RECEIVER     → EnableSpearGrabWorkflow
 PROJECT_PART_ENABLE_ABDOMEN_SUCTION       → EnableKfsAction
 ```
 
@@ -150,14 +146,7 @@ ActionState         → 16位动作状态打包 (50Hz低优先级任务刷新)
 - 控制帧: `AA BB | cmd(1B) | data(12B) | tx_timestamp(4B) | CRC16(2B)` = 21字节
 - 反馈帧: `AA BB | timestamp(4B) | x(2B) | y(2B) | yaw(2B) | frontHeight(2B) | rearHeight(2B) | action_state(2B) | connection_state(2B) | CRC16(2B)` = 22字节
 
-### 5.4 红外模块 (`UserCode/infrared/`)
-
-- USART6 DMA 单字节循环接收
-- 支持 `0xA0..0xA3` 四字节协议
-- 需连续 ≥3 个相同合法字节才切换状态
-- 稳定 `0xA0→0xA1` 时触发 `Grip::openClaw()` + 延时回收
-
-### 5.5 吸盘模块 (`UserCode/suction/`)
+### 5.4 吸盘模块 (`UserCode/suction/`)
 
 `SuctionCup` - 可复用吸盘组件：
 - 气泵 GPIO 控制 (Grip: RELAY2, Abdomen: RELAY0)
@@ -191,9 +180,8 @@ ActionState         → 16位动作状态打包 (50Hz低优先级任务刷新)
 | 4 | ChassisCurveFinished | 轨迹完成标志 |
 | 5-6 | LiftStatus | Calibrating(0)/Running(1)/Ready(2)/NotEnabled(3) |
 | 7-9 | GripStatus | Calibrating(0)/TakingSpear(1)/KfsStore(2)/KfsRelease(3)/Done(5)/Running(6) |
-| 10 | GripSuctionHasObject | 吸盘物体检测 |
-| 11-12 | InfraredReceiverState | A0(0)/A1(1)/A2(2)/A3(3) |
-| 13-15 | Reserved | 预留 |
+| 10-11 | TrajectoryOfflineState | Idle(0)/Running(1)/Finished(2)/Interrupted(3) |
+| 12-15 | InfraredSwitchState | `Device::Switch::infrared_switch[0..3]` 触发状态 |
 
 ## 8. 硬件映射
 
@@ -202,7 +190,7 @@ ActionState         → 16位动作状态打包 (50Hz低优先级任务刷新)
 | 陀螺仪 HWT101CT | UART2 | 串口 |
 | 上位机(主) | UART3 | 230400bps, AA BB 帧协议 |
 | 辅控制器 | UART1 | AA BB 帧协议 |
-| 红外接收 | USART6 | 57600bps, DMA 单字节循环 |
+| 红外 switch x4 | EXTI3/EXTI2/EXTI1/EXTI0 | GPIO |
 | 轮电机 x4 | CAN1(前), CAN2(后) | DJI |
 | 升降电机 x4 | CAN1(前), CAN2(后) | DJI |
 | Grip Arm | CAN2 | DM4310 (id0=0x09, velocity) |

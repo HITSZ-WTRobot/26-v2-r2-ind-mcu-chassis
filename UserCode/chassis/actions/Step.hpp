@@ -10,6 +10,7 @@
 #include "chassis/chassis.hpp"
 #include "diagnostics/StepActionDiagnostics.hpp"
 #include "RingBuffer.hpp"
+#include <array>
 
 namespace Action
 {
@@ -229,11 +230,14 @@ private:
 
     [[nodiscard]] bool isDuplicateStep(const StepAction& step) const;
 
-    chassis::Posture step_target_pos_{};
-    chassis::Posture end_pos_{};
+    chassis::Posture  step_target_pos_{};
+    chassis::Posture  end_pos_{};
+    chassis::Velocity compensation_velocity_{};
 
     Lift::LiftSide* front_ = nullptr;
     Lift::LiftSide* rear_  = nullptr;
+
+    std::array<InfraredSwitch*, 4> switches{};
 
     [[nodiscard]] chassis::Posture stepRelativePosture(const float x) const
     {
@@ -255,6 +259,12 @@ private:
     [[nodiscard]] bool yawPrepared() const;
     [[nodiscard]] bool yPrepared() const;
     [[nodiscard]] bool yDownPrepared() const;
+    [[nodiscard]] bool frontRetractTriggered() const;
+    [[nodiscard]] bool frontDeployTriggered() const;
+    [[nodiscard]] bool frontUngrounded() const;
+    [[nodiscard]] bool rearRetractTriggered() const;
+    [[nodiscard]] bool rearDeployTriggered() const;
+    [[nodiscard]] bool rearUngrounded() const;
 
     [[nodiscard]] chassis::Posture endXWithStepYaw() const;
 

@@ -10,11 +10,6 @@ Firmware integration lives at the repository root. `UserCode/` is the only proje
 - `UserCode/suction/` — reusable suction-cup component and module-local config: `Config.hpp` centralizes shared pressure-sensor parameters plus the shared object-detection Schmitt thresholds; `SuctionCup.*` implements the reusable cup behavior.
 - `UserCode/connection.*` — unified connection bitmap refresh and startup connection wait logic.
 - `UserCode/project_parts.hpp` — the single source of truth for compile-time feature toggles and derived capabilities.
-- `UserCode/infrared/` — USART6 single-byte DMA circular infrared receiver. It accepts
-  `0xA0..0xA3`, requires at least three consecutive equal legal bytes before changing state, and
-  triggers `Grip::openClaw()` only on a stable `0xA0 -> 0xA1` transition, then uses its
-  100 Hz update hook to delay and send the grip to
-  `Grip::Config::InfraredDocking::ReleaseRetractPose`.
 - `UserCode/chassis/` — the combined wheel-chassis + lift motion object, localization/controller setup, and step action state machine under `UserCode/chassis/actions/`.
 - `UserCode/grip/` — the grip mechanism entry point, trajectory control, arm fixed-zero config, turn homing config, and the two grip action modules under `UserCode/grip/actions/`: `SpearGrab` for taking spearheads and `KfsStore` for temporary roller storage.
 - `UserCode/protocol/` — upper-host protocol modules: `PCProtocol.*` owns UART RX
@@ -44,7 +39,7 @@ This repository also has several project-specific conventions derived from `User
 - `Grip` is responsible for two high-level action groups: `SpearGrab` for spearhead pickup and `KfsStore` for temporary roller storage. Keep them as separate modules under `UserCode/grip/actions/`; do not fold roller temporary-storage logic back into the spear-grab module.
 - `Suction::SuctionCup` is a reusable component, not a grip-only type. It stores an externally owned pressure-sensor pointer that may be null; sensor construction and `AppI2C::manager2().registerDevice(...)` must happen before that pointer is passed into the cup. Its public runtime interface should stay limited to suction on, suction off, and “has object”; pressure-sensor access remains an internal implementation detail. When a fresh pressure sample exists, `hasObject()` should apply the configured Schmitt trigger directly on the current pressure so object slip can be observed as soon as the pressure crosses the release threshold; without a sensor or without a fresh sample, it should return false instead of falling back to timing heuristics. Keep only generic suction behavior and shared suction defaults inside `UserCode/suction/`; owner-specific wiring such as pump GPIO, I2C registration phase, and stale-time policy should live with the owning subsystem config.
 - `Grip::Action::KfsStore` owns the only suction cup used by this project and a fixed no-parameter store/release flow. When the suction pressure sensor exists, its state machine should still use `Suction::SuctionCup::hasObject()` as the source of truth for “picked” and “released”; when the cup is built without that sensor, the action layer is allowed to fall back to owner-configured “reach pickup pose then delay” / “reach release pose, stop pump, then delay” confirmation to advance the workflow. Keep those fallback delays, together with the suction-pickup / temporary-store / release / standby poses and the owner-side suction config assembly, centralized in `Grip::Config::KfsStore`, and update the config together with the action logic when that hardware sequence changes.
-- `Protocol::ActionState::table` is a packed 16-bit feedback field. It currently encodes Step status, chassis mode + trajectory-finished flag, lift status, grip/action status, a `GripSuctionHasObject` bit, and the two-bit infrared receiver stable state. The current chassis-mode subfield uses `Stop / Velocity / Position / Slave`, the current grip subfield uses `Calibrating / TakingSpear / KfsStore / KfsRelease / Done / Running`, the suction bit is meaningful only when `ProjectParts::EnableGripSuctionPressureSensor` is enabled, and the infrared subfield maps stable `0xA0..0xA3` to `0..3`; if you change any subfield semantics, update `UserCode/protocol/ActionState.hpp`, the feedback protocol comment, and the upper-host agreement together.
+- `Protocol::ActionState::table` is a packed 16-bit feedback field. It currently encodes Step status, chassis mode + trajectory-finished flag, lift status, grip/action status, a two-bit offline-trajectory state in bit10..11, and four red-infrared GPIO switch bits in bit12..15. The current chassis-mode subfield uses `Stop / Velocity / Position / Slave`, the current grip subfield uses `Calibrating / TakingSpear / KfsStore / KfsRelease / Done / Running`, and the switch bits map directly to `Device::Switch::infrared_switch[0..3]` without Step direction remapping; if you change any subfield semantics, update `UserCode/protocol/ActionState.hpp`, the feedback protocol comment, and the upper-host agreement together.
 - `UserCode/arena.cpp` overrides global `new` / `delete` with a one-way static arena. Avoid designs that assume `delete` frees memory or that repeatedly allocate and release heap objects at runtime.
 
 ## Runtime Flow
@@ -60,7 +55,7 @@ The real-time update flow is timer-driven and split by frequency:
 The startup sequence in `Init()` is also part of the project contract:
 
 - Initialize in order: `Device::init()`, `Chassis::init()`, `Protocol::init()`, optional
-  `Grip::init()`, `Infrared::init()`, then `Connection::init()`.
+  `Grip::init()`, then `Connection::init()`.
 - Register all shared-I2C periodic devices before calling `AppI2C::start_bus2_manager()`. Do not start the shared I2C manager from an individual device module if other devices may still need to register on the same bus.
 - `Connection::waitAll()` is only for lower-controller local hardware links needed before enable/calibration. Do not let any upper-host protocol state participate in this wait.
 - Upper-host identification and upper-host first-posture requirements belong to the later `System::Init::inited()` gate, so they must not block lower-controller enable or calibration work.
@@ -75,8 +70,7 @@ When adding a new subsystem, update its init, periodic update hooks, readiness g
 The current hardware/software mapping in `UserCode/` is:
 
 - `UART1` (`huart1`) is the auxiliary controller host link; `UART2` (`huart2`) is the yaw gyro (`HWT101CT`); `UART3` (`huart3`) is the main upper-host link.
-- `USART6` (`huart6`) is the infrared receiver link at 57600 baud. It uses DMA circular
-  single-byte receive on the CubeMX-configured pins.
+- `Device::Switch::infrared_switch[0..3]` are the four red-infrared GPIO switch inputs, initialized in `UserCode/device.hpp`; their array order is the upper-host feedback order.
 - Wheel motors are DJI motors: front wheel pair on `hcan1` with `id1 = 1, 2`, rear wheel pair on `hcan2` with `id1 = 3, 4`.
 - Lift motors are also DJI motors, tracked as `Device::Motor::lift[4]`: front lift pair on `hcan1` with `id1 = 3, 4`, rear lift pair on `hcan2` with `id1 = 1, 2`.
 - Grip uses two DM motors on `hcan2`: arm is DM4310 in internal velocity mode with `id0 = 0x09` and fixed zero from `Grip::Config::Motor`; turn is DM2325 in MIT torque mode with `id0 = 0x0A` and still uses `trajectory::HomingMotorTrajectory<1>` for stall homing. Both use DM feedback `master_id = 0x00`.

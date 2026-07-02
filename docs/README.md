@@ -314,7 +314,7 @@ grip 与底盘 / 升降是解耦的，可以单独启用、单独校准、单独
 | `10 ~ 11` | `yaw` | `2` | `int16` | 当前航向角 `yaw(deg) * 100` |
 | `12 ~ 13` | `frontHeight` | `2` | `int16` | 前 lift 对应底盘离地高度 `* 2000` |
 | `14 ~ 15` | `rearHeight` | `2` | `int16` | 后 lift 对应底盘离地高度 `* 2000` |
-| `16 ~ 17` | `action_state` | `2` | `uint16` | 动作状态位图，编码 Step/Lift/Grip 状态、底盘模式、红外接收和吸盘检测 |
+| `16 ~ 17` | `action_state` | `2` | `uint16` | 动作状态位图，编码 Step/Lift/Grip 状态、底盘模式、离线轨迹状态和 4 个红外 switch |
 | `18 ~ 19` | `connection_state` | `2` | `uint16` | 连接状态位图 |
 | `20 ~ 21` | `crc16` | `2` | `uint16` | `CRC16 Modbus` 校验值 |
 
