@@ -49,6 +49,12 @@ void pressure_sensor_init()
     (void)ProjectParts::EnableGripSuctionPressureSensor;
 }
 
+void switch_init()
+{
+    for (auto& sw : Switch::infrared_switch)
+        sw.initExtiDebounce();
+}
+
 void grip_suction_init()
 {
     if constexpr (!ProjectParts::EnableGripSuction)
@@ -224,6 +230,7 @@ void motor_grip_init()
 
 void init()
 {
+    switch_init();
     sensor_init();
     pressure_sensor_init();
     grip_suction_init();

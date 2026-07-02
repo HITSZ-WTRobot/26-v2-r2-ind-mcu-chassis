@@ -156,6 +156,11 @@ void TIM_Callback_100Hz(TIM_HandleTypeDef* htim)
         Grip::grip->update_100Hz();
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    bsp::gpio::DispatchExtiInterrupt(GPIO_Pin);
+}
+
 namespace Arena
 {
 double get_usage_ratio();
